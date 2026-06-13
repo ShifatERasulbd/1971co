@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "ignoreDeprecations": "6.0",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["resources/js/backend/*"]
+        }
+    },
+    "include": ["resources/js/backend/**/*", "resources/js/personalizer/**/*"]
+}
