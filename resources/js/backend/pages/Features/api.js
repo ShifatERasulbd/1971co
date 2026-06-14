@@ -1,45 +1,16 @@
- async function ensureCsrfCookie() {
-    await fetch('/sanctum/csrf-cookie', {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    });
-}
-
-async function requestJson(url, options = {}) {
-    const response = await fetch(url, {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            ...(options.headers || {}),
-        },
-        ...options,
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    const payload = contentType.includes('application/json') ? await response.json() : null;
-
-    if (!response.ok) {
-        const message = payload?.message || 'Request failed';
-        const error = new Error(message);
-        error.status = response.status;
-        error.payload = payload;
-        throw error;
-    }
-
-    return payload;
-}
+import { requestJson } from '@/lib/apiClient';
 
 function buildFeatureFormData(data = {}, asUpdate = false) {
     const formData = new FormData();
 
     formData.append('title', data.title || '');
-    formData.append('description', data.description || '');
+    formData.append('short_description', data.short_description || data.description || '');
+    formData.append('description', data.description || data.short_description || '');
     if (data.sort_order !== undefined && data.sort_order !== null) {
         formData.append('sort_order', String(data.sort_order));
+    }
+    if (data.columns_per_view !== undefined && data.columns_per_view !== null) {
+        formData.append('columns_per_view', String(data.columns_per_view));
     }
     if (data.title_font_size !== undefined && data.title_font_size !== null) {
         formData.append('title_font_size', String(data.title_font_size));
@@ -56,6 +27,10 @@ function buildFeatureFormData(data = {}, asUpdate = false) {
 
     if (data.icon instanceof File) {
         formData.append('icon', data.icon);
+    }
+
+    if (typeof data.icon === 'string' && data.icon.length > 0) {
+        formData.append('icon_url', data.icon);
     }
 
 
@@ -81,24 +56,24 @@ export async function  fetchFeature(id){
 }
 
 export async function createFeature(data){
-    await ensureCsrfCookie();
     return requestJson('/api/features',{
+        needsCsrf: true,
         method: 'POST',
         body: buildFeatureFormData(data)
     });
 }
 
 export async function updateFeature(id,data){
-    await ensureCsrfCookie();
     return requestJson(`/api/features/${id}`,{
+        needsCsrf: true,
         method: 'POST',
         body: buildFeatureFormData(data, true)
     });
 }
 
 export async function deleteFeature(id){
-    await ensureCsrfCookie();
     return requestJson(`/api/features/${id}`,{
+        needsCsrf: true,
         method: 'DELETE'
     });
 }

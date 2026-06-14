@@ -90,7 +90,12 @@ export default function HomePage() {
 
                 const Component = section.component;
                 return (
-                    <div key={sectionKey} id={`section-${sectionKey}`} data-section-key={sectionKey}>
+                    <div
+                        key={sectionKey}
+                        id={`section-${sectionKey}`}
+                        data-section-key={sectionKey}
+                        className="scroll-mt-24"
+                    >
                         <LazySection heightClass={section.height}>
                             <Component />
                         </LazySection>

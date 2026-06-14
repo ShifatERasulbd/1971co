@@ -1,37 +1,4 @@
-async function ensureCsrfCookie() {
-    await fetch('/sanctum/csrf-cookie', {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    });
-}
-
-async function requestJson(url, options = {}) {
-    const response = await fetch(url, {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            ...(options.headers || {}),
-        },
-        ...options,
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    const payload = contentType.includes('application/json') ? await response.json() : null;
-
-    if (!response.ok) {
-        const message = payload?.message || 'Request failed';
-        const error = new Error(message);
-        error.status = response.status;
-        error.payload = payload;
-        throw error;
-    }
-
-    return payload;
-}
+import { requestJson } from '@/lib/apiClient';
 
 function buildProductPayload(data = {}) {
     return {
@@ -85,8 +52,8 @@ export async function fetchProduct(id) {
 }
 
 export async function createProduct(data) {
-    await ensureCsrfCookie();
     return requestJson('/api/products', {
+        needsCsrf: true,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -96,8 +63,8 @@ export async function createProduct(data) {
 }
 
 export async function updateProduct(id, data) {
-    await ensureCsrfCookie();
     return requestJson(`/api/products/${id}`, {
+        needsCsrf: true,
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -107,14 +74,15 @@ export async function updateProduct(id, data) {
 }
 
 export async function deleteProduct(id) {
-    await ensureCsrfCookie();
     return requestJson(`/api/products/${id}`, {
+        needsCsrf: true,
         method: 'DELETE',
     });
 }
 
 export async function syncApiProducts() {
     return requestJson('/api/api-products/sync', {
+        needsCsrf: true,
         method: 'POST',
     });
 }

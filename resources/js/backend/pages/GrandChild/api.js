@@ -1,37 +1,4 @@
-async function ensureCsrfCookie() {
-	await fetch('/sanctum/csrf-cookie', {
-		credentials: 'include',
-		headers: {
-			Accept: 'application/json',
-			'X-Requested-With': 'XMLHttpRequest',
-		},
-	});
-}
-
-async function requestJson(url, options = {}) {
-	const response = await fetch(url, {
-		credentials: 'include',
-		headers: {
-			Accept: 'application/json',
-			'X-Requested-With': 'XMLHttpRequest',
-			...(options.headers || {}),
-		},
-		...options,
-	});
-
-	const contentType = response.headers.get('content-type') || '';
-	const payload = contentType.includes('application/json') ? await response.json() : null;
-
-	if (!response.ok) {
-		const message = payload?.message || 'Request failed';
-		const error = new Error(message);
-		error.status = response.status;
-		error.payload = payload;
-		throw error;
-	}
-
-	return payload;
-}
+import { requestJson } from '@/lib/apiClient';
 
 export async function fetchGrandChilds() {
 	const payload = await requestJson('/api/grand-childs');
@@ -57,8 +24,8 @@ export async function fetchGrandChild(id) {
 }
 
 export async function createGrandChild(data) {
-	await ensureCsrfCookie();
 	return requestJson('/api/grand-childs', {
+		needsCsrf: true,
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -68,8 +35,8 @@ export async function createGrandChild(data) {
 }
 
 export async function updateGrandChild(id, data) {
-	await ensureCsrfCookie();
 	return requestJson(`/api/grand-childs/${id}`, {
+		needsCsrf: true,
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json',
@@ -79,8 +46,8 @@ export async function updateGrandChild(id, data) {
 }
 
 export async function deleteGrandChild(id) {
-	await ensureCsrfCookie();
 	return requestJson(`/api/grand-childs/${id}`, {
+		needsCsrf: true,
 		method: 'DELETE',
 	});
 }

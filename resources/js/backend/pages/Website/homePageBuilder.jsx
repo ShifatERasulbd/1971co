@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import HeroEditorDrawer from '@/components/website/HeroEditorDrawer';
 import FeaturesEditorDrawer from '@/components/website/FeaturesEditorDrawer';
+import CollectionsEditorDrawer from '@/components/website/CollectionsEditorDrawer';
 import HomePagePreviewCard from '@/components/website/HomePagePreviewCard';
 import HomePageSectionsCard from '@/components/website/HomePageSectionsCard';
 import { homeSections } from '@/components/website/homePageBuilderData';
@@ -16,6 +17,7 @@ import {
     updateFeature,
 } from '@/pages/Features/api';
 import { createHero, fetchHeroes, updateHero } from '@/pages/Hero/api';
+import { fetchCollections, updateCollections } from '@/pages/Website/collectionsApi';
 
 const defaultHeroDraft = {
     title: 'Custom apparel solutions',
@@ -49,17 +51,51 @@ const defaultFeaturesDraft = {
     items: [
         {
             title: 'Premium Quality Materials',
-            description: 'Durable fabrics designed for comfort and long-term use.',
+            short_description: 'Durable fabrics designed for comfort and long-term use.',
+            icon: null,
+            icon_url: null,
         },
         {
             title: 'Personalized Products',
-            description: 'Customize designs, colors, and details to match your identity.',
+            short_description: 'Customize designs, colors, and details to match your identity.',
+            icon: null,
+            icon_url: null,
         },
         {
             title: 'Bulk Order Solutions',
-            description: 'Efficient production and scalable solutions for businesses of all sizes.',
+            short_description: 'Efficient production and scalable solutions for businesses of all sizes.',
+            icon: null,
+            icon_url: null,
         },
        
+    ],
+};
+
+const defaultCollectionsDraft = {
+    title: 'Collections',
+    titlePosition: 'left',
+    itemsPerView: 4,
+    items: [
+        {
+            name: 'New Arrivals',
+            slug: 'new-arrivals',
+            image: '/uploads/heroes/images/hero1.webp',
+        },
+        {
+            name: 'Essentials',
+            slug: 'essentials',
+            image: '/uploads/heroes/images/hero1.webp',
+        },
+        {
+            name: 'Tees',
+            slug: 'tees',
+            image: '/uploads/heroes/images/hero1.webp',
+        },
+        {
+            name: 'Bottoms',
+            slug: 'bottoms',
+            image: '/uploads/heroes/images/hero1.webp',
+        },
     ],
 };
 
@@ -83,15 +119,19 @@ export default function HomePageBuilder() {
     const [sections, setSections] = useState(homeSections);
     const [isHeroDrawerOpen, setIsHeroDrawerOpen] = useState(false);
     const [isFeaturesDrawerOpen, setIsFeaturesDrawerOpen] = useState(false);
+    const [isCollectionsDrawerOpen, setIsCollectionsDrawerOpen] = useState(false);
     const [activeFeatureItemIndex, setActiveFeatureItemIndex] = useState(null);
+    const [activeCollectionItemIndex, setActiveCollectionItemIndex] = useState(null);
     const [activeHeroConfigPart, setActiveHeroConfigPart] = useState('all');
     const [selectedSectionKey, setSelectedSectionKey] = useState(null);
     const [heroDraft, setHeroDraft] = useState(defaultHeroDraft);
     const [featuresDraft, setFeaturesDraft] = useState(defaultFeaturesDraft);
+    const [collectionsDraft, setCollectionsDraft] = useState(defaultCollectionsDraft);
     const [heroUploadFiles, setHeroUploadFiles] = useState({ image: null, video: null });
     const [activeHeroId, setActiveHeroId] = useState(null);
     const [isSavingHero, setIsSavingHero] = useState(false);
     const [isSavingFeatures, setIsSavingFeatures] = useState(false);
+    const [isSavingCollections, setIsSavingCollections] = useState(false);
 
     useEffect(() => {
         setPageTitle('Home Page Builder');
@@ -151,6 +191,59 @@ export default function HomePageBuilder() {
     useEffect(() => {
         let ignore = false;
 
+        async function loadCollectionsDraft() {
+            try {
+                const payload = await fetchCollections();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                const section = payload.section || {};
+                const items = Array.isArray(payload.items)
+                    ? [...payload.items].sort((a, b) => {
+                          const aOrder = Number.isFinite(Number(a.sort_order))
+                              ? Number(a.sort_order)
+                              : Number(a.id || 0);
+                          const bOrder = Number.isFinite(Number(b.sort_order))
+                              ? Number(b.sort_order)
+                              : Number(b.id || 0);
+                          return aOrder - bOrder;
+                      })
+                    : [];
+
+                setCollectionsDraft((previous) => ({
+                    ...previous,
+                    title: section.title || previous.title,
+                    titlePosition: section.titlePosition || previous.titlePosition,
+                    itemsPerView:
+                        Number(section.itemsPerView) > 0
+                            ? Number(section.itemsPerView)
+                            : previous.itemsPerView,
+                    items:
+                        items.length > 0
+                            ? items.map((item, index) => ({
+                                  id: item.id,
+                                  name: item.name || previous.items[index]?.name || '',
+                                  slug: item.slug || previous.items[index]?.slug || '',
+                                  image: item.image || previous.items[index]?.image || '',
+                              }))
+                            : previous.items,
+                }));
+            } catch {
+                // Keep default draft when collections fail to load.
+            }
+        }
+
+        loadCollectionsDraft();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
         async function loadFeaturesDraft() {
             try {
                 const features = await fetchFeatures();
@@ -168,6 +261,10 @@ export default function HomePageBuilder() {
 
                 setFeaturesDraft((previous) => ({
                     ...previous,
+                    columns:
+                        Number(first.columns_per_view) > 0
+                            ? Number(first.columns_per_view)
+                            : previous.columns,
                     titleFontFamily: first.title_font_family || previous.titleFontFamily,
                     titleFontSize: first.title_font_size ?? previous.titleFontSize,
                     descriptionFontFamily:
@@ -177,8 +274,13 @@ export default function HomePageBuilder() {
                     items: ordered.map((feature, index) => ({
                         id: feature.id,
                         title: feature.title || previous.items[index]?.title || '',
-                        description: feature.description || previous.items[index]?.description || '',
+                        short_description:
+                            feature.short_description ||
+                            feature.description ||
+                            previous.items[index]?.short_description ||
+                            '',
                         icon: feature.icon || previous.items[index]?.icon || null,
+                        icon_url: feature.icon_url || previous.items[index]?.icon_url || null,
                     })),
                 }));
             } catch {
@@ -269,6 +371,25 @@ export default function HomePageBuilder() {
         publishFeaturesDraft();
     }, [publishFeaturesDraft]);
 
+    const publishCollectionsDraft = useCallback(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_COLLECTIONS_PREVIEW_UPDATE',
+                payload: collectionsDraft,
+            },
+            window.location.origin
+        );
+    }, [collectionsDraft]);
+
+    useEffect(() => {
+        publishCollectionsDraft();
+    }, [publishCollectionsDraft]);
+
     const navigatePreviewToSection = useCallback((sectionKey) => {
         const target = iframeRef.current?.contentWindow;
         if (!target) {
@@ -301,6 +422,8 @@ export default function HomePageBuilder() {
                     setActiveHeroConfigPart(part);
                     setSelectedSectionKey('hero');
                     setIsHeroDrawerOpen(true);
+                    setIsFeaturesDrawerOpen(false);
+                    setIsCollectionsDrawerOpen(false);
                 }
                 return;
             }
@@ -319,6 +442,68 @@ export default function HomePageBuilder() {
                 );
                 setIsFeaturesDrawerOpen(true);
                 setIsHeroDrawerOpen(false);
+                setIsCollectionsDrawerOpen(false);
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_COLLECTIONS_SECTION_SELECTED') {
+                const incomingIndex = data.payload?.itemIndex;
+                const parsedIndex = Number.isInteger(incomingIndex)
+                    ? incomingIndex
+                    : Number.isFinite(Number(incomingIndex))
+                      ? Number(incomingIndex)
+                      : null;
+
+                setSelectedSectionKey('collections');
+                setActiveCollectionItemIndex(
+                    parsedIndex !== null && parsedIndex >= 0 ? parsedIndex : null
+                );
+                setIsCollectionsDrawerOpen(true);
+                setIsHeroDrawerOpen(false);
+                setIsFeaturesDrawerOpen(false);
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_COLLECTIONS_ITEMS_REORDERED') {
+                const sourceIndex = Number(data.payload?.sourceIndex);
+                const targetIndex = Number(data.payload?.targetIndex);
+
+                if (
+                    Number.isInteger(sourceIndex) &&
+                    Number.isInteger(targetIndex) &&
+                    sourceIndex >= 0 &&
+                    targetIndex >= 0
+                ) {
+                    handleCollectionReorder(sourceIndex, targetIndex);
+                }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_REQUEST_COLLECTIONS_PREVIEW') {
+                if (event.source && typeof event.source.postMessage === 'function') {
+                    event.source.postMessage(
+                        {
+                            type: 'TIMLESS_PAGE_BUILDER_COLLECTIONS_PREVIEW_UPDATE',
+                            payload: collectionsDraft,
+                        },
+                        window.location.origin
+                    );
+                }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_FEATURES_ITEMS_REORDERED') {
+                const sourceIndex = Number(data.payload?.sourceIndex);
+                const targetIndex = Number(data.payload?.targetIndex);
+
+                if (
+                    Number.isInteger(sourceIndex) &&
+                    Number.isInteger(targetIndex) &&
+                    sourceIndex >= 0 &&
+                    targetIndex >= 0
+                ) {
+                    handleFeatureReorder(sourceIndex, targetIndex);
+                }
                 return;
             }
 
@@ -353,7 +538,7 @@ export default function HomePageBuilder() {
         return () => {
             window.removeEventListener('message', handlePreviewMessage);
         };
-    }, []);
+    }, [collectionsDraft]);
 
     function handleEditSection(section) {
         setSelectedSectionKey(section.key);
@@ -361,6 +546,7 @@ export default function HomePageBuilder() {
             setActiveHeroConfigPart('all');
             setIsHeroDrawerOpen(true);
             setIsFeaturesDrawerOpen(false);
+            setIsCollectionsDrawerOpen(false);
             return;
         }
 
@@ -368,11 +554,21 @@ export default function HomePageBuilder() {
             setActiveFeatureItemIndex(null);
             setIsFeaturesDrawerOpen(true);
             setIsHeroDrawerOpen(false);
+            setIsCollectionsDrawerOpen(false);
+            return;
+        }
+
+        if (section.key === 'collections') {
+            setActiveCollectionItemIndex(null);
+            setIsCollectionsDrawerOpen(true);
+            setIsHeroDrawerOpen(false);
+            setIsFeaturesDrawerOpen(false);
             return;
         }
 
         setIsHeroDrawerOpen(false);
         setIsFeaturesDrawerOpen(false);
+        setIsCollectionsDrawerOpen(false);
     }
 
     function handleReorderSection(sourceKey, targetKey) {
@@ -436,6 +632,188 @@ export default function HomePageBuilder() {
             nextItems.splice(targetIndex, 0, moved);
             return { ...previous, items: nextItems };
         });
+    }
+
+    function handleFeatureIconUpload(index, file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setFeaturesDraft((previous) => ({
+                    ...previous,
+                    items: previous.items.map((item, itemIndex) =>
+                        itemIndex === index
+                            ? {
+                                  ...item,
+                                  // Send the real File to backend; keep data URL only for local preview.
+                                  icon: file,
+                                  icon_url: reader.result,
+                              }
+                            : item
+                    ),
+                }));
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleAddFeatureItem() {
+        setFeaturesDraft((previous) => ({
+            ...previous,
+            items: [
+                ...previous.items,
+                {
+                    title: `Feature ${previous.items.length + 1}`,
+                    short_description: 'Add short description',
+                    icon: null,
+                    icon_url: null,
+                },
+            ],
+        }));
+    }
+
+    function handleRemoveFeatureItem(index) {
+        setFeaturesDraft((previous) => {
+            if (previous.items.length <= 1) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                items: previous.items.filter((_, itemIndex) => itemIndex !== index),
+            };
+        });
+
+        setActiveFeatureItemIndex((previous) => {
+            if (!Number.isInteger(previous)) {
+                return previous;
+            }
+            if (previous === index) {
+                return null;
+            }
+            if (previous > index) {
+                return previous - 1;
+            }
+            return previous;
+        });
+    }
+
+    function handleCollectionsFieldChange(field, value) {
+        setCollectionsDraft((previous) => ({ ...previous, [field]: value }));
+    }
+
+    function handleCollectionItemChange(index, field, value) {
+        setCollectionsDraft((previous) => ({
+            ...previous,
+            items: previous.items.map((item, itemIndex) =>
+                itemIndex === index ? { ...item, [field]: value } : item
+            ),
+        }));
+    }
+
+    function handleCollectionImageUpload(index, file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleCollectionItemChange(index, 'image', reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleAddCollectionItem() {
+        setCollectionsDraft((previous) => ({
+            ...previous,
+            items: [
+                ...previous.items,
+                {
+                    name: `Collection ${previous.items.length + 1}`,
+                    slug: `collection-${previous.items.length + 1}`,
+                    image: '/uploads/heroes/images/hero1.webp',
+                },
+            ],
+        }));
+    }
+
+    function handleRemoveCollectionItem(index) {
+        setCollectionsDraft((previous) => {
+            if (previous.items.length <= 1) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                items: previous.items.filter((_, itemIndex) => itemIndex !== index),
+            };
+        });
+
+        setActiveCollectionItemIndex((previous) => {
+            if (!Number.isInteger(previous)) {
+                return previous;
+            }
+            if (previous === index) {
+                return null;
+            }
+            if (previous > index) {
+                return previous - 1;
+            }
+            return previous;
+        });
+    }
+
+    function handleCollectionReorder(sourceIndex, targetIndex) {
+        setCollectionsDraft((previous) => {
+            const nextItems = [...previous.items];
+            const [moved] = nextItems.splice(sourceIndex, 1);
+            nextItems.splice(targetIndex, 0, moved);
+            return { ...previous, items: nextItems };
+        });
+    }
+
+    async function handleSaveCollectionsToDatabase() {
+        setIsSavingCollections(true);
+
+        try {
+            const payload = {
+                title: collectionsDraft.title,
+                titlePosition: collectionsDraft.titlePosition,
+                itemsPerView: Number(collectionsDraft.itemsPerView) || 4,
+                items: collectionsDraft.items.map((item) => ({
+                    id: item.id,
+                    name: item.name || '',
+                    slug: item.slug || '',
+                    image: item.image || null,
+                })),
+            };
+
+            const saved = await updateCollections(payload);
+            if (saved?.section && Array.isArray(saved.items)) {
+                setCollectionsDraft((previous) => ({
+                    ...previous,
+                    title: saved.section.title || previous.title,
+                    titlePosition: saved.section.titlePosition || previous.titlePosition,
+                    itemsPerView:
+                        Number(saved.section.itemsPerView) > 0
+                            ? Number(saved.section.itemsPerView)
+                            : previous.itemsPerView,
+                    items: saved.items.map((item, index) => ({
+                        id: item.id,
+                        name: item.name || previous.items[index]?.name || '',
+                        slug: item.slug || previous.items[index]?.slug || '',
+                        image: item.image || previous.items[index]?.image || '',
+                    })),
+                }));
+            }
+
+            toast.success('Collections settings saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save collections settings.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingCollections(false);
+        }
     }
 
     async function handleSaveHeroToDatabase() {
@@ -515,8 +893,11 @@ export default function HomePageBuilder() {
                 const item = featuresDraft.items[index] || {};
                 const payload = {
                     title: item.title || '',
-                    description: item.description || '',
+                    short_description: item.short_description || '',
+                    description: item.short_description || '',
+                    icon: item.icon,
                     sort_order: index,
+                    columns_per_view: Number(featuresDraft.columns) || 3,
                     title_font_size: Number(featuresDraft.titleFontSize) || 28,
                     title_font_family: featuresDraft.titleFontFamily || 'instrument-sans',
                     description_font_size: Number(featuresDraft.descriptionFontSize) || 16,
@@ -595,6 +976,7 @@ export default function HomePageBuilder() {
                         publishSectionsLayout();
                         publishPreviewMode();
                         publishFeaturesDraft();
+                        publishCollectionsDraft();
                     }}
                 />
             </div>
@@ -618,9 +1000,27 @@ export default function HomePageBuilder() {
                 activeItemIndex={activeFeatureItemIndex}
                 onChangeField={handleFeaturesFieldChange}
                 onChangeItem={handleFeatureItemChange}
+                onUploadIcon={handleFeatureIconUpload}
+                onAddItem={handleAddFeatureItem}
+                onRemoveItem={handleRemoveFeatureItem}
                 onReorderItem={handleFeatureReorder}
                 onSave={handleSaveFeaturesToDatabase}
                 isSaving={isSavingFeatures}
+            />
+
+            <CollectionsEditorDrawer
+                open={isCollectionsDrawerOpen}
+                onOpenChange={setIsCollectionsDrawerOpen}
+                value={collectionsDraft}
+                activeItemIndex={activeCollectionItemIndex}
+                onChangeField={handleCollectionsFieldChange}
+                onChangeItem={handleCollectionItemChange}
+                onUploadImage={handleCollectionImageUpload}
+                onAddItem={handleAddCollectionItem}
+                onRemoveItem={handleRemoveCollectionItem}
+                onReorderItem={handleCollectionReorder}
+                onSave={handleSaveCollectionsToDatabase}
+                isSaving={isSavingCollections}
             />
         </DndProvider>
     );

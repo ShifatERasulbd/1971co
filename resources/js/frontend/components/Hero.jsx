@@ -292,7 +292,7 @@ export default function Hero() {
     }, [isBuilderPreview]);
 
     return (
-        <section className={`${timelessFontClass} relative isolate min-h-[calc(100vh-90px)] overflow-hidden bg-zinc-950 text-white`}>
+        <section className={`${timelessFontClass} relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
             {heroVideo && !isVideoFallback ? (
                 <video
                     src={heroVideo}

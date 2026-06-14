@@ -1,37 +1,4 @@
-async function ensureCsrfCookie() {
-    await fetch('/sanctum/csrf-cookie', {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    });
-}
-
-async function requestJson(url, options = {}) {
-    const response = await fetch(url, {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            ...(options.headers || {}),
-        },
-        ...options,
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    const payload = contentType.includes('application/json') ? await response.json() : null;
-
-    if (!response.ok) {
-        const message = payload?.message || 'Request failed';
-        const error = new Error(message);
-        error.status = response.status;
-        error.payload = payload;
-        throw error;
-    }
-
-    return payload;
-}
+import { requestJson } from '@/lib/apiClient';
 
 function buildHeroFormData(data = {}, asUpdate = false) {
     const formData = new FormData();
@@ -92,29 +59,24 @@ export async function fetchHero(id) {
 }
 
 export async function createHero(data) {
-    await ensureCsrfCookie();
-
     return requestJson('/api/heroes', {
+        needsCsrf: true,
         method: 'POST',
         body: buildHeroFormData(data),
     });
 }
 
 export async function updateHero(id, data) {
-    await ensureCsrfCookie();
-
     return requestJson(`/api/heroes/${id}`, {
+        needsCsrf: true,
         method: 'POST',
         body: buildHeroFormData(data, true),
     });
 }
 
 export async function deleteHero(id) {
-
-    
-    await ensureCsrfCookie();
-
     return requestJson(`/api/heroes/${id}`, {
+        needsCsrf: true,
         method: 'DELETE',
     });
 }

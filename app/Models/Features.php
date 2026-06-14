@@ -10,9 +10,11 @@ class Features extends Model
 
     protected $fillable =[
         'title',
+        'short_description',
         'description',
         'icon',
         'sort_order',
+        'columns_per_view',
         'title_font_size',
         'title_font_family',
         'description_font_size',

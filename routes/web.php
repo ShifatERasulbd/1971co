@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HeroController;
 use App\Http\Controllers\PersonalizationController;
 use App\Http\Controllers\FeaturesController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\GrandChildController;
 use App\Http\Controllers\CanadaWarehouseStockController;
@@ -50,6 +51,7 @@ Route::prefix('api')->group(function () {
     Route::get('/public/hero', [HeroController::class, 'publicHero']);
     Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
     Route::get('/public/features', [FeaturesController::class, 'publicIndex']);
+    Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
     Route::get('/public/products', [\App\Http\Controllers\ProductController::class, 'publicIndex']);
     Route::get('/public/categories', [CategoryController::class, 'index']);
     Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
@@ -76,6 +78,10 @@ Route::prefix('api')->group(function () {
 
         // Features Controller
         Route::apiResource('/features', FeaturesController::class);
+
+        // Collections Builder Controller
+        Route::get('/collections', [CollectionController::class, 'index']);
+        Route::put('/collections', [CollectionController::class, 'update']);
 
         // Category Controller
         Route::apiResource('/categories', CategoryController::class);
