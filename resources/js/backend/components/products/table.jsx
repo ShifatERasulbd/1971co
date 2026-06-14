@@ -203,7 +203,13 @@ export default function ProductTable({
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8"
-                                                            onClick={() => onRequestDelete?.(primary)}
+                                                            onClick={() =>
+                                                                onRequestDelete?.({
+                                                                    ...primary,
+                                                                    deleteScope: hasVariants ? 'group' : 'single',
+                                                                    groupName: group.displayName,
+                                                                })
+                                                            }
                                                             disabled={deletingId === primary.id}
                                                             aria-label={`Delete ${primary.name}`}
                                                         >
@@ -255,7 +261,13 @@ export default function ProductTable({
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8"
-                                                                    onClick={() => onRequestDelete?.(variant)}
+                                                                    onClick={() =>
+                                                                        onRequestDelete?.({
+                                                                            ...variant,
+                                                                            deleteScope: 'single',
+                                                                            groupName: group.displayName,
+                                                                        })
+                                                                    }
                                                                     disabled={deletingId === variant.id}
                                                                     aria-label={`Delete ${variant.name}`}
                                                                 >

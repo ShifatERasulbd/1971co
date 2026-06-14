@@ -34,10 +34,10 @@ const Heroes    = lazyWithRetry(() => import('@/pages/Hero/hero'), 'hero');
 const AddHero   = lazyWithRetry(() => import('@/pages/Hero/addHero'), 'add-hero');
 const EditHero  = lazyWithRetry(() => import('@/pages/Hero/editHero'), 'edit-hero');
 
-// Personalization Management
-const PersonalizationOrders = lazyWithRetry(() => import('@/pages/Personalization/orders'), 'personalization-orders');
-const ViewPersonalizationOrder = lazyWithRetry(() => import('@/pages/Personalization/viewOrder'), 'personalization-order-view');
-const EditPersonalizationOrder = lazyWithRetry(() => import('@/pages/Personalization/editOrder'), 'personalization-order-edit');
+// size Management
+const Size  = lazyWithRetry(() => import('@/pages/Size/size'), 'size');
+const AddSize  = lazyWithRetry(() => import('@/pages/Size/addSize'), 'add-size');
+const EditSize  = lazyWithRetry(() => import('@/pages/Size/editSize'), 'edit-size');
 
 // Features Management
 const Features = lazyWithRetry(()=> import ('@/pages/Features/features'), 'features');
@@ -93,10 +93,10 @@ export default function App() {
                             <Route path="hero/add" element={<AddHero />} />
                             <Route path="hero/:id/edit" element={<EditHero />} />
 
-                            {/* Personalization Orders */}
-                            <Route path="personalization/orders" element={<PersonalizationOrders />} />
-                            <Route path="personalization/orders/:id" element={<ViewPersonalizationOrder />} />
-                            <Route path="personalization/orders/:id/edit" element={<EditPersonalizationOrder />} />
+                            {/* Size Management */}
+                            <Route path="size" element={<Size />} />
+                            <Route path="size/add" element={<AddSize />} />
+                            <Route path="size/:id/edit" element={<EditSize />} />
 
                             {/* Features Management */}
                             <Route path="features" element={<Features />} />

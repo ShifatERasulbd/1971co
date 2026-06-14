@@ -103,8 +103,18 @@ export default function Products() {
         setErrorMessage('');
 
         try {
-            await deleteProduct(id);
-            setProducts((previous) => previous.filter((product) => product.id !== id));
+            const response = await deleteProduct(id, {
+                scope: productToDelete.deleteScope || 'single',
+                groupName: productToDelete.groupName || productToDelete.name || '',
+            });
+
+            const deletedIds = Array.isArray(response?.deleted_ids)
+                ? response.deleted_ids.map((value) => Number(value)).filter(Number.isFinite)
+                : [id];
+
+            setProducts((previous) =>
+                previous.filter((product) => !deletedIds.includes(Number(product.id)))
+            );
             toast.success('Product deleted successfully', {
                 style: {
                     color: '#16a34a',
@@ -148,7 +158,9 @@ export default function Products() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Delete Product</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Are you sure you want to delete <strong>{productToDelete?.name}</strong>? This action cannot be undone.
+                                Are you sure you want to delete <strong>{productToDelete?.name}</strong>
+                                {productToDelete?.deleteScope === 'group' ? ' and all of its variants' : ''}?
+                                {' '}This action cannot be undone.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

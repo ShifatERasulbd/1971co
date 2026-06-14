@@ -73,10 +73,17 @@ export async function updateProduct(id, data) {
     });
 }
 
-export async function deleteProduct(id) {
+export async function deleteProduct(id, options = {}) {
     return requestJson(`/api/products/${id}`, {
         needsCsrf: true,
         method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            delete_scope: options.scope || 'single',
+            group_name: options.groupName || '',
+        }),
     });
 }
 

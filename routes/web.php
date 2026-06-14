@@ -13,6 +13,7 @@ use App\Http\Controllers\ApiProductController;
 use App\Http\Controllers\SubCategoryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SizeController;
 
 Route::get('/', function () {
     return view('home');
@@ -69,12 +70,10 @@ Route::prefix('api')->group(function () {
         });
 
         Route::post('/logout', [AuthController::class, 'logout']);
-        // personalization controller
-        Route::get('/personalizations', [PersonalizationController::class, 'index']);
-        Route::get('/personalizations/{personalization}', [PersonalizationController::class, 'show']);
-        Route::put('/personalizations/{personalization}', [PersonalizationController::class, 'update']);
-        Route::delete('/personalizations/{personalization}', [PersonalizationController::class, 'destroy']);
-
+        
+        // size Controller
+        Route::apiResource('/sizes', SizeController::class);
+        
         // Hero Controller
         Route::apiResource('/heroes', HeroController::class);
 

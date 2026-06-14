@@ -79,7 +79,36 @@ class ProductController extends Controller
 
     public function destroy(Product $product): JsonResponse
     {
-        $product->delete();
-        return response()->json(['message' => 'Product deleted successfully']);
+        $deletedIds = [$product->id];
+        $deletedCount = 0;
+
+        request()->validate([
+            'delete_scope' => 'nullable|in:single,group',
+            'group_name' => 'nullable|string|max:255',
+        ]);
+
+        $requestedScope = request()->input('delete_scope', 'single');
+        $groupName = trim((string) request()->input('group_name', $product->name));
+
+        if ($requestedScope === 'group' && $groupName !== '') {
+            $products = Product::query()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($groupName)])
+                ->get(['id']);
+
+            $deletedIds = $products->pluck('id')->all();
+            if ($deletedIds !== []) {
+                $deletedCount = Product::query()->whereIn('id', $deletedIds)->delete();
+            }
+        } else {
+            $product->delete();
+            $deletedCount = 1;
+        }
+
+        return response()->json([
+            'message' => 'Product deleted successfully',
+            'deleted_scope' => $requestedScope === 'group' ? 'group' : 'single',
+            'deleted_count' => $deletedCount,
+            'deleted_ids' => $deletedIds,
+        ]);
     }
 }

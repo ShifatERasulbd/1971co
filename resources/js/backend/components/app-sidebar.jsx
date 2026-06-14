@@ -39,6 +39,11 @@ const websiteItems = [
     
 ]
 
+
+const ProductFeatures=[
+    { title: 'Size', icon: Palette, path: '/admin/size' },
+]
+
 const inventoryItems = [
     { title: 'Products', icon: Package, path: '/admin/products' },
 ];
@@ -132,6 +137,31 @@ export function AppSidebar(props) {
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {websiteItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.title}
+                                            isActive={isMenuItemActive(item.path)}
+                                        >
+                                            <Link to={item.path}>
+                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                  {/* Product Features Management  */}
+                 {ProductFeatures.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Product Features Management</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {ProductFeatures.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             asChild

@@ -47,7 +47,6 @@ export default function Hero() {
     const [heroSlides, setHeroSlides] = useState([]);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [previewOverride, setPreviewOverride] = useState(null);
-    // Auto-detect: if loaded inside an iframe we are in builder preview mode.
     const [isBuilderPreview] = useState(() => {
         try {
             return window.self !== window.top;
@@ -115,7 +114,8 @@ export default function Hero() {
                 return 0;
             }
             return previous;
-        });
+        }
+        );
     }, [heroSlides]);
 
     useEffect(() => {
@@ -291,26 +291,37 @@ export default function Hero() {
         };
     }, [isBuilderPreview]);
 
-    return (
-        <section className={`${timelessFontClass} relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
-            {heroVideo && !isVideoFallback ? (
+    // Memoize the background element so dragging text blocks does not trigger video recalculations
+    const renderBackground = useMemo(() => {
+        if (heroVideo && !isVideoFallback) {
+            return (
                 <video
-                    src={heroVideo}
+                    key={heroVideo}
                     poster={heroImage}
                     className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
                     autoPlay
                     muted
                     loop
                     playsInline
+                    preload="auto"
                     onError={() => setIsVideoFallback(true)}
-                />
-            ) : (
-                <img
-                    src={heroImage}
-                    alt="Timeless custom apparel hero"
-                    className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
-                />
-            )}
+                >
+                    <source src={heroVideo} type="video/mp4" />
+                </video>
+            );
+        }
+        return (
+            <img
+                src={heroImage}
+                alt="Timeless custom apparel hero"
+                className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
+            />
+        );
+    }, [heroVideo, isVideoFallback, heroImage]);
+
+    return (
+        <section className={`${timelessFontClass} relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
+            {renderBackground}
 
             <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_right,rgba(18,18,18,0.48)_0%,rgba(18,18,18,0.48)_33.2%,rgba(16,16,16,0.3)_33.2%,rgba(16,16,16,0.3)_66.6%,rgba(18,18,18,0.48)_66.6%,rgba(18,18,18,0.48)_100%)]" />
             <div className="absolute inset-y-0 left-1/3 -z-10 w-px bg-white/18" />
