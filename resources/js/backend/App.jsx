@@ -39,6 +39,11 @@ const Size  = lazyWithRetry(() => import('@/pages/Size/size'), 'size');
 const AddSize  = lazyWithRetry(() => import('@/pages/Size/addSize'), 'add-size');
 const EditSize  = lazyWithRetry(() => import('@/pages/Size/editSize'), 'edit-size');
 
+// Color Management
+const Color = lazyWithRetry(() => import('@/pages/Color/color'), 'color');
+const AddColor = lazyWithRetry(() => import('@/pages/Color/addColor'), 'add-color');
+const EditColor = lazyWithRetry(() => import('@/pages/Color/editColor'), 'edit-color');
+
 // Features Management
 const Features = lazyWithRetry(()=> import ('@/pages/Features/features'), 'features');
 const AddFeature = lazyWithRetry(() => import('@/pages/Features/addFeature'), 'add-feature');
@@ -97,6 +102,11 @@ export default function App() {
                             <Route path="size" element={<Size />} />
                             <Route path="size/add" element={<AddSize />} />
                             <Route path="size/:id/edit" element={<EditSize />} />
+
+                            {/* Color Management */}
+                            <Route path="color" element={<Color />} />
+                            <Route path="color/add" element={<AddColor />} />
+                            <Route path="color/:id/edit" element={<EditColor />} />
 
                             {/* Features Management */}
                             <Route path="features" element={<Features />} />

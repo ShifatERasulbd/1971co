@@ -42,6 +42,7 @@ const websiteItems = [
 
 const ProductFeatures=[
     { title: 'Size', icon: Palette, path: '/admin/size' },
+    { title: 'Color', icon: Palette, path: '/admin/color' },
 ]
 
 const inventoryItems = [

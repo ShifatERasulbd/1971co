@@ -14,6 +14,7 @@ use App\Http\Controllers\SubCategoryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
+use App\Http\Controllers\ColorController;
 
 Route::get('/', function () {
     return view('home');
@@ -73,6 +74,9 @@ Route::prefix('api')->group(function () {
         
         // size Controller
         Route::apiResource('/sizes', SizeController::class);
+
+        // color Controller
+        Route::apiResource('/colors', ColorController::class);
         
         // Hero Controller
         Route::apiResource('/heroes', HeroController::class);
