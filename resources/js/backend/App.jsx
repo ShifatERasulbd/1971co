@@ -35,9 +35,6 @@ const AddHero   = lazyWithRetry(() => import('@/pages/Hero/addHero'), 'add-hero'
 const EditHero  = lazyWithRetry(() => import('@/pages/Hero/editHero'), 'edit-hero');
 
 // Personalization Management
-const PersonalizerFeatures = lazyWithRetry(() => import('../personalizer/features'), 'personalizer-features');
-const PersonalizerConfirmOrder = lazyWithRetry(() => import('../personalizer/confirm-order'), 'personalizer-confirm-order');
-const PersonalizerMockupPreview = lazyWithRetry(() => import('../personalizer/mockup-preview'), 'personalizer-mockup-preview');
 const PersonalizationOrders = lazyWithRetry(() => import('@/pages/Personalization/orders'), 'personalization-orders');
 const ViewPersonalizationOrder = lazyWithRetry(() => import('@/pages/Personalization/viewOrder'), 'personalization-order-view');
 const EditPersonalizationOrder = lazyWithRetry(() => import('@/pages/Personalization/editOrder'), 'personalization-order-edit');
@@ -133,10 +130,6 @@ export default function App() {
                            
 
                         </Route>
-
-                        <Route path="/personalizer/features" element={<PersonalizerFeatures />} />
-                        <Route path="/personalizer/confirm-order" element={<PersonalizerConfirmOrder />} />
-                        <Route path="/personalizer/mockup-preview" element={<PersonalizerMockupPreview />} />
                         <Route path="/" element={<main />} />
 
                         {/* Hero Management */}

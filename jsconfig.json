@@ -6,5 +6,5 @@
             "@/*": ["resources/js/backend/*"]
         }
     },
-    "include": ["resources/js/backend/**/*", "resources/js/personalizer/**/*"]
+    "include": ["resources/js/backend/**/*"]
 }

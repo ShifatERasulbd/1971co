@@ -13,12 +13,26 @@ class GrandChilds extends Model
     protected $fillable = [
         'name',
         'slug',
-        'sub_category_id',
+        'child_id',
         'category_id',
     ];
 
+    protected $appends = [
+        'sub_category_id',
+    ];
+
+    public function getSubCategoryIdAttribute()
+    {
+        return $this->attributes['child_id'] ?? null;
+    }
+
+    public function setSubCategoryIdAttribute($value)
+    {
+        $this->attributes['child_id'] = $value;
+    }
+
     public function subCategory(){
-        return $this->belongsTo(SubCategory::class);
+        return $this->belongsTo(SubCategory::class, 'child_id');
     }
     public function category(){
         return $this->belongsTo(Category::class);

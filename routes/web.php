@@ -45,10 +45,6 @@ Route::get('/admin', function () {
     return view('app');
 })->name('login');
 
-Route::get('/personalizer/{path?}', function () {
-    return view('app');
-})->where('path', '.*');
-
 Route::prefix('api')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::get('/public/hero', [HeroController::class, 'publicHero']);
@@ -57,6 +53,7 @@ Route::prefix('api')->group(function () {
     Route::get('/public/products', [\App\Http\Controllers\ProductController::class, 'publicIndex']);
     Route::get('/public/categories', [CategoryController::class, 'index']);
     Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
+    Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
     Route::post('/personalizations', [PersonalizationController::class, 'store']);
     Route::patch('/personalizations/{personalization}/confirm', [PersonalizationController::class, 'confirm']);
 

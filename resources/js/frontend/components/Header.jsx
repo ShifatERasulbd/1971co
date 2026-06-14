@@ -65,21 +65,21 @@ const utilityIcons = [
 export default function Header() {
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
-    const [products, setProducts] = useState([]);
+    const [grandChilds, setGrandChilds] = useState([]);
 
     useEffect(() => {
         let ignore = false;
 
         async function loadNavigationData() {
             try {
-                const [categoriesResponse, subCategoriesResponse, productsResponse] = await Promise.all([
+                const [categoriesResponse, subCategoriesResponse, grandChildsResponse] = await Promise.all([
                     fetch('/api/public/categories', {
                         headers: { Accept: 'application/json' },
                     }),
                     fetch('/api/public/sub-categories', {
                         headers: { Accept: 'application/json' },
                     }),
-                    fetch('/api/public/products', {
+                    fetch('/api/public/grand-childs', {
                         headers: { Accept: 'application/json' },
                     }),
                 ]);
@@ -98,10 +98,10 @@ export default function Header() {
                     }
                 }
 
-                if (productsResponse.ok) {
-                    const productsPayload = await productsResponse.json();
-                    if (!ignore && Array.isArray(productsPayload)) {
-                        setProducts(productsPayload);
+                if (grandChildsResponse.ok) {
+                    const grandChildsPayload = await grandChildsResponse.json();
+                    if (!ignore && Array.isArray(grandChildsPayload)) {
+                        setGrandChilds(grandChildsPayload);
                     }
                 }
             } catch {
@@ -183,14 +183,14 @@ export default function Header() {
             }));
         }
 
-        const productsBySubCategory = products.reduce((grouped, product) => {
-            const subCategoryId = Number(product?.subcategory_id ?? product?.sub_category_id);
+        const grandChildsBySubCategory = grandChilds.reduce((grouped, grandChild) => {
+            const subCategoryId = Number(grandChild?.sub_category_id ?? grandChild?.child_id);
             if (!subCategoryId) {
                 return grouped;
             }
 
             const existing = grouped.get(subCategoryId) || [];
-            existing.push(product);
+            existing.push(grandChild);
             grouped.set(subCategoryId, existing);
             return grouped;
         }, new Map());
@@ -202,15 +202,15 @@ export default function Header() {
                 subCategory?.slug || String(subCategory?.id || '')
             )}`;
 
-            const grandChildren = (productsBySubCategory.get(Number(subCategory?.id)) || [])
+            const grandChildren = (grandChildsBySubCategory.get(Number(subCategory?.id)) || [])
                 .slice(0, 6)
-                .map((product) => ({
-                    label: product?.name || 'Product',
+                .map((grandChild) => ({
+                    label: grandChild?.name || 'Item',
                     href: `/shop?category=${encodeURIComponent(
                         shopNavItem?.slug || String(shopNavItem?.id || '')
                     )}&sub_category=${encodeURIComponent(
                         subCategory?.slug || String(subCategory?.id || '')
-                    )}&product=${encodeURIComponent(product?.slug || String(product?.id || ''))}`,
+                    )}&grand_child=${encodeURIComponent(grandChild?.slug || String(grandChild?.id || ''))}`,
                 }));
 
             return {
@@ -219,7 +219,7 @@ export default function Header() {
                 items: grandChildren.length > 0 ? grandChildren : [{ label: 'View all', href: childHref }],
             };
         });
-    }, [shopNavItem, subCategories, products]);
+    }, [shopNavItem, subCategories, grandChilds]);
 
     return (
         <header className={`${timelessFontClass} sticky top-0 z-50 border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
