@@ -60,6 +60,11 @@ const SubCategories = lazyWithRetry(() => import('@/pages/SubCategory/subcategor
 const AddSubCategory = lazyWithRetry(() => import('@/pages/SubCategory/addSubCategory'), 'add-sub-category');
 const EditSubCategory = lazyWithRetry(() => import('@/pages/SubCategory/editSubCategory'), 'edit-sub-category');
 
+// GrandChild Management
+const GrandChilds = lazyWithRetry(() => import('@/pages/GrandChild/grandchild'), 'grand-childs');
+const AddGrandChild = lazyWithRetry(() => import('@/pages/GrandChild/addGrandChild'), 'add-grand-child');
+const EditGrandChild = lazyWithRetry(() => import('@/pages/GrandChild/editGrandChild'), 'edit-grand-child');
+
 
 
 // Product Management
@@ -113,6 +118,11 @@ export default function App() {
                             <Route path="sub-category" element={<SubCategories />} />
                             <Route path="sub-category/add" element={<AddSubCategory />} />
                             <Route path="sub-category/:id/edit" element={<EditSubCategory />} />
+
+                            {/* GrandChild Management */}
+                            <Route path="grand-child" element={<GrandChilds />} />
+                            <Route path="grand-child/add" element={<AddGrandChild />} />
+                            <Route path="grand-child/:id/edit" element={<EditGrandChild />} />
 
 
                             {/* Product Management */}

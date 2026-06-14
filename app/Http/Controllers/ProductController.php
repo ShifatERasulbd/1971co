@@ -17,7 +17,7 @@ class ProductController extends Controller
 
     public function publicIndex(): JsonResponse
     {
-        $products = Product::select('id', 'name', 'price', 'cover_image', 'color', 'slug')
+        $products = Product::select('id', 'name', 'price', 'cover_image', 'color', 'slug', 'category_id', 'subcategory_id')
             ->orderBy('created_at', 'desc')
             ->limit(12)
             ->get();

@@ -55,7 +55,7 @@ class HeroController extends Controller
             'image_url'=>['nullable','string','max:2048'],
             'video_url'=>['nullable','string','max:2048'],
             'image'=>['nullable','image','mimes:jpeg,png,jpg,gif,webp','max:2048'],
-            'video'=>['nullable','file','mimes:mp4,mov,avi,webm','max:10240'],
+            'video'=>['nullable','file','mimes:mp4,mov,avi,webm','max:122880'],
         ]);
 
         if (!empty($validated['image_url']) && !$request->hasFile('image')) {
@@ -121,7 +121,7 @@ class HeroController extends Controller
             'image_url'=>['nullable','string','max:2048'],
             'video_url'=>['nullable','string','max:2048'],
             'image'=>['nullable','image','mimes:jpeg,png,jpg,gif,webp','max:2048'],
-            'video'=>['nullable','file','mimes:mp4,mov,avi,webm','max:10240'],
+            'video'=>['nullable','file','mimes:mp4,mov,avi,webm','max:122880'],
         ]);
 
         if (!empty($validated['image_url']) && !$request->hasFile('image')) {

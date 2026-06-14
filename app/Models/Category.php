@@ -22,4 +22,9 @@ class Category extends Model
     {
         return $this->hasMany(SubCategory::class);
     }
+
+    public function grandChilds()
+    {
+        return $this->hasMany(GrandChilds::class);
+    }
 }

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { timelessFontClass } from '../../utils/typography';
+import { sectionTypography } from '../utils/sectionTypography';
 
 const shopLinks = [
     { label: 'Shop All', href: '/shop' },
@@ -77,7 +78,7 @@ function SocialButton({ href, label, children }) {
 function FooterCol({ heading, links }) {
     return (
         <nav aria-label={heading}>
-            <h3 className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-white">
+            <h3 className={`${sectionTypography.footerHeading} text-white`}>
                 {heading}
             </h3>
             <ul className="space-y-2.5">
@@ -86,14 +87,14 @@ function FooterCol({ heading, links }) {
                         {href.startsWith('/') ? (
                             <Link
                                 to={href}
-                                className="text-[0.85rem] text-zinc-400 transition-colors hover:text-white"
+                                className={`${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`}
                             >
                                 {label}
                             </Link>
                         ) : (
                             <a
                                 href={href}
-                                className="text-[0.85rem] text-zinc-400 transition-colors hover:text-white"
+                                className={`${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`}
                             >
                                 {label}
                             </a>
@@ -115,15 +116,15 @@ export default function Footer() {
                     {/* Brand column */}
                     <div className="space-y-5">
                         <Link to="/" className="inline-flex items-baseline gap-0.5">
-                            <span className="text-[2.2rem] font-black leading-none tracking-[-0.02em] text-white">
+                            <span className={`${sectionTypography.footerBrandPrimary} text-white`}>
                                 1971
                             </span>
-                            <span className="text-[1.7rem] font-light leading-none text-white">
+                            <span className={`${sectionTypography.footerBrandSecondary} text-white`}>
                                 Co.
                             </span>
                         </Link>
 
-                        <p className="max-w-[260px] text-[0.85rem] leading-6 text-zinc-400">
+                        <p className={`max-w-[260px] ${sectionTypography.footerText} text-zinc-400`}>
                             Premium minimal streetwear. Built for those who value quiet confidence.
                         </p>
 
@@ -142,10 +143,10 @@ export default function Footer() {
 
                     {/* Newsletter column */}
                     <div>
-                        <h3 className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-white">
+                        <h3 className={`${sectionTypography.footerHeading} text-white`}>
                             Stay Connected
                         </h3>
-                        <p className="mb-5 text-[0.85rem] text-zinc-400">
+                        <p className={`mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
                             Get drop alerts and exclusive access.
                         </p>
                         <form
@@ -158,7 +159,7 @@ export default function Footer() {
                                 type="email"
                                 placeholder="Email address"
                                 required
-                                className="flex-1 bg-transparent py-2 text-[0.85rem] text-white outline-none placeholder:text-zinc-500"
+                                className={`flex-1 bg-transparent py-2 ${sectionTypography.footerLink} text-white outline-none placeholder:text-zinc-500`}
                             />
                             <button
                                 type="submit"
@@ -174,7 +175,7 @@ export default function Footer() {
 
             {/* Bottom bar */}
             <div className="border-t border-zinc-700">
-                <div className="mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 text-[0.75rem] text-zinc-500 sm:flex-row sm:px-10 lg:px-16">
+                <div className={`mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 ${sectionTypography.footerLegal} text-zinc-500 sm:flex-row sm:px-10 lg:px-16`}>
                     <span>© 2026 1971Co. All rights reserved.</span>
                     <div className="flex items-center gap-4">
                         <span>USD $</span>

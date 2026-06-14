@@ -5,6 +5,7 @@ import {
     resolveHeroFontFamily,
     resolveHeroFontSize,
 } from '../../utils/heroTypography';
+import { sectionTypography } from '../utils/sectionTypography';
 
 const defaultHeroData = {
     title: 'Custom apparel solutions',
@@ -324,7 +325,7 @@ export default function Hero() {
                     style={{ transform: `translate(${textOffsetX}%, ${textOffsetY}%)` }}
                 >
                     <h1
-                        className={`font-black uppercase leading-[0.9] tracking-[0.01em] text-white drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
+                        className={`${sectionTypography.heroTitle} text-white drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
                             isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                         }`}
                         style={{
@@ -342,7 +343,7 @@ export default function Hero() {
                     </h1>
 
                     <p
-                        className={`max-w-[680px] leading-7 text-white/90 ${
+                        className={`${sectionTypography.heroDescription} text-white/90 ${
                             isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                         }`}
                         style={{
@@ -363,7 +364,7 @@ export default function Hero() {
                         >
                             <a
                                 href={displayHeroData.button_url || '/shop'}
-                                className="inline-flex min-w-[138px] items-center justify-center border border-white bg-white px-7 py-3.5 text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-zinc-900 transition-colors hover:bg-zinc-100"
+                                className={sectionTypography.heroPrimaryButton}
                                 onClick={(event) => {
                                     if (isBuilderPreview) {
                                         event.preventDefault();
@@ -374,7 +375,7 @@ export default function Hero() {
                             </a>
                             <a
                                 href="/shop"
-                                className="inline-flex min-w-[168px] items-center justify-center border border-white/90 bg-transparent px-7 py-3.5 text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white/10"
+                                className={sectionTypography.heroSecondaryButton}
                                 onClick={(event) => {
                                     if (isBuilderPreview) {
                                         event.preventDefault();

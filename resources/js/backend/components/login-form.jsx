@@ -7,6 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppContext } from '@/context/AppContext';
 
+function readCookie(name) {
+    const escapedName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
 export function LoginForm() {
     const navigate = useNavigate();
     const { setUser } = useAppContext();
@@ -37,6 +43,8 @@ export function LoginForm() {
                 },
             });
 
+            const xsrfToken = readCookie('XSRF-TOKEN');
+
             const response = await fetch('/api/login', {
                 method: 'POST',
                 credentials: 'include',
@@ -44,6 +52,7 @@ export function LoginForm() {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
+                    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
                 },
                 body: JSON.stringify(form),
             });

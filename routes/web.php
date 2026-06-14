@@ -5,6 +5,7 @@ use App\Http\Controllers\HeroController;
 use App\Http\Controllers\PersonalizationController;
 use App\Http\Controllers\FeaturesController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\GrandChildController;
 use App\Http\Controllers\CanadaWarehouseStockController;
 use App\Http\Controllers\ApiProductController;
 use App\Http\Controllers\SubCategoryController;
@@ -54,6 +55,8 @@ Route::prefix('api')->group(function () {
     Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
     Route::get('/public/features', [FeaturesController::class, 'publicIndex']);
     Route::get('/public/products', [\App\Http\Controllers\ProductController::class, 'publicIndex']);
+    Route::get('/public/categories', [CategoryController::class, 'index']);
+    Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
     Route::post('/personalizations', [PersonalizationController::class, 'store']);
     Route::patch('/personalizations/{personalization}/confirm', [PersonalizationController::class, 'confirm']);
 
@@ -83,6 +86,9 @@ Route::prefix('api')->group(function () {
         // SubCategory Controller
         Route::apiResource('/sub-categories', SubCategoryController::class);
 
+        // GrandChild Controller
+        Route::apiResource('/grand-childs', GrandChildController::class);
+        
         // Inventory public API proxy (Canada warehouse)
         Route::get('/inventory/canada-warehouse-stocks', [CanadaWarehouseStockController::class, 'index']);
 
