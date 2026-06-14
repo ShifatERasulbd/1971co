@@ -21,6 +21,9 @@ class Product extends Model
         'additional_information',
         'price',
         'cover_image',
+        'image_gallery',
+        'variant_rows',
+        'color_variant_images',
         'category_id',
         'subcategory_id',
         'stock',
@@ -31,6 +34,9 @@ class Product extends Model
         return [
             'available_products' => 'array',
             'color' => 'array',
+            'image_gallery' => 'array',
+            'variant_rows' => 'array',
+            'color_variant_images' => 'array',
             'price' => 'decimal:2',
             'stock' => 'integer',
         ];

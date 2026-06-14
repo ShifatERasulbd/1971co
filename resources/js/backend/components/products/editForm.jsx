@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -14,17 +15,81 @@ import RichTextEditor from './richTextEditor';
 
 export default function EditForm({
     form = {},
+    colorOptions = [],
+    sizeOptions = [],
+    isOptionsLoading = false,
+    colorSelectValue = '',
+    sizeSelectValue = '',
+    selectedColors = [],
+    selectedSizes = [],
     variantRows = [],
+    colorVariantImageMap = {},
+    galleryPreviewItems = [],
     variantGroupName = '',
     errors = {},
     isSubmitting = false,
     onChange,
-    onVariantChange,
+    onColorSelectChange,
+    onSizeSelectChange,
+    onAddColor,
+    onRemoveColor,
+    onAddSize,
+    onRemoveSize,
+    onVariantRowChange,
+    onColorVariantImagesChange,
+    onGalleryFilesChange,
+    onRemoveExistingGalleryImage,
+    onRemoveNewGalleryImage,
     onSubmit,
     onCancel,
     submitLabel = 'Update Product',
     submittingLabel = 'Updating...',
 }) {
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [activeColorForImages, setActiveColorForImages] = useState('');
+    const [draftImageValues, setDraftImageValues] = useState([]);
+
+    const firstColorRowKeys = useMemo(() => {
+        const seenColors = new Set();
+        const firstKeys = {};
+
+        variantRows.forEach((row) => {
+            if (!seenColors.has(row.color)) {
+                seenColors.add(row.color);
+                firstKeys[row.key] = true;
+            }
+        });
+
+        return firstKeys;
+    }, [variantRows]);
+
+    const openColorImagesModal = (color) => {
+        setActiveColorForImages(color);
+        setDraftImageValues(colorVariantImageMap[color] || []);
+        setIsImageModalOpen(true);
+    };
+
+    const closeColorImagesModal = () => {
+        setIsImageModalOpen(false);
+        setActiveColorForImages('');
+        setDraftImageValues([]);
+    };
+
+    const toggleDraftImage = (value) => {
+        setDraftImageValues((previous) =>
+            previous.includes(value)
+                ? previous.filter((item) => item !== value)
+                : [...previous, value],
+        );
+    };
+
+    const saveColorImagesSelection = () => {
+        if (activeColorForImages) {
+            onColorVariantImagesChange?.(activeColorForImages, draftImageValues);
+        }
+        closeColorImagesModal();
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -97,163 +162,269 @@ export default function EditForm({
                                 error={errors.additional_information}
                             />
 
-                            <div className="space-y-2">
-                                <Label htmlFor="product-cover-image">Cover Image URL</Label>
-                                <Input
-                                    id="product-cover-image"
-                                    name="cover_image"
-                                    value={form.cover_image || ''}
-                                    onChange={onChange}
-                                    placeholder="https://example.com/image.jpg"
-                                />
-                                {errors.cover_image && <p className="text-xs text-destructive">{errors.cover_image[0]}</p>}
-                            </div>
                         </div>
 
                         <div className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="product-gallery-upload">Image Gallery Upload</Label>
+                                <Input
+                                    id="product-gallery-upload"
+                                    name="image_gallery"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    multiple
+                                    onChange={onGalleryFilesChange}
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">Upload more images to add them into this product gallery.</p>
+                            </div>
+
                             <div className="rounded-md border bg-muted/20 p-3">
-                                <p className="mb-3 text-sm font-medium text-muted-foreground">Cover Preview</p>
-                                {form.cover_image ? (
-                                    <img
-                                        src={form.cover_image}
-                                        alt={form.name || 'Product cover'}
-                                        className="h-64 w-full rounded object-cover"
-                                    />
+                                <p className="mb-3 text-sm font-medium text-muted-foreground">Gallery Preview</p>
+                                {galleryPreviewItems.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                                        {galleryPreviewItems.map((item, index) => (
+                                            <div key={item.id} className="space-y-2">
+                                                <img
+                                                    src={item.url}
+                                                    alt={item.name}
+                                                    className="h-24 w-full rounded bg-muted/30 object-contain"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    onClick={() => {
+                                                        if (item.source === 'existing') {
+                                                            onRemoveExistingGalleryImage?.(index);
+                                                            return;
+                                                        }
+
+                                                        const newIndex = galleryPreviewItems
+                                                            .slice(0, index)
+                                                            .filter((entry) => entry.source === 'new').length;
+                                                        onRemoveNewGalleryImage?.(newIndex);
+                                                    }}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 ) : (
-                                    <div className="flex h-64 items-center justify-center rounded border border-dashed text-sm text-muted-foreground">
-                                        Add a cover image URL to preview it here
+                                    <div className="flex h-24 items-center justify-center rounded border border-dashed text-sm text-muted-foreground">
+                                        No gallery images available
                                     </div>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="product-color">Color</Label>
-                                    <Input
-                                        id="product-color"
-                                        name="color"
-                                        value={form.color || ''}
-                                        onChange={onChange}
-                                        placeholder="e.g. Black"
-                                    />
-                                    {errors.color && <p className="text-xs text-destructive">{errors.color[0]}</p>}
-                                </div>
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-semibold text-foreground">Variation</h3>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-color">Color</Label>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                id="product-color"
+                                                value={colorSelectValue}
+                                                onChange={(event) => onColorSelectChange?.(event.target.value)}
+                                                disabled={isSubmitting || isOptionsLoading}
+                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
+                                            >
+                                                <option value="">{isOptionsLoading ? 'Loading colors...' : 'Select a color'}</option>
+                                                {colorOptions.map((color) => (
+                                                    <option key={color.id} value={color.name || ''}>
+                                                        {color.name}{color.color_code ? ` (${color.color_code})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={onAddColor}
+                                                disabled={isSubmitting || isOptionsLoading || !colorSelectValue}
+                                            >
+                                                Add
+                                            </Button>
+                                        </div>
+                                        {selectedColors.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {selectedColors.map((color) => (
+                                                    <Button
+                                                        key={color}
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => onRemoveColor?.(color)}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        {color} x
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {errors.color && <p className="text-xs text-destructive">{errors.color[0]}</p>}
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="product-size">Size</Label>
-                                    <Input
-                                        id="product-size"
-                                        name="size"
-                                        value={form.size || ''}
-                                        onChange={onChange}
-                                        placeholder="e.g. M"
-                                    />
-                                    {errors.size && <p className="text-xs text-destructive">{errors.size[0]}</p>}
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-size">Size</Label>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                id="product-size"
+                                                value={sizeSelectValue}
+                                                onChange={(event) => onSizeSelectChange?.(event.target.value)}
+                                                disabled={isSubmitting || isOptionsLoading}
+                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
+                                            >
+                                                <option value="">{isOptionsLoading ? 'Loading sizes...' : 'Select a size'}</option>
+                                                {sizeOptions.map((size) => (
+                                                    <option key={size.id} value={size.size || ''}>
+                                                        {size.size}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={onAddSize}
+                                                disabled={isSubmitting || isOptionsLoading || !sizeSelectValue}
+                                            >
+                                                Add
+                                            </Button>
+                                        </div>
+                                        {selectedSizes.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {selectedSizes.map((size) => (
+                                                    <Button
+                                                        key={size}
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => onRemoveSize?.(size)}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        {size} x
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {errors.size && <p className="text-xs text-destructive">{errors.size[0]}</p>}
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="product-stock">
-                                        Stock <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        id="product-stock"
-                                        name="stock"
-                                        type="number"
-                                        min="0"
-                                        value={form.stock ?? ''}
-                                        onChange={onChange}
-                                        placeholder="0"
-                                        disabled
-                                    />
-                                    <p className="text-xs text-muted-foreground">Stock is managed automatically and cannot be edited here.</p>
-                                    {errors.stock && <p className="text-xs text-destructive">{errors.stock[0]}</p>}
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-stock">
+                                            Stock <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="product-stock"
+                                            name="stock"
+                                            type="number"
+                                            min="0"
+                                            value={form.stock ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0"
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.stock && <p className="text-xs text-destructive">{errors.stock[0]}</p>}
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="product-price">
-                                        Price <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        id="product-price"
-                                        name="price"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={form.price ?? ''}
-                                        onChange={onChange}
-                                        placeholder="0.00"
-                                    />
-                                    {errors.price && <p className="text-xs text-destructive">{errors.price[0]}</p>}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-price">
+                                            Price <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="product-price"
+                                            name="price"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.price ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0.00"
+                                        />
+                                        {errors.price && <p className="text-xs text-destructive">{errors.price[0]}</p>}
+                                    </div>
                                 </div>
                             </div>
 
                             {variantRows.length > 0 && (
-                                <div className="space-y-3 rounded-md border bg-muted/10 p-3">
+                                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
                                     <p className="text-sm font-medium">
-                                        Variants Repeater
+                                        Variants
                                         {variantGroupName ? ` - ${variantGroupName}` : ''}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        All size and color variants from the selected product group.
-                                    </p>
-
-                                    <div className="space-y-2">
-                                        {variantRows.map((variant, index) => (
-                                            <div
-                                                key={`variant-row-${variant.id}-${index}`}
-                                                className="grid grid-cols-1 gap-2 rounded border bg-background p-2 md:grid-cols-6"
-                                            >
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">SKU</Label>
-                                                    <Input
-                                                        value={variant.sku}
-                                                        onChange={(event) => onVariantChange?.(index, 'sku', event.target.value)}
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Color</Label>
-                                                    <Input
-                                                        value={variant.color}
-                                                        onChange={(event) => onVariantChange?.(index, 'color', event.target.value)}
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Size</Label>
-                                                    <Input
-                                                        value={variant.size}
-                                                        onChange={(event) => onVariantChange?.(index, 'size', event.target.value)}
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Stock</Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={variant.stock}
-                                                        onChange={(event) => onVariantChange?.(index, 'stock', event.target.value)}
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Price</Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={variant.price}
-                                                        onChange={(event) => onVariantChange?.(index, 'price', event.target.value)}
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Type</Label>
-                                                    <Input value={index === 0 ? 'Mother Product' : 'Variant'} disabled />
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[780px] text-sm">
+                                            <thead>
+                                                <tr className="border-b text-left">
+                                                    <th className="py-2 pr-2">Color</th>
+                                                    <th className="py-2 pr-2">Size</th>
+                                                    <th className="py-2 pr-2">SKU</th>
+                                                    <th className="py-2 pr-2">Stock</th>
+                                                    <th className="py-2 pr-2">Price</th>
+                                                    <th className="py-2">Color Images</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {variantRows.map((row) => (
+                                                    <tr key={row.key} className="border-b last:border-0">
+                                                        <td className="py-2 pr-2">{row.color}</td>
+                                                        <td className="py-2 pr-2">{row.size}</td>
+                                                        <td className="py-2 pr-2">
+                                                            <Input
+                                                                value={row.sku ?? ''}
+                                                                onChange={(event) => onVariantRowChange?.(row.key, 'sku', event.target.value)}
+                                                                disabled={isSubmitting}
+                                                            />
+                                                        </td>
+                                                        <td className="py-2 pr-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                value={row.stock ?? ''}
+                                                                onChange={(event) => onVariantRowChange?.(row.key, 'stock', event.target.value)}
+                                                                disabled={isSubmitting}
+                                                            />
+                                                        </td>
+                                                        <td className="py-2 pr-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={row.price ?? ''}
+                                                                onChange={(event) => onVariantRowChange?.(row.key, 'price', event.target.value)}
+                                                                disabled={isSubmitting}
+                                                            />
+                                                        </td>
+                                                        <td className="py-2">
+                                                            {firstColorRowKeys[row.key] ? (
+                                                                <div className="space-y-1">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="w-full"
+                                                                        onClick={() => openColorImagesModal(row.color)}
+                                                                        disabled={isSubmitting || galleryPreviewItems.length === 0}
+                                                                    >
+                                                                        Attach Images
+                                                                    </Button>
+                                                                    <p className="text-[11px] text-muted-foreground">
+                                                                        {(colorVariantImageMap[row.color] || []).length} selected for {row.color}
+                                                                    </p>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground">Uses {row.color} images</p>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             )}
@@ -272,6 +443,69 @@ export default function EditForm({
                     </Button>
                 </CardFooter>
             </form>
+
+            {isImageModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-4xl rounded-lg border bg-background shadow-lg">
+                        <div className="flex items-center justify-between border-b px-4 py-3">
+                            <h3 className="text-base font-semibold">Attach Images to {activeColorForImages}</h3>
+                            <Button type="button" variant="ghost" size="sm" onClick={closeColorImagesModal}>
+                                Close
+                            </Button>
+                        </div>
+
+                        <div className="max-h-[70vh] overflow-y-auto p-4">
+                            {galleryPreviewItems.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                                    {galleryPreviewItems.map((image) => {
+                                        const isSelected = draftImageValues.includes(image.value);
+
+                                        return (
+                                            <button
+                                                key={image.id}
+                                                type="button"
+                                                onClick={() => toggleDraftImage(image.value)}
+                                                className={`overflow-hidden rounded-md border text-left transition ${
+                                                    isSelected
+                                                        ? 'border-primary ring-2 ring-primary/30'
+                                                        : 'border-input hover:border-primary/60'
+                                                }`}
+                                            >
+                                                <img
+                                                    src={image.url}
+                                                    alt={image.name}
+                                                    className="h-40 w-full bg-muted/30 object-contain"
+                                                />
+                                                <div className="space-y-1 p-2">
+                                                    <p className="truncate text-xs font-medium" title={image.name}>
+                                                        {image.name}
+                                                    </p>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {isSelected ? 'Selected' : 'Click to select'}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                    Upload gallery images first to attach them to this color variant.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                            <Button type="button" variant="outline" onClick={closeColorImagesModal}>
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={saveColorImagesSelection}>
+                                Save Selection ({draftImageValues.length})
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }

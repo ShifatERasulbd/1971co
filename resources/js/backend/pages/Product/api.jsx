@@ -14,7 +14,50 @@ function buildProductPayload(data = {}) {
         subcategory_id: data.subcategory_id ? Number(data.subcategory_id) : null,
         price: data.price === '' ? 0 : Number(data.price),
         stock: data.stock === '' ? 0 : Number(data.stock),
+        variant_rows: Array.isArray(data.variant_rows) ? data.variant_rows : [],
+        color_variant_images:
+            data.color_variant_images && typeof data.color_variant_images === 'object'
+                ? data.color_variant_images
+                : {},
+        image_gallery_existing: Array.isArray(data.image_gallery_existing) ? data.image_gallery_existing : [],
+        clear_gallery: Boolean(data.clear_gallery),
     };
+}
+
+function buildProductFormData(data = {}) {
+    const payload = buildProductPayload(data);
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+            return;
+        }
+        if (Array.isArray(value) || (value && typeof value === 'object')) {
+            formData.append(key, JSON.stringify(value));
+            return;
+        }
+        formData.append(key, String(value));
+    });
+
+    if (data.thumbnailImageFile instanceof File) {
+        formData.append('thumbnail_image', data.thumbnailImageFile);
+    }
+
+    if (Array.isArray(data.galleryImageFiles)) {
+        data.galleryImageFiles.forEach((file) => {
+            if (file instanceof File) {
+                formData.append('image_gallery[]', file);
+            }
+        });
+    }
+
+    return formData;
+}
+
+function hasUploadFiles(data = {}) {
+    const hasThumbnail = data.thumbnailImageFile instanceof File;
+    const hasGallery = Array.isArray(data.galleryImageFiles) && data.galleryImageFiles.some((file) => file instanceof File);
+    return hasThumbnail || hasGallery;
 }
 
 export async function fetchProducts() {
@@ -52,6 +95,14 @@ export async function fetchProduct(id) {
 }
 
 export async function createProduct(data) {
+    if (hasUploadFiles(data)) {
+        return requestJson('/api/products', {
+            needsCsrf: true,
+            method: 'POST',
+            body: buildProductFormData(data),
+        });
+    }
+
     return requestJson('/api/products', {
         needsCsrf: true,
         method: 'POST',
@@ -63,6 +114,18 @@ export async function createProduct(data) {
 }
 
 export async function updateProduct(id, data) {
+    if (hasUploadFiles(data)) {
+        return requestJson(`/api/products/${id}`, {
+            needsCsrf: true,
+            method: 'POST',
+            body: (() => {
+                const formData = buildProductFormData(data);
+                formData.append('_method', 'PUT');
+                return formData;
+            })(),
+        });
+    }
+
     return requestJson(`/api/products/${id}`, {
         needsCsrf: true,
         method: 'PUT',

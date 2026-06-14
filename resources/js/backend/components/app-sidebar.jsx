@@ -49,9 +49,7 @@ const inventoryItems = [
     { title: 'Products', icon: Package, path: '/admin/products' },
 ];
 
-const orderManagementItems = [
-    { title: 'Personalization Orders', icon: Palette, path: '/admin/personalization/orders' },
-]
+
 
 
 
@@ -187,30 +185,6 @@ export function AppSidebar(props) {
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {inventoryItems.map((item) => (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
-                                        >
-                                            <Link to={item.path}>
-                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
-                                                <span>{item.title}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                )}
-
-                {orderManagementItems.length > 0 && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Order Management</SidebarGroupLabel>
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                {orderManagementItems.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             asChild

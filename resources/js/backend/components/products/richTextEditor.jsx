@@ -8,7 +8,7 @@ export default function RichTextEditor({
     value = '',
     onChange,
     label = 'Content',
-    placeholder = 'Enter content...',
+   
     required = false,
     error = null,
 }) {
