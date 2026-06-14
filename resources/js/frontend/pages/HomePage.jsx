@@ -34,6 +34,59 @@ const defaultSectionOrder = [
 
 export default function HomePage() {
     const [sectionOrder, setSectionOrder] = useState(defaultSectionOrder);
+    const [bestSellersConfig, setBestSellersConfig] = useState({
+        title: 'Best Sellers',
+        position: 3,
+    });
+
+    function applyBestSellersPosition(order, position) {
+        const next = Array.isArray(order) ? [...order] : [...defaultSectionOrder];
+        const currentIndex = next.indexOf('best-sellers');
+        if (currentIndex < 0) {
+            return next;
+        }
+
+        next.splice(currentIndex, 1);
+        const targetIndex = Math.max(0, Math.min(next.length, Number(position || 3) - 1));
+        next.splice(targetIndex, 0, 'best-sellers');
+        return next;
+    }
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadBestSellersConfig() {
+            try {
+                const response = await fetch('/api/public/best-sellers-section', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                if (ignore || !payload) {
+                    return;
+                }
+
+                const normalized = {
+                    title: String(payload.title || 'Best Sellers').trim() || 'Best Sellers',
+                    position: Math.max(1, Math.min(6, Number(payload.position) || 3)),
+                };
+
+                setBestSellersConfig(normalized);
+                setSectionOrder((previous) => applyBestSellersPosition(previous, normalized.position));
+            } catch {
+                // Keep default config when endpoint is unavailable.
+            }
+        }
+
+        loadBestSellersConfig();
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     useEffect(() => {
         function handleBuilderLayoutMessage(event) {
@@ -56,6 +109,18 @@ export default function HomePage() {
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_BEST_SELLERS_SECTION_CONFIG_UPDATE') {
+                const payload = data.payload || {};
+                const normalized = {
+                    title: String(payload.title || 'Best Sellers').trim() || 'Best Sellers',
+                    position: Math.max(1, Math.min(6, Number(payload.position) || 3)),
+                };
+
+                setBestSellersConfig(normalized);
+                setSectionOrder((previous) => applyBestSellersPosition(previous, normalized.position));
                 return;
             }
 
@@ -97,7 +162,11 @@ export default function HomePage() {
                         className="scroll-mt-24"
                     >
                         <LazySection heightClass={section.height}>
-                            <Component />
+                            {sectionKey === 'best-sellers' ? (
+                                <Component sectionTitle={bestSellersConfig.title} />
+                            ) : (
+                                <Component />
+                            )}
                         </LazySection>
                     </div>
                 );

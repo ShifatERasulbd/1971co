@@ -22,6 +22,7 @@ const initialForm = {
     category_id: '',
     subcategory_id: '',
     stock: '',
+    show_on_best_sellers: false,
 };
 
 function validateForm(form) {
@@ -180,8 +181,9 @@ export default function AddProduct() {
     }, [selectedColors, selectedSizes, form.sku, form.stock, form.price]);
 
     const handleChange = (event) => {
-        const { name, value } = event.target;
-        setForm((previous) => ({ ...previous, [name]: value }));
+        const { name, value, type, checked } = event.target;
+        const nextValue = type === 'checkbox' ? checked : value;
+        setForm((previous) => ({ ...previous, [name]: nextValue }));
         setErrors((previous) => {
             if (!previous[name]) return previous;
             const next = { ...previous };

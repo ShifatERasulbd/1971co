@@ -222,6 +222,21 @@ export default function EditForm({
 
                             <div className="space-y-3">
                                 <h3 className="text-sm font-semibold text-foreground">Variation</h3>
+                                <div className="flex items-center gap-2 rounded-md border bg-muted/10 px-3 py-2">
+                                    <Input
+                                        id="product-best-sellers"
+                                        name="show_on_best_sellers"
+                                        type="checkbox"
+                                        checked={Boolean(form.show_on_best_sellers)}
+                                        onChange={onChange}
+                                        disabled={isSubmitting}
+                                        className="h-4 w-4"
+                                    />
+                                    <Label htmlFor="product-best-sellers" className="cursor-pointer">
+                                        Show on Best Sellers
+                                    </Label>
+                                </div>
+
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="product-color">Color</Label>

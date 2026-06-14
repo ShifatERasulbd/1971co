@@ -14,6 +14,7 @@ function buildProductPayload(data = {}) {
         subcategory_id: data.subcategory_id ? Number(data.subcategory_id) : null,
         price: data.price === '' ? 0 : Number(data.price),
         stock: data.stock === '' ? 0 : Number(data.stock),
+        show_on_best_sellers: Boolean(data.show_on_best_sellers),
         variant_rows: Array.isArray(data.variant_rows) ? data.variant_rows : [],
         color_variant_images:
             data.color_variant_images && typeof data.color_variant_images === 'object'
@@ -34,6 +35,10 @@ function buildProductFormData(data = {}) {
         }
         if (Array.isArray(value) || (value && typeof value === 'object')) {
             formData.append(key, JSON.stringify(value));
+            return;
+        }
+        if (typeof value === 'boolean') {
+            formData.append(key, value ? '1' : '0');
             return;
         }
         formData.append(key, String(value));

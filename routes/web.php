@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HeroController;
-use App\Http\Controllers\PersonalizationController;
 use App\Http\Controllers\FeaturesController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\OurStorySectionController;
@@ -15,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\ColorController;
+use App\Http\Controllers\SettingsController;
 
 Route::get('/', function () {
     return view('home');
@@ -60,8 +60,10 @@ Route::prefix('api')->group(function () {
     Route::get('/public/categories', [CategoryController::class, 'index']);
     Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
     Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
-    Route::post('/personalizations', [PersonalizationController::class, 'store']);
-    Route::patch('/personalizations/{personalization}/confirm', [PersonalizationController::class, 'confirm']);
+    Route::get('/public/settings', [SettingsController::class, 'publicLatest']);
+    Route::get('/public/best-sellers-section', [SettingsController::class, 'publicBestSellersSection']);
+
+    
 
     Route::middleware('auth:sanctum')->group(function () {
         
@@ -108,6 +110,11 @@ Route::prefix('api')->group(function () {
         Route::get('/api-products', [ApiProductController::class, 'index']);
         Route::post('/api-products/sync', [ApiProductController::class, 'sync']);
        
+        // Settings Controller
+        Route::apiResource('/settings', SettingsController::class);
+        Route::get('/website/best-sellers-section', [SettingsController::class, 'bestSellersSection']);
+        Route::put('/website/best-sellers-section', [SettingsController::class, 'updateBestSellersSection']);
+
         // Product Controller (CRUD)
         Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index']);
         Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show']);
@@ -123,3 +130,4 @@ Route::middleware('auth:sanctum')->group(function () {
         return view('app');
     })->where('path', '^(?!api).*$');
 });
+

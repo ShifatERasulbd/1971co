@@ -1,10 +1,11 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
+import { bootstrapPublicSettings } from './utils/siteSettings';
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
@@ -34,6 +35,10 @@ function FrontendLayout() {
 }
 
 function AppRouter() {
+    useEffect(() => {
+        bootstrapPublicSettings();
+    }, []);
+
     return (
         <BrowserRouter>
             <Routes>

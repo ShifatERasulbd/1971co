@@ -5,7 +5,8 @@ import {
     Blocks,
     LayoutList,
     Package,
-    LogOut
+    LogOut,
+    Settings
   
 } from 'lucide-react';
 import { useState } from 'react';
@@ -49,6 +50,10 @@ const inventoryItems = [
     { title: 'Products', icon: Package, path: '/admin/products' },
 ];
 
+
+const SettingsItems = [
+    { title: 'Settings', icon: Settings, path: '/admin/settings' },
+]
 
 
 
@@ -100,7 +105,7 @@ export function AppSidebar(props) {
             <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
                 <div className="flex items-center gap-2 px-1">
                     <span className="inline-flex size-4 rounded-full border border-sidebar-foreground/60" />
-                    <span className="text-sm font-semibold">Timeless</span>
+                    <span className="text-sm font-semibold">1971co</span>
                 </div>
             </SidebarHeader>
 
@@ -179,12 +184,39 @@ export function AppSidebar(props) {
                     </SidebarGroup>
                 )}
 
+              
+
+                
                 {inventoryItems.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Inventory</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {inventoryItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.title}
+                                            isActive={isMenuItemActive(item.path)}
+                                        >
+                                            <Link to={item.path}>
+                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                  {SettingsItems.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Settings</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {SettingsItems.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             asChild

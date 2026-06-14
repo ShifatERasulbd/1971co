@@ -22,6 +22,7 @@ const initialForm = {
     category_id: '',
     subcategory_id: '',
     stock: '',
+    show_on_best_sellers: false,
 };
 
 function pickVariantNumberValue(existingValue, fallbackValue) {
@@ -161,6 +162,7 @@ export default function EditProduct() {
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
                         stock: data?.stock ?? '',
+                        show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                     });
 
                     setExistingGalleryUrls(Array.isArray(data?.image_gallery) ? data.image_gallery : []);
@@ -294,8 +296,9 @@ export default function EditProduct() {
     }, [galleryPreviewItems]);
 
     const handleChange = (event) => {
-        const { name, value } = event.target;
-        setForm((previous) => ({ ...previous, [name]: value }));
+        const { name, value, type, checked } = event.target;
+        const nextValue = type === 'checkbox' ? checked : value;
+        setForm((previous) => ({ ...previous, [name]: nextValue }));
         setErrors((previous) => {
             if (!previous[name]) return previous;
             const next = { ...previous };

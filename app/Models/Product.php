@@ -27,6 +27,7 @@ class Product extends Model
         'category_id',
         'subcategory_id',
         'stock',
+        'show_on_best_sellers',
     ];
 
     protected function casts(): array
@@ -39,6 +40,7 @@ class Product extends Model
             'color_variant_images' => 'array',
             'price' => 'decimal:2',
             'stock' => 'integer',
+            'show_on_best_sellers' => 'boolean',
         ];
     }
 }

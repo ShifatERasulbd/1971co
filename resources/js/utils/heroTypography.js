@@ -1,3 +1,5 @@
+import { getFrontendUtilsConfig } from './siteSettings';
+
 export const heroFontFamilyOptions = [
     { label: 'Instrument Sans', value: 'instrument-sans' },
     { label: 'Georgia', value: 'georgia' },
@@ -17,8 +19,22 @@ const heroFontFamilyCssMap = {
 };
 
 export function resolveHeroFontFamily(value, fallback = 'instrument-sans') {
-    const key = String(value || fallback).toLowerCase();
-    return heroFontFamilyCssMap[key] || heroFontFamilyCssMap[fallback];
+    const config = getFrontendUtilsConfig();
+    const runtimeCssMap =
+        config.hero_font_family_css_map && typeof config.hero_font_family_css_map === 'object'
+            ? config.hero_font_family_css_map
+            : {};
+
+    const mergedCssMap = {
+        ...heroFontFamilyCssMap,
+        ...runtimeCssMap,
+    };
+
+    const configFallback = config.hero_default_font_family || fallback;
+    const key = String(value || configFallback).toLowerCase();
+    const fallbackKey = String(configFallback || fallback).toLowerCase();
+
+    return mergedCssMap[key] || mergedCssMap[fallbackKey] || heroFontFamilyCssMap['instrument-sans'];
 }
 
 export function resolveHeroFontSize(value, fallback) {

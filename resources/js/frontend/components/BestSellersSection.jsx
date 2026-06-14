@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { timelessFontClass } from '../../utils/typography';
@@ -15,26 +16,139 @@ const PLACEHOLDER_PRODUCTS = [
     { id: 6, name: "Men's Puffer Vest", price: '44.99', cover_image: null, color: ['#374151', '#1e3a5f'] },
 ];
 
-function ColorSwatch({ color }) {
+function ColorSwatch({ color, active, onClick }) {
     return (
-        <span
+        <button
+            type="button"
             title={color}
-            className="inline-block size-4 rounded-full border border-zinc-200 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
+            onClick={onClick}
+            className={`inline-block size-4 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 ${
+                active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
+            }`}
             style={{ backgroundColor: color }}
         />
     );
 }
 
-function ProductCard({ product }) {
-    const colors = Array.isArray(product.color)
-        ? product.color
-        : typeof product.color === 'string' && product.color
-            ? [product.color]
-            : [];
+function toAbsoluteImageUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return fallbackImage;
+    }
 
-    const imageSrc = product.cover_image
-        ? (product.cover_image.startsWith('http') ? product.cover_image : `/${product.cover_image.replace(/^\//, '')}`)
-        : fallbackImage;
+    if (path.startsWith('http')) {
+        return path;
+    }
+
+    return `/${path.replace(/^\/+/, '')}`;
+}
+
+function normalizeImageKey(path) {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+
+    return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
+}
+
+function ProductCard({ product, autoPlay = false }) {
+    const colors = useMemo(
+        () => (Array.isArray(product.color)
+            ? product.color
+            : typeof product.color === 'string' && product.color
+                ? product.color.split(',').map((item) => item.trim()).filter(Boolean)
+                : []),
+        [product.color],
+    );
+
+    const galleryImages = useMemo(() => {
+        const rawGallery = Array.isArray(product.image_gallery) ? product.image_gallery : [];
+        const allCandidates = [product.cover_image, ...rawGallery].filter(Boolean);
+        const seen = new Set();
+        const deduped = [];
+
+        allCandidates.forEach((item) => {
+            const key = normalizeImageKey(item);
+            if (!key || seen.has(key)) {
+                return;
+            }
+
+            seen.add(key);
+            deduped.push(item);
+        });
+
+        if (deduped.length === 0) {
+            return [fallbackImage];
+        }
+
+        return deduped.map((item) => toAbsoluteImageUrl(item));
+    }, [product.cover_image, product.image_gallery]);
+
+    const colorVariantImages =
+        product.color_variant_images && typeof product.color_variant_images === 'object'
+            ? product.color_variant_images
+            : {};
+
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [selectedColor, setSelectedColor] = useState(() => colors[0] || null);
+
+    useEffect(() => {
+        setCurrentImageIndex(0);
+        setSelectedColor(colors[0] || null);
+    }, [product.id, product.color]);
+
+    const imageSrc = galleryImages[currentImageIndex] || fallbackImage;
+
+    useEffect(() => {
+        if (!autoPlay || galleryImages.length <= 1) {
+            return;
+        }
+
+        const timer = window.setInterval(() => {
+            setCurrentImageIndex((previous) =>
+                previous === galleryImages.length - 1 ? 0 : previous + 1,
+            );
+        }, 2500);
+
+        return () => {
+            window.clearInterval(timer);
+        };
+    }, [autoPlay, galleryImages.length]);
+
+    function handlePrevImage(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setCurrentImageIndex((previous) =>
+            previous === 0 ? galleryImages.length - 1 : previous - 1,
+        );
+    }
+
+    function handleNextImage(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setCurrentImageIndex((previous) =>
+            previous === galleryImages.length - 1 ? 0 : previous + 1,
+        );
+    }
+
+    function handleSelectColor(color, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectedColor(color);
+
+        const mappedImages = Array.isArray(colorVariantImages[color]) ? colorVariantImages[color] : [];
+        if (mappedImages.length === 0) {
+            return;
+        }
+
+        const firstMapped = mappedImages[0];
+        const targetIndex = galleryImages.findIndex(
+            (image) => normalizeImageKey(image) === normalizeImageKey(firstMapped),
+        );
+
+        if (targetIndex >= 0) {
+            setCurrentImageIndex(targetIndex);
+        }
+    }
 
     const productLink = product.slug ? `/shop/${product.slug}` : `/shop?id=${product.id}`;
 
@@ -47,6 +161,45 @@ function ProductCard({ product }) {
                         alt={product.name}
                         className="h-[320px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[360px] lg:h-[400px]"
                     />
+
+                    {galleryImages.length > 1 ? (
+                        <>
+                            <button
+                                type="button"
+                                aria-label="Previous image"
+                                onClick={handlePrevImage}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                            >
+                                <ChevronLeft className="size-4" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Next image"
+                                onClick={handleNextImage}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                            >
+                                <ChevronRight className="size-4" />
+                            </button>
+
+                            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
+                                {galleryImages.map((_, index) => (
+                                    <button
+                                        key={`image-dot-${index}`}
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            setCurrentImageIndex(index);
+                                        }}
+                                        className={`size-1.5 rounded-full ${
+                                            currentImageIndex === index ? 'bg-white' : 'bg-white/50'
+                                        }`}
+                                        aria-label={`Go to image ${index + 1}`}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    ) : null}
                 </div>
             </Link>
 
@@ -54,7 +207,12 @@ function ProductCard({ product }) {
                 {colors.length > 0 && (
                     <div className="flex items-center gap-1.5 flex-wrap">
                         {colors.slice(0, 6).map((c, i) => (
-                            <ColorSwatch key={`${c}-${i}`} color={c} />
+                            <ColorSwatch
+                                key={`${c}-${i}`}
+                                color={c}
+                                active={selectedColor === c}
+                                onClick={(event) => handleSelectColor(c, event)}
+                            />
                         ))}
                     </div>
                 )}
@@ -73,10 +231,57 @@ function ProductCard({ product }) {
     );
 }
 
-export default function BestSellersSection() {
-    const [products, setProducts] = useState(PLACEHOLDER_PRODUCTS);
+export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
+    const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
+    const [isBuilderPreview] = useState(() => {
+        try {
+            return window.self !== window.top;
+        } catch {
+            return false;
+        }
+    });
+
+    function isBestSeller(product) {
+        if (product?.show_on_best_sellers === true) {
+            return true;
+        }
+
+        return Number(product?.show_on_best_sellers) === 1;
+    }
+
+    function normalizeProductList(payload) {
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+
+        if (Array.isArray(payload?.data)) {
+            return payload.data;
+        }
+
+        if (Array.isArray(payload?.items)) {
+            return payload.items;
+        }
+
+        return [];
+    }
+
+    function notifyBuilderSelection(itemIndex = null) {
+        if (!isBuilderPreview) {
+            return;
+        }
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+                {
+                    type: 'TIMLESS_PAGE_BUILDER_BEST_SELLERS_SECTION_SELECTED',
+                    payload: { itemIndex },
+                },
+                window.location.origin,
+            );
+        }
+    }
 
     useEffect(() => {
         let ignore = false;
@@ -86,14 +291,33 @@ export default function BestSellersSection() {
                 const res = await fetch('/api/public/products', {
                     headers: { Accept: 'application/json' },
                 });
+
+                let finalProducts = [];
+
                 if (res.ok) {
                     const data = await res.json();
-                    if (!ignore && Array.isArray(data) && data.length > 0) {
-                        setProducts(data);
+                    finalProducts = normalizeProductList(data);
+                }
+
+                if (isBuilderPreview && finalProducts.length === 0) {
+                    const adminRes = await fetch('/api/products', {
+                        credentials: 'include',
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    if (adminRes.ok) {
+                        const adminData = await adminRes.json();
+                        finalProducts = normalizeProductList(adminData).filter((item) => isBestSeller(item));
                     }
                 }
+
+                if (!ignore) {
+                    setProducts(finalProducts);
+                }
             } catch {
-                // keep placeholders
+                if (!ignore) {
+                    setProducts([]);
+                }
             } finally {
                 if (!ignore) setLoading(false);
             }
@@ -101,16 +325,21 @@ export default function BestSellersSection() {
 
         load();
         return () => { ignore = true; };
-    }, []);
+    }, [isBuilderPreview]);
 
-    const displayProducts = loading ? PLACEHOLDER_PRODUCTS : products;
+    const displayProducts = loading
+        ? PLACEHOLDER_PRODUCTS
+        : products;
 
     return (
-        <section className={`${timelessFontClass} bg-[#f8f8f7] py-10 sm:py-14`}>
+        <section
+            className={`${timelessFontClass} bg-[#f8f8f7] py-10 sm:py-14`}
+            onClick={() => notifyBuilderSelection(null)}
+        >
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">
                 <div className="mb-6 flex items-center justify-between sm:mb-8">
                     <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
-                        Best Sellers
+                        {sectionTitle}
                     </h2>
                     <Link
                         to="/shop"
@@ -124,10 +353,27 @@ export default function BestSellersSection() {
                     ref={scrollRef}
                     className="flex gap-3 overflow-x-auto pb-4 sm:gap-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
-                    {displayProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} />
+                    {displayProducts.map((product, index) => (
+                        <div
+                            key={product.id}
+                            onClick={(event) => {
+                                if (!isBuilderPreview) {
+                                    return;
+                                }
+
+                                event.preventDefault();
+                                event.stopPropagation();
+                                notifyBuilderSelection(index);
+                            }}
+                        >
+                            <ProductCard product={product} autoPlay={isBuilderPreview} />
+                        </div>
                     ))}
                 </div>
+
+                {!loading && displayProducts.length === 0 ? (
+                    <p className="mt-3 text-sm text-zinc-500">No products are marked as Best Sellers.</p>
+                ) : null}
             </div>
         </section>
     );

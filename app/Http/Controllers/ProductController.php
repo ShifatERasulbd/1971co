@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -21,7 +22,25 @@ class ProductController extends Controller
 
     public function publicIndex(): JsonResponse
     {
-        $products = Product::select('id', 'name', 'price', 'cover_image', 'color', 'slug', 'category_id', 'subcategory_id')
+        $columns = [
+            'id',
+            'name',
+            'price',
+            'cover_image',
+            'image_gallery',
+            'color',
+            'color_variant_images',
+            'category_id',
+            'subcategory_id',
+            'show_on_best_sellers',
+        ];
+
+        if (Schema::hasColumn('products', 'slug')) {
+            $columns[] = 'slug';
+        }
+
+        $products = Product::select($columns)
+            ->where('show_on_best_sellers', true)
             ->orderBy('created_at', 'desc')
             ->limit(12)
             ->get();
@@ -36,6 +55,7 @@ class ProductController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
         $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images']);
 
         $validated = $request->validate([
@@ -54,6 +74,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
             'stock' => 'required|integer',
+            'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',
             'variant_rows.*.key' => 'nullable|string|max:255',
             'variant_rows.*.color' => 'nullable|string|max:255',
@@ -82,6 +103,7 @@ class ProductController extends Controller
 
         $finalGallery = is_array($validated['image_gallery'] ?? null) ? $validated['image_gallery'] : [];
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
+        $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['color_variant_images'] = $this->resolveColorVariantImages(
             $validated['color_variant_images'] ?? [],
             $finalGallery,
@@ -103,6 +125,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
+        $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery']);
         $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'image_gallery_existing']);
 
         $validated = $request->validate([
@@ -124,6 +147,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
             'stock' => 'required|integer',
+            'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',
             'variant_rows.*.key' => 'nullable|string|max:255',
             'variant_rows.*.color' => 'nullable|string|max:255',
@@ -165,6 +189,7 @@ class ProductController extends Controller
             : (is_array($product->image_gallery ?? null) ? $product->image_gallery : []);
 
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? ($product->variant_rows ?? []));
+        $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['color_variant_images'] = $this->resolveColorVariantImages(
             $validated['color_variant_images'] ?? ($product->color_variant_images ?? []),
             $finalGallery,
@@ -310,6 +335,25 @@ class ProductController extends Controller
             if (json_last_error() === JSON_ERROR_NONE) {
                 $request->merge([$field => $decoded]);
             }
+        }
+    }
+
+    private function normalizeBooleanFields(Request $request, array $fields): void
+    {
+        foreach ($fields as $field) {
+            if (! $request->has($field)) {
+                continue;
+            }
+
+            $value = $request->input($field);
+
+            if (is_bool($value) || $value === null) {
+                continue;
+            }
+
+            $request->merge([
+                $field => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            ]);
         }
     }
 

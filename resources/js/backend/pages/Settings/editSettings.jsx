@@ -1,0 +1,270 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAppContext } from '@/context/AppContext';
+import SettingsForm from '@/components/settings/form';
+import { fetchSetting, updateSetting } from './api';
+
+const initialForm = {
+    header_logo: '',
+    footer_logo: '',
+    email: '',
+    location: '',
+    currency: '',
+    social_media: [],
+    frontend_utils: {
+        timeless_font_family: '',
+        features_font_family: '',
+        hero_default_font_family: 'instrument-sans',
+        hero_font_family_options_json: '[]',
+        hero_font_family_css_map_json: '{}',
+    },
+};
+
+export default function EditSettings() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { setPageTitle } = useAppContext();
+
+    const [form, setForm] = useState(initialForm);
+    const [headerLogoFile, setHeaderLogoFile] = useState(null);
+    const [footerLogoFile, setFooterLogoFile] = useState(null);
+    const [socialIconFiles, setSocialIconFiles] = useState({});
+    const [errors, setErrors] = useState({});
+    const [requestError, setRequestError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const headerLogoPreview = useMemo(() => (headerLogoFile ? URL.createObjectURL(headerLogoFile) : ''), [headerLogoFile]);
+    const footerLogoPreview = useMemo(() => (footerLogoFile ? URL.createObjectURL(footerLogoFile) : ''), [footerLogoFile]);
+
+    const socialIconPreviews = useMemo(() => {
+        const map = {};
+        Object.entries(socialIconFiles).forEach(([index, file]) => {
+            if (file instanceof File) {
+                map[index] = URL.createObjectURL(file);
+            }
+        });
+        return map;
+    }, [socialIconFiles]);
+
+    useEffect(() => {
+        setPageTitle('Edit Settings');
+    }, [setPageTitle]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadSetting() {
+            setIsLoading(true);
+            setRequestError('');
+
+            try {
+                const setting = await fetchSetting(id);
+                if (ignore) return;
+
+                setForm({
+                    header_logo: setting.payload?.header_logo || '',
+                    footer_logo: setting.payload?.footer_logo || '',
+                    email: setting.payload?.email || '',
+                    location: setting.payload?.location || '',
+                    currency: setting.payload?.currency || '',
+                    social_media: Array.isArray(setting.payload?.social_media)
+                        ? setting.payload.social_media.map((item) => ({
+                              name: item?.name || '',
+                              link: item?.link || '',
+                              icon: item?.icon || '',
+                          }))
+                        : [],
+                    frontend_utils: {
+                        timeless_font_family: setting.payload?.frontend_utils?.timeless_font_family || '',
+                        features_font_family: setting.payload?.frontend_utils?.features_font_family || '',
+                        hero_default_font_family:
+                            setting.payload?.frontend_utils?.hero_default_font_family || 'instrument-sans',
+                        hero_font_family_options_json: JSON.stringify(
+                            Array.isArray(setting.payload?.frontend_utils?.hero_font_family_options)
+                                ? setting.payload.frontend_utils.hero_font_family_options
+                                : [],
+                            null,
+                            2,
+                        ),
+                        hero_font_family_css_map_json: JSON.stringify(
+                            setting.payload?.frontend_utils?.hero_font_family_css_map &&
+                                typeof setting.payload.frontend_utils.hero_font_family_css_map === 'object'
+                                ? setting.payload.frontend_utils.hero_font_family_css_map
+                                : {},
+                            null,
+                            2,
+                        ),
+                    },
+                });
+            } catch (error) {
+                if (!ignore) {
+                    setRequestError(error.message || 'Failed to load settings.');
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        loadSetting();
+
+        return () => {
+            ignore = true;
+        };
+    }, [id]);
+
+    useEffect(() => {
+        return () => {
+            if (headerLogoPreview) URL.revokeObjectURL(headerLogoPreview);
+            if (footerLogoPreview) URL.revokeObjectURL(footerLogoPreview);
+            Object.values(socialIconPreviews).forEach((url) => URL.revokeObjectURL(url));
+        };
+    }, [headerLogoPreview, footerLogoPreview, socialIconPreviews]);
+
+    const handleChange = (event) => {
+        const { name, value } = event.target;
+        setForm((previous) => ({ ...previous, [name]: value }));
+    };
+
+    const handleSocialChange = (index, field, value) => {
+        setForm((previous) => ({
+            ...previous,
+            social_media: (previous.social_media || []).map((item, itemIndex) =>
+                itemIndex === index ? { ...item, [field]: value } : item,
+            ),
+        }));
+    };
+
+    const handleAddSocial = () => {
+        setForm((previous) => ({
+            ...previous,
+            social_media: [...(previous.social_media || []), { name: '', link: '', icon: '' }],
+        }));
+    };
+
+    const handleRemoveSocial = (indexToRemove) => {
+        setForm((previous) => ({
+            ...previous,
+            social_media: (previous.social_media || []).filter((_, index) => index !== indexToRemove),
+        }));
+
+        setSocialIconFiles((previous) => {
+            const next = {};
+            Object.entries(previous).forEach(([key, value]) => {
+                const index = Number(key);
+                if (index < indexToRemove) next[index] = value;
+                if (index > indexToRemove) next[index - 1] = value;
+            });
+            return next;
+        });
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        setIsSubmitting(true);
+        setErrors({});
+        setRequestError('');
+
+        try {
+            let heroFontOptions = [];
+            let heroFontCssMap = {};
+
+            try {
+                heroFontOptions = JSON.parse(form.frontend_utils?.hero_font_family_options_json || '[]');
+            } catch {
+                heroFontOptions = [];
+            }
+
+            try {
+                heroFontCssMap = JSON.parse(form.frontend_utils?.hero_font_family_css_map_json || '{}');
+            } catch {
+                heroFontCssMap = {};
+            }
+
+            await updateSetting(id, {
+                ...form,
+                frontend_utils: {
+                    timeless_font_family: form.frontend_utils?.timeless_font_family || '',
+                    features_font_family: form.frontend_utils?.features_font_family || '',
+                    hero_default_font_family: form.frontend_utils?.hero_default_font_family || 'instrument-sans',
+                    hero_font_family_options: Array.isArray(heroFontOptions) ? heroFontOptions : [],
+                    hero_font_family_css_map:
+                        heroFontCssMap && typeof heroFontCssMap === 'object' ? heroFontCssMap : {},
+                },
+                header_logo_file: headerLogoFile,
+                footer_logo_file: footerLogoFile,
+                social_icon_files: socialIconFiles,
+            });
+
+            toast.success('Settings updated successfully', {
+                style: { color: '#16a34a' },
+            });
+            navigate('/admin/settings');
+        } catch (error) {
+            setErrors(error.payload?.errors || {});
+            if (!error.payload?.errors) {
+                const message = error.message || 'Failed to update settings.';
+                setRequestError(message);
+                toast.error(message, {
+                    style: { color: '#dc2626' },
+                });
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (isLoading) {
+        return <p className="text-sm text-muted-foreground">Loading setting...</p>;
+    }
+
+    return (
+        <div className="space-y-5">
+            {requestError && <p className="text-sm text-destructive">{requestError}</p>}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-1">
+                <SettingsForm
+                    form={form}
+                    errors={errors}
+                    isSubmitting={isSubmitting}
+                    headerLogoPreview={headerLogoPreview}
+                    footerLogoPreview={footerLogoPreview}
+                    socialIconPreviews={socialIconPreviews}
+                    onChange={handleChange}
+                    onHeaderLogoChange={(event) => setHeaderLogoFile(event.target.files?.[0] || null)}
+                    onFooterLogoChange={(event) => setFooterLogoFile(event.target.files?.[0] || null)}
+                    onSocialChange={handleSocialChange}
+                    onSocialIconChange={(index, file) =>
+                        setSocialIconFiles((previous) => {
+                            const next = { ...previous };
+                            if (!file) {
+                                delete next[index];
+                                return next;
+                            }
+                            next[index] = file;
+                            return next;
+                        })
+                    }
+                    onAddSocial={handleAddSocial}
+                    onRemoveSocial={handleRemoveSocial}
+                    onFrontendUtilsChange={(field, value) =>
+                        setForm((previous) => ({
+                            ...previous,
+                            frontend_utils: {
+                                ...(previous.frontend_utils || {}),
+                                [field]: value,
+                            },
+                        }))
+                    }
+                    onSubmit={handleSubmit}
+                    onCancel={() => navigate('/admin/settings')}
+                    submitLabel="Update Settings"
+                    submittingLabel="Updating..."
+                />
+            </div>
+        </div>
+    );
+}
