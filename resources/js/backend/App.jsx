@@ -51,6 +51,7 @@ const EditFeature = lazyWithRetry(() => import('@/pages/Features/editFeature'), 
 
 // Website Management
 const HomePageBuilder = lazyWithRetry(() => import('@/pages/Website/homePageBuilder'), 'website-home-page-builder');
+const AboutPageBuilder = lazyWithRetry(() => import('@/pages/Website/aboutPageBuilder'), 'website-about-page-builder');
 
 // Category Management
 const Categories = lazyWithRetry(() => import('@/pages/Category/category'), 'categories');
@@ -120,6 +121,7 @@ export default function App() {
 
                             {/* Website Management */}
                             <Route path="website/home-page" element={<HomePageBuilder />} />
+                            <Route path="website/about-page" element={<AboutPageBuilder />} />
 
                             {/* Category Management */}
                             <Route path="category" element={<Categories />} />

@@ -129,28 +129,31 @@ export default function Header() {
     }, [categories]);
 
     const navigationItems = useMemo(() => {
-        if (!visibleCategories.length) {
-            return [
+        const categoryItems = visibleCategories.length > 0
+            ? visibleCategories.map((category) => {
+                const categoryLabel = category?.name || 'Category';
+                return {
+                    id: category?.id,
+                    slug: category?.slug,
+                    label: categoryLabel,
+                    href: `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`,
+                    isRoute: true,
+                    isShop:
+                        String(categoryLabel).trim().toLowerCase() === 'shop'
+                        || String(category?.slug || '').trim().toLowerCase() === 'shop',
+                };
+            })
+            : [
                 { label: 'Best Sellers', href: '#best-sellers', isRoute: false },
                 { label: 'Shop', href: '/shop', isRoute: true, isShop: true },
-                { label: 'About', href: '/about', isRoute: true },
-                { label: 'Contact', href: '/contact', isRoute: true },
             ];
-        }
 
-        return visibleCategories.map((category) => {
-            const categoryLabel = category?.name || 'Category';
-            return {
-                id: category?.id,
-                slug: category?.slug,
-                label: categoryLabel,
-                href: `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`,
-                isRoute: true,
-                isShop:
-                    String(categoryLabel).trim().toLowerCase() === 'shop'
-                    || String(category?.slug || '').trim().toLowerCase() === 'shop',
-            };
-        });
+        return [
+            ...categoryItems,
+            { label: 'About', href: '/about', isRoute: true },
+            
+            { label: 'Together We Grow', href: '#together-we-grow', isRoute: false },
+        ];
     }, [visibleCategories]);
 
     const shopNavItem = useMemo(

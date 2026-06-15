@@ -49,6 +49,35 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
+    public function publicShopIndex(): JsonResponse
+    {
+        $columns = [
+            'id',
+            'name',
+            'price',
+            'cover_image',
+            'image_gallery',
+            'color',
+            'color_variant_images',
+            'size',
+            'stock',
+            'variant_rows',
+            'grand_child_id',
+            'show_on_best_sellers',
+        ];
+
+        if (Schema::hasColumn('products', 'slug')) {
+            $columns[] = 'slug';
+        }
+
+        $products = Product::query()
+            ->select($columns)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($products);
+    }
+
     public function show(Product $product): JsonResponse
     {
         return response()->json($product);

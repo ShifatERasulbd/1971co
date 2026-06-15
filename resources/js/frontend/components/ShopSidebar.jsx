@@ -1,21 +1,6 @@
 import { useMemo, useState } from 'react';
 
 const availabilityFilters = ['In stock', 'Out of stock'];
-const sizeFilters = ['Small (S)', 'Medium (M)', 'Large (L)', 'Extra large (XL)', 'Double extra large (XXL)'];
-const categoryFilters = [
-    'Coats & Jackets',
-    'Hoodies',
-    'Joggers',
-    "Men's Undershirts",
-    'Outerwear',
-    'Polos',
-    'Shirts',
-    'Shorts',
-    'Sweatshirts',
-    'T-Shirts',
-    'Tank Tops',
-    'Vests',
-];
 
 function FilterChevron({ open = false }) {
     return (
@@ -60,17 +45,19 @@ function CheckboxFilterList({ values, checkedValues, onToggle }) {
     return (
         <ul className="space-y-2 text-[0.8rem] text-zinc-600">
             {values.map((value) => {
-                const checked = checkedValues.includes(value);
+                const key = typeof value === 'object' ? String(value.id) : String(value);
+                const label = typeof value === 'object' ? String(value.name || '') : String(value);
+                const checked = checkedValues.includes(key);
                 return (
-                    <li key={value}>
+                    <li key={key}>
                         <label className="flex cursor-pointer items-center gap-2.5">
                             <input
                                 type="checkbox"
                                 checked={checked}
-                                onChange={() => onToggle(value)}
+                                onChange={() => onToggle(key)}
                                 className="size-4 rounded border-zinc-300 text-zinc-900"
                             />
-                            <span>{value}</span>
+                            <span>{label}</span>
                         </label>
                     </li>
                 );
@@ -79,27 +66,36 @@ function CheckboxFilterList({ values, checkedValues, onToggle }) {
     );
 }
 
-export default function ShopSidebar() {
+export default function ShopSidebar({
+    sizeOptions = [],
+    categoryOptions = [],
+    selectedAvailability = [],
+    selectedSizes = [],
+    selectedCategories = [],
+    minPrice = '',
+    maxPrice = '',
+    highestPrice = '',
+    onToggleAvailability,
+    onToggleSize,
+    onToggleCategory,
+    onMinPriceChange,
+    onMaxPriceChange,
+}) {
     const [openSections, setOpenSections] = useState({
         availability: true,
         price: true,
         size: true,
         categories: true,
     });
-    const [selectedAvailability, setSelectedAvailability] = useState([]);
-    const [selectedSizes, setSelectedSizes] = useState([]);
-    const [selectedCategories, setSelectedCategories] = useState([]);
     const [showAllCategories, setShowAllCategories] = useState(true);
-    const [minPrice, setMinPrice] = useState('0');
-    const [maxPrice, setMaxPrice] = useState('59.99');
 
     const visibleCategories = useMemo(() => {
         if (showAllCategories) {
-            return categoryFilters;
+            return categoryOptions;
         }
 
-        return categoryFilters.slice(0, 8);
-    }, [showAllCategories]);
+        return categoryOptions.slice(0, 8);
+    }, [showAllCategories, categoryOptions]);
 
     function toggleSection(sectionKey) {
         setOpenSections((previous) => ({
@@ -108,16 +104,8 @@ export default function ShopSidebar() {
         }));
     }
 
-    function toggleCheckedValue(setter, value) {
-        setter((previous) =>
-            previous.includes(value)
-                ? previous.filter((item) => item !== value)
-                : [...previous, value],
-        );
-    }
-
     return (
-        <aside className="bg-zinc-100 px-6 py-7 sm:px-7 sm:py-8">
+        <aside className="px-6 py-7 sm:px-7 sm:py-8">
             <div className="space-y-6">
                 <h2 className="text-[1.5rem] font-semibold uppercase tracking-[0.03em] text-zinc-800">Filters</h2>
 
@@ -129,7 +117,7 @@ export default function ShopSidebar() {
                     <CheckboxFilterList
                         values={availabilityFilters}
                         checkedValues={selectedAvailability}
-                        onToggle={(value) => toggleCheckedValue(setSelectedAvailability, value)}
+                        onToggle={onToggleAvailability}
                     />
                 </SidebarFilterRow>
 
@@ -141,29 +129,29 @@ export default function ShopSidebar() {
                     <div className="space-y-3">
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
                             <label className="relative block">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[1.35rem] text-zinc-500">$</span>
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[0.8rem] text-zinc-500">$</span>
                                 <input
                                     type="text"
                                     value={minPrice}
-                                    onChange={(event) => setMinPrice(event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 bg-white pl-7 pr-2 text-[1.35rem] text-zinc-700"
+                                    onChange={(event) => onMinPriceChange?.(event.target.value)}
+                                    className="h-9 w-full rounded border border-zinc-300 bg-white pl-6 pr-2 text-[0.8rem] text-zinc-700"
                                 />
                             </label>
 
-                            <span className="text-[1.25rem] text-zinc-500">to</span>
+                            <span className="text-[0.8rem] text-zinc-500">to</span>
 
                             <label className="relative block">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[1.35rem] text-zinc-500">$</span>
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[0.8rem] text-zinc-500">$</span>
                                 <input
                                     type="text"
                                     value={maxPrice}
-                                    onChange={(event) => setMaxPrice(event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 bg-white pl-7 pr-2 text-[1.35rem] text-zinc-700"
+                                    onChange={(event) => onMaxPriceChange?.(event.target.value)}
+                                    className="h-9 w-full rounded border border-zinc-300 bg-white pl-6 pr-2 text-[0.8rem] text-zinc-700"
                                 />
                             </label>
                         </div>
 
-                        <p className="text-[1.3rem] text-zinc-500">The highest price is $59.99</p>
+                        <p className="text-[0.8rem] text-zinc-500">The highest price is ${highestPrice || '0.00'}</p>
                     </div>
                 </SidebarFilterRow>
 
@@ -173,9 +161,9 @@ export default function ShopSidebar() {
                     onToggle={() => toggleSection('size')}
                 >
                     <CheckboxFilterList
-                        values={sizeFilters}
+                        values={sizeOptions}
                         checkedValues={selectedSizes}
-                        onToggle={(value) => toggleCheckedValue(setSelectedSizes, value)}
+                        onToggle={onToggleSize}
                     />
                 </SidebarFilterRow>
 
@@ -188,7 +176,7 @@ export default function ShopSidebar() {
                         <CheckboxFilterList
                             values={visibleCategories}
                             checkedValues={selectedCategories}
-                            onToggle={(value) => toggleCheckedValue(setSelectedCategories, value)}
+                            onToggle={onToggleCategory}
                         />
 
                         <button

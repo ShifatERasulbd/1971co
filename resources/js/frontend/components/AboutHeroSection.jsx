@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 const aboutHeroImage = '/uploads/heroes/images/hero1.webp';
 
 export default function AboutHeroSection() {
@@ -16,16 +14,17 @@ export default function AboutHeroSection() {
 
             <div className="mx-auto flex min-h-[320px] w-full max-w-[1920px] items-center justify-center px-6 py-14 sm:min-h-[420px] sm:px-8 lg:min-h-[540px] lg:px-12">
                 <div className="text-center">
-                    <p className="mb-6 text-[0.72rem] uppercase tracking-[0.24em] text-white/75 sm:text-[0.78rem]">
-                        <Link to="/" className="transition-colors hover:text-white">
-                            Home
-                        </Link>{' '}
-                        / About Us
+                    <p className="mb-6 text-[0.72rem] uppercase tracking-[0.26em] text-white/80 sm:text-[0.78rem]">
+                        Our Story
                     </p>
 
-                    <h1 className="font-serif text-[clamp(2.6rem,7.8vw,6.6rem)] uppercase leading-[0.9] tracking-[0.06em] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
-                        About Us
+                    <h1 className="font-serif text-[clamp(2.8rem,8vw,6.8rem)] uppercase leading-[0.92] tracking-[0.04em] text-white drop-shadow-[0_12px_32px_rgba(0,0,0,0.65)]">
+                        Heritage. Culture. Style.
                     </h1>
+
+                    <p className="mx-auto mt-6 max-w-[600px] text-[0.95rem] font-light leading-[1.6] text-white/85 sm:text-[1.02rem]">
+                        Redefining streetwear through bold design and authentic self-expression.
+                    </p>
                 </div>
             </div>
         </section>

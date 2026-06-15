@@ -49,29 +49,32 @@ export default function AppLayout() {
 
     const warehouseName = user?.warehouse?.name || 'No Warehouse Assigned';
     const isHomePageBuilder = location.pathname.startsWith('/admin/website/home-page');
+    const isAboutPageBuilder = location.pathname.startsWith('/admin/website/about-page');
 
-    if (isHomePageBuilder) {
-        return (
-            <div className="min-h-screen bg-background">
-                <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-6">
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" onClick={() => navigate('/admin/dashboard')}>
-                            <ArrowLeft className="mr-2 size-4" />
-                            Back
-                        </Button>
-                        <h1 className="text-sm font-semibold md:text-base">{pageTitle}</h1>
-                    </div>
-
-                    <div className="inline-flex items-center rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background md:text-sm">
-                        {warehouseName}
-                    </div>
-                </header>
-
-                <div className="p-4 md:p-6">
-                    <Outlet />
+    const renderBuilderShell = () => (
+        <div className="min-h-screen bg-background">
+            <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-6">
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" size="sm" onClick={() => navigate('/admin/dashboard')}>
+                        <ArrowLeft className="mr-2 size-4" />
+                        Back
+                    </Button>
+                    <h1 className="text-sm font-semibold md:text-base">{pageTitle}</h1>
                 </div>
+
+                <div className="inline-flex items-center rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background md:text-sm">
+                    {warehouseName}
+                </div>
+            </header>
+
+            <div className="p-4 md:p-6">
+                <Outlet />
             </div>
-        );
+        </div>
+    );
+
+    if (isHomePageBuilder || isAboutPageBuilder) {
+        return renderBuilderShell();
     }
 
     return (

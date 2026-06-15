@@ -25,6 +25,8 @@ Route::get('/public/colors', [ColorController::class, 'index']);
 Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
 Route::get('/public/our-story', [OurStorySectionController::class, 'publicIndex']);
 Route::get('/public/products', [ProductController::class, 'publicIndex']);
+Route::get('/public/shop-products', [ProductController::class, 'publicShopIndex']);
+Route::get('/public/sizes', [SizeController::class, 'index']);
 Route::get('/public/categories', [CategoryController::class, 'index']);
 Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
 Route::get('/public/grand-childs', [GrandChildController::class, 'index']);

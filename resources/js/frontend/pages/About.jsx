@@ -4,10 +4,9 @@ import SectionSkeleton from '../components/SectionSkeleton.jsx';
 
 const AboutHeroSection = lazy(() => import('../components/AboutHeroSection.jsx'));
 
-const TimelessAboutSection = lazy(() => import('../components/TimelessAboutSection.jsx'));
-const OurStory = lazy(() => import('../components/OurStory.jsx'));
+const About1971Section = lazy(() => import('../components/1971AboutSection.jsx'));
 const OurMission = lazy(() => import('../components/OurMission.jsx'));
-const TestimonialSection = lazy(() => import('../components/TestimonialSection.jsx'));
+const GivingBackSection = lazy(() => import('../components/GivingBackSection.jsx'));
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 const InstagramSection = lazy(() => import('../components/InstagramSection.jsx'));
 
@@ -22,16 +21,14 @@ export default function AboutPage() {
             </LazySection>
             
             <LazySection heightClass="h-[520px]">
-                <TimelessAboutSection />
+                <About1971Section />
             </LazySection>
-            <LazySection heightClass="h-[520px]">
-                <OurStory />
-            </LazySection>
+            
             <LazySection heightClass="h-[540px]">
                 <OurMission />
             </LazySection>
-            <LazySection heightClass="h-[420px]">
-                <TestimonialSection />
+            <LazySection heightClass="h-[560px]">
+                <GivingBackSection />
             </LazySection>
             <LazySection heightClass="h-[220px]">
                 <NewsletterSection />
