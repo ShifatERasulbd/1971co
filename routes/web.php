@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\ColorController;
 use App\Http\Controllers\SettingsController;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 
 Route::get('/', function () {
     return view('home');
@@ -49,7 +50,7 @@ Route::get('/admin', function () {
     return view('app');
 })->name('login');
 
-Route::prefix('api')->group(function () {
+Route::prefix('api')->withoutMiddleware([ValidateCsrfToken::class])->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::get('/public/hero', [HeroController::class, 'publicHero']);
     Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);

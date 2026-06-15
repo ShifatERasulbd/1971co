@@ -1,49 +1,25 @@
 /**
  * Shared fetch helpers for all backend API modules.
  *
- * Fixes 419 "Page Expired" on live / proxied servers by always reading the
- * XSRF-TOKEN cookie after the Sanctum handshake and injecting it explicitly as
- * the X-XSRF-TOKEN request header.  Native fetch — unlike Axios — never does
- * this automatically, so the header was missing and Laravel rejected every
- * mutating request with 419.
- */
-
-function getCsrfToken() {
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-}
-
-/**
- * Refresh the Sanctum CSRF cookie then return the token string.
- * Always refreshes so long-running uploads (e.g. video) never use a stale token.
- */
-export async function ensureCsrfToken() {
-    await fetch('/sanctum/csrf-cookie', {
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    });
-    return getCsrfToken();
-}
-
-/**
- * Perform a fetch request with the correct credentials and CSRF header.
- * For mutating methods (POST / PUT / PATCH / DELETE) pass `needsCsrf: true`
- * so the token is refreshed and injected automatically.
+ * CSRF token handling is disabled project-wide; requests rely on session
+ * credentials only.
  */
 export async function requestJson(url, options = {}) {
-    const { needsCsrf = false, ...fetchOptions } = options;
+    const { ...fetchOptions } = options;
+    const incomingHeaders = fetchOptions.headers || {};
 
-    const extraHeaders = {};
+    const hasContentType = Object.keys(incomingHeaders).some(
+        (key) => key.toLowerCase() === 'content-type',
+    );
 
-    if (needsCsrf) {
-        const token = await ensureCsrfToken();
-        if (token) {
-            extraHeaders['X-XSRF-TOKEN'] = token;
-        }
-    }
+    const shouldSetJsonContentType =
+        !hasContentType
+        && fetchOptions.body !== undefined
+        && fetchOptions.body !== null
+        && !(fetchOptions.body instanceof FormData)
+        && !(fetchOptions.body instanceof Blob)
+        && !(fetchOptions.body instanceof URLSearchParams)
+        && !(typeof ArrayBuffer !== 'undefined' && fetchOptions.body instanceof ArrayBuffer);
 
     const response = await fetch(url, {
         credentials: 'include',
@@ -51,7 +27,7 @@ export async function requestJson(url, options = {}) {
         headers: {
             Accept: 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            ...extraHeaders,
+            ...(shouldSetJsonContentType ? { 'Content-Type': 'application/json' } : {}),
             ...(fetchOptions.headers || {}),
         },
     });

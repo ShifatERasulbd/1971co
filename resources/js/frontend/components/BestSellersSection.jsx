@@ -16,17 +16,132 @@ const PLACEHOLDER_PRODUCTS = [
     { id: 6, name: "Men's Puffer Vest", price: '44.99', cover_image: null, color: ['#374151', '#1e3a5f'] },
 ];
 
+function normalizeProductColors(value) {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+
+    return [];
+}
+
+function getSwatchColor(value) {
+    if (typeof value !== 'string') {
+        return '#d4d4d8';
+    }
+
+    const trimmed = value.trim();
+    if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+        return trimmed;
+    }
+
+    if (/^[a-z]+$/i.test(trimmed)) {
+        return trimmed.toLowerCase();
+    }
+
+    return '#d4d4d8';
+}
+
+function collectVariantImages(product) {
+    const images = [];
+
+    if (product?.cover_image) {
+        images.push(product.cover_image);
+    }
+
+    if (Array.isArray(product?.image_gallery)) {
+        images.push(...product.image_gallery.filter(Boolean));
+    }
+
+    if (product?.color_variant_images && typeof product.color_variant_images === 'object') {
+        Object.values(product.color_variant_images).forEach((items) => {
+            if (Array.isArray(items)) {
+                images.push(...items.filter(Boolean));
+            }
+        });
+    }
+
+    return images;
+}
+
+function groupProductsByName(products) {
+    const grouped = new Map();
+
+    products.forEach((product, index) => {
+        const name = String(product?.name || '').trim();
+        const key = name.toLowerCase() || `unnamed-${product?.id ?? index}`;
+        const existing = grouped.get(key);
+        const productColors = normalizeProductColors(product?.color);
+        const productImageCandidates = collectVariantImages(product);
+        const directVariantImages =
+            product?.color_variant_images && typeof product.color_variant_images === 'object'
+                ? product.color_variant_images
+                : {};
+
+        if (!existing) {
+            const next = {
+                ...product,
+                color: [...productColors],
+                image_gallery: [],
+                color_variant_images: {},
+            };
+
+            grouped.set(key, next);
+        }
+
+        const target = grouped.get(key);
+        const mergedColors = new Set(normalizeProductColors(target.color));
+        productColors.forEach((color) => mergedColors.add(color));
+        target.color = [...mergedColors];
+
+        const mergedGallery = new Set(Array.isArray(target.image_gallery) ? target.image_gallery.filter(Boolean) : []);
+        productImageCandidates.forEach((image) => mergedGallery.add(image));
+        target.image_gallery = [...mergedGallery];
+
+        if (!target.cover_image && product?.cover_image) {
+            target.cover_image = product.cover_image;
+        }
+
+        const variantMap = {
+            ...(target.color_variant_images && typeof target.color_variant_images === 'object' ? target.color_variant_images : {}),
+        };
+
+        productColors.forEach((color) => {
+            const mappedImages = Array.isArray(directVariantImages[color]) ? directVariantImages[color].filter(Boolean) : [];
+            const fallbackImages = mappedImages.length > 0 ? mappedImages : productImageCandidates;
+            const merged = new Set(Array.isArray(variantMap[color]) ? variantMap[color].filter(Boolean) : []);
+
+            fallbackImages.forEach((image) => merged.add(image));
+            if (merged.size > 0) {
+                variantMap[color] = [...merged];
+            }
+        });
+
+        target.color_variant_images = variantMap;
+    });
+
+    return [...grouped.values()];
+}
+
 function ColorSwatch({ color, active, onClick }) {
     return (
         <button
             type="button"
             title={color}
             onClick={onClick}
-            className={`inline-block size-4 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 ${
-                active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
+            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:border-zinc-500 ${
+                active ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-700'
             }`}
-            style={{ backgroundColor: color }}
-        />
+        >
+            <span
+                className="inline-block size-3 rounded-full border border-black/10"
+                style={{ backgroundColor: getSwatchColor(color) }}
+            />
+            <span>{color}</span>
+        </button>
     );
 }
 
@@ -52,11 +167,7 @@ function normalizeImageKey(path) {
 
 function ProductCard({ product, autoPlay = false }) {
     const colors = useMemo(
-        () => (Array.isArray(product.color)
-            ? product.color
-            : typeof product.color === 'string' && product.color
-                ? product.color.split(',').map((item) => item.trim()).filter(Boolean)
-                : []),
+        () => normalizeProductColors(product.color),
         [product.color],
     );
 
@@ -329,7 +440,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
 
     const displayProducts = loading
         ? PLACEHOLDER_PRODUCTS
-        : products;
+        : groupProductsByName(products);
 
     return (
         <section
@@ -355,7 +466,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                 >
                     {displayProducts.map((product, index) => (
                         <div
-                            key={product.id}
+                            key={product.id || `${product.name}-${index}`}
                             onClick={(event) => {
                                 if (!isBuilderPreview) {
                                     return;
