@@ -111,14 +111,14 @@ class ProductController extends Controller
         );
 
         $product = Product::query()->updateOrCreate(
-            ['name' => $validated['name']],
+            ['sku' => $validated['sku']],
             $validated,
         );
 
         return response()->json([
             'message' => $product->wasRecentlyCreated
                 ? 'Product created successfully'
-                : 'Product updated successfully (matched by product name)',
+                : 'Product updated successfully (matched by SKU)',
             'product' => $product,
         ], $product->wasRecentlyCreated ? 201 : 200);
     }

@@ -33,6 +33,10 @@ function pickVariantNumberValue(existingValue, fallbackValue) {
     return existingValue;
 }
 
+function buildVariantKey(color, size) {
+    return `${String(color || '').trim()}__${String(size || '').trim()}`;
+}
+
 export default function EditProduct() {
     const { id } = useParams();
     const location = useLocation();
@@ -139,7 +143,8 @@ export default function EditProduct() {
                 if (!ignore) {
                     const backendVariants = Array.isArray(data?.variant_rows) ? data.variant_rows : [];
                     const fallbackVariants = (location.state?.productGroup?.variants || []).map((variant, index) => ({
-                        key: variant?.id ? `variant-${variant.id}` : `variant-${index}`,
+                        id: variant?.id,
+                        key: buildVariantKey(variant?.color || '', variant?.size || '') || `variant-${index}`,
                         sku: variant?.sku || '',
                         color: Array.isArray(variant?.color)
                             ? variant.color.filter(Boolean).join(', ')
@@ -174,13 +179,14 @@ export default function EditProduct() {
 
                     if (backendVariants.length > 0) {
                         const nextRows = backendVariants.map((row, index) => ({
-                                key: row?.key || `${row?.color || 'color'}__${row?.size || 'size'}__${index}`,
-                                sku: row?.sku || '',
-                                color: row?.color || '',
-                                size: row?.size || '',
-                                stock: row?.stock ?? '',
-                                price: row?.price ?? '',
-                            }));
+                            id: row?.id,
+                            key: row?.key || buildVariantKey(row?.color || '', row?.size || '') || `variant-${index}`,
+                            sku: row?.sku || '',
+                            color: row?.color || '',
+                            size: row?.size || '',
+                            stock: row?.stock ?? '',
+                            price: row?.price ?? '',
+                        }));
 
                         setVariantRows(nextRows);
                         setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
@@ -200,13 +206,13 @@ export default function EditProduct() {
                             .filter(Boolean);
 
                         const singleRow = {
-                                key: `${data?.color || 'color'}__${data?.size || 'size'}__0`,
-                                sku: data?.sku || '',
-                                color: data?.color || '',
-                                size: data?.size || '',
-                                stock: data?.stock ?? '',
-                                price: data?.price ?? '',
-                            };
+                            key: buildVariantKey(data?.color || '', data?.size || '') || `${data?.color || 'color'}__${data?.size || 'size'}__0`,
+                            sku: data?.sku || '',
+                            color: data?.color || '',
+                            size: data?.size || '',
+                            stock: data?.stock ?? '',
+                            price: data?.price ?? '',
+                        };
 
                         setVariantRows([singleRow]);
                         setSelectedColors(
@@ -240,10 +246,6 @@ export default function EditProduct() {
     }, [id]);
 
     useEffect(() => {
-        if (isGroupEdit) {
-            return;
-        }
-
         if (selectedColors.length === 0 || selectedSizes.length === 0) {
             setVariantRows([]);
             return;
@@ -255,12 +257,13 @@ export default function EditProduct() {
 
             selectedColors.forEach((color) => {
                 selectedSizes.forEach((size) => {
-                    const key = `${color}__${size}`;
+                    const key = buildVariantKey(color, size);
                     const existing = previousByKey[key];
                     const defaultSkuSuffix = `${color}-${size}`.toUpperCase().replace(/\s+/g, '-');
 
                     next.push({
                         key,
+                        id: existing?.id,
                         color,
                         size,
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
@@ -401,56 +404,36 @@ export default function EditProduct() {
         setLoadError('');
 
         try {
-            if (isGroupEdit) {
-                for (const row of variantRows) {
-                    if (!row.sku?.trim()) {
-                        throw new Error('Each variant must have a SKU.');
-                    }
-
-                    if (row.price === '' || Number.isNaN(Number(row.price))) {
-                        throw new Error('Each variant must have a valid price.');
-                    }
-
-                    if (row.stock === '' || Number.isNaN(Number(row.stock))) {
-                        throw new Error('Each variant must have a valid stock value.');
-                    }
+            for (const row of variantRows) {
+                if (!row.sku?.trim()) {
+                    throw new Error('Each variant must have a SKU.');
                 }
 
-                await Promise.all(
-                    variantRows.map((row) =>
-                        updateProduct(row.id || id, {
-                            ...form,
-                            sku: row.sku.trim(),
-                            color: row.color?.trim() || '',
-                            size: row.size?.trim() || '',
-                            price: Number(row.price),
-                            stock: Number(row.stock),
-                            variant_rows: variantRows,
-                            color_variant_images: colorVariantImageMap,
-                            galleryImageFiles: newGalleryImageFiles,
-                            image_gallery_existing: existingGalleryUrls,
-                            clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
-                        }),
-                    ),
-                );
-            } else {
-                await updateProduct(id, {
-                    ...form,
-                    color:
-                        variantRows.length > 0
-                            ? [...new Set(variantRows.map((row) => row.color).filter(Boolean))].join(', ')
-                            : form.color,
-                    size:
-                        variantRows.length > 0
-                            ? [...new Set(variantRows.map((row) => row.size).filter(Boolean))].join(', ')
-                            : form.size,
-                    variant_rows: variantRows,
-                    color_variant_images: colorVariantImageMap,
-                    galleryImageFiles: newGalleryImageFiles,
-                    image_gallery_existing: existingGalleryUrls,
-                    clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
-                });
+                if (row.price === '' || Number.isNaN(Number(row.price))) {
+                    throw new Error('Each variant must have a valid price.');
+                }
+
+                if (row.stock === '' || Number.isNaN(Number(row.stock))) {
+                    throw new Error('Each variant must have a valid stock value.');
+                }
             }
+
+            await updateProduct(id, {
+                ...form,
+                color:
+                    variantRows.length > 0
+                        ? [...new Set(variantRows.map((row) => row.color).filter(Boolean))].join(', ')
+                        : form.color,
+                size:
+                    variantRows.length > 0
+                        ? [...new Set(variantRows.map((row) => row.size).filter(Boolean))].join(', ')
+                        : form.size,
+                variant_rows: variantRows,
+                color_variant_images: colorVariantImageMap,
+                galleryImageFiles: newGalleryImageFiles,
+                image_gallery_existing: existingGalleryUrls,
+                clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
+            });
 
             toast.success('Product updated successfully', {
                 style: {
