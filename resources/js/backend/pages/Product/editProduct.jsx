@@ -425,6 +425,11 @@ export default function EditProduct() {
                             size: row.size?.trim() || '',
                             price: Number(row.price),
                             stock: Number(row.stock),
+                            variant_rows: variantRows,
+                            color_variant_images: colorVariantImageMap,
+                            galleryImageFiles: newGalleryImageFiles,
+                            image_gallery_existing: existingGalleryUrls,
+                            clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
                         }),
                     ),
                 );
