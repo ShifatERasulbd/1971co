@@ -162,6 +162,8 @@ class ProductController extends Controller
 
         if ($request->hasFile('thumbnail_image')) {
             $validated['cover_image'] = $this->uploadThumbnailImage($request, $product->cover_image);
+        } elseif (! isset($validated['cover_image']) || trim((string) $validated['cover_image']) === '') {
+            unset($validated['cover_image']);
         }
 
         $existingGallery = $request->boolean('clear_gallery')
@@ -180,7 +182,9 @@ class ProductController extends Controller
                 is_array($existingGallery) ? $existingGallery : [],
                 $uploadedGallery,
             )));
-        } elseif ($request->has('image_gallery_existing') || $request->has('clear_gallery')) {
+        } elseif ($request->boolean('clear_gallery')) {
+            $validated['image_gallery'] = [];
+        } elseif ($request->has('image_gallery_existing') && is_array($request->input('image_gallery_existing')) && $request->input('image_gallery_existing') !== []) {
             $validated['image_gallery'] = array_values(array_filter(is_array($existingGallery) ? $existingGallery : []));
         }
 
