@@ -17,6 +17,9 @@ export default function EditForm({
     form = {},
     colorOptions = [],
     sizeOptions = [],
+    categoryOptions = [],
+    subCategoryOptions = [],
+    grandChildOptions = [],
     isOptionsLoading = false,
     colorSelectValue = '',
     sizeSelectValue = '',
@@ -221,6 +224,69 @@ export default function EditForm({
                             </div>
 
                             <div className="space-y-3">
+                                <h3 className="text-sm font-semibold text-foreground">Category</h3>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-category">Category</Label>
+                                        <select
+                                            id="product-category"
+                                            name="category_id"
+                                            value={form.category_id ?? ''}
+                                            onChange={onChange}
+                                            disabled={isSubmitting || isOptionsLoading}
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
+                                        >
+                                            <option value="">{isOptionsLoading ? 'Loading categories...' : 'Select category'}</option>
+                                            {categoryOptions.map((category) => (
+                                                <option key={category.id} value={category.id}>
+                                                    {category.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.category_id && <p className="text-xs text-destructive">{errors.category_id[0]}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-subcategory">SubCategory</Label>
+                                        <select
+                                            id="product-subcategory"
+                                            name="subcategory_id"
+                                            value={form.subcategory_id ?? ''}
+                                            onChange={onChange}
+                                            disabled={isSubmitting || isOptionsLoading}
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
+                                        >
+                                            <option value="">{isOptionsLoading ? 'Loading subcategories...' : 'Select subcategory'}</option>
+                                            {subCategoryOptions.map((subcategory) => (
+                                                <option key={subcategory.id} value={subcategory.id}>
+                                                    {subcategory.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.subcategory_id && <p className="text-xs text-destructive">{errors.subcategory_id[0]}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-grandchild">GrandChild</Label>
+                                        <select
+                                            id="product-grandchild"
+                                            name="grand_child_id"
+                                            value={form.grand_child_id ?? ''}
+                                            onChange={onChange}
+                                            disabled={isSubmitting || isOptionsLoading}
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-1 focus-visible:ring-ring"
+                                        >
+                                            <option value="">{isOptionsLoading ? 'Loading grand childs...' : 'Select grandchild'}</option>
+                                            {grandChildOptions.map((grandChild) => (
+                                                <option key={grandChild.id} value={grandChild.id}>
+                                                    {grandChild.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.grand_child_id && <p className="text-xs text-destructive">{errors.grand_child_id[0]}</p>}
+                                    </div>
+                                </div>
+
                                 <h3 className="text-sm font-semibold text-foreground">Variation</h3>
                                 <div className="flex items-center gap-2 rounded-md border bg-muted/10 px-3 py-2">
                                     <Input

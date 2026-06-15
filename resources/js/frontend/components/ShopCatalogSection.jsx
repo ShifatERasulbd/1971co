@@ -64,7 +64,7 @@ function ShopProductsGrid() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                 ))}
@@ -92,7 +92,7 @@ function ShopProductsGrid() {
 export default function ShopCatalogSection() {
     return (
         <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
-            <div className="mx-auto grid w-full max-w-[1480px] gap-8 lg:grid-cols-[280px_1fr] lg:gap-10">
+            <div className="mx-auto grid w-full max-w-[1709px] gap-8 lg:grid-cols-[280px_1fr] lg:gap-10">
                 <ShopSidebar />
                 <ShopProductsGrid />
             </div>

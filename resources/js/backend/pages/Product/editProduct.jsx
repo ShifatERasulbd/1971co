@@ -4,8 +4,11 @@ import { toast } from 'sonner';
 
 import EditForm from '@/components/products/editForm';
 import { useAppContext } from '@/context/AppContext';
+import { fetchCategories } from '@/pages/Category/api';
 import { fetchColors } from '@/pages/Color/api';
+import { fetchGrandChilds } from '@/pages/GrandChild/api';
 import { fetchSizes } from '@/pages/Size/api';
+import { fetchSubCategories } from '@/pages/SubCategory/api';
 
 import { fetchProduct, updateProduct } from './api';
 
@@ -21,6 +24,7 @@ const initialForm = {
     cover_image: '',
     category_id: '',
     subcategory_id: '',
+    grand_child_id: '',
     stock: '',
     show_on_best_sellers: false,
 };
@@ -49,6 +53,9 @@ export default function EditProduct() {
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
+    const [categoryOptions, setCategoryOptions] = useState([]);
+    const [subCategoryOptions, setSubCategoryOptions] = useState([]);
+    const [grandChildOptions, setGrandChildOptions] = useState([]);
     const [isOptionsLoading, setIsOptionsLoading] = useState(true);
     const [colorSelectValue, setColorSelectValue] = useState('');
     const [sizeSelectValue, setSizeSelectValue] = useState('');
@@ -97,15 +104,27 @@ export default function EditProduct() {
             setIsOptionsLoading(true);
 
             try {
-                const [colors, sizes] = await Promise.all([fetchColors(), fetchSizes()]);
+                const [colors, sizes, categories, subCategories, grandChilds] = await Promise.all([
+                    fetchColors(),
+                    fetchSizes(),
+                    fetchCategories(),
+                    fetchSubCategories(),
+                    fetchGrandChilds(),
+                ]);
                 if (!ignore) {
                     setColorOptions(Array.isArray(colors) ? colors : []);
                     setSizeOptions(Array.isArray(sizes) ? sizes : []);
+                    setCategoryOptions(Array.isArray(categories) ? categories : []);
+                    setSubCategoryOptions(Array.isArray(subCategories) ? subCategories : []);
+                    setGrandChildOptions(Array.isArray(grandChilds) ? grandChilds : []);
                 }
             } catch {
                 if (!ignore) {
                     setColorOptions([]);
                     setSizeOptions([]);
+                    setCategoryOptions([]);
+                    setSubCategoryOptions([]);
+                    setGrandChildOptions([]);
                 }
             } finally {
                 if (!ignore) {
@@ -166,6 +185,7 @@ export default function EditProduct() {
                         cover_image: data?.cover_image || '',
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
+                        grand_child_id: data?.grand_child_id ?? '',
                         stock: data?.stock ?? '',
                         show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                     });
@@ -301,7 +321,20 @@ export default function EditProduct() {
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
         const nextValue = type === 'checkbox' ? checked : value;
-        setForm((previous) => ({ ...previous, [name]: nextValue }));
+        setForm((previous) => {
+            const next = { ...previous, [name]: nextValue };
+
+            if (name === 'category_id') {
+                next.subcategory_id = '';
+                next.grand_child_id = '';
+            }
+
+            if (name === 'subcategory_id') {
+                next.grand_child_id = '';
+            }
+
+            return next;
+        });
         setErrors((previous) => {
             if (!previous[name]) return previous;
             const next = { ...previous };
@@ -309,6 +342,32 @@ export default function EditProduct() {
             return next;
         });
     };
+
+    const filteredSubCategoryOptions = useMemo(() => {
+        if (!form.category_id) {
+            return subCategoryOptions;
+        }
+
+        return subCategoryOptions.filter(
+            (item) => String(item.category_id ?? '') === String(form.category_id),
+        );
+    }, [subCategoryOptions, form.category_id]);
+
+    const filteredGrandChildOptions = useMemo(() => {
+        if (form.subcategory_id) {
+            return grandChildOptions.filter(
+                (item) => String(item.child_id ?? item.sub_category_id ?? '') === String(form.subcategory_id),
+            );
+        }
+
+        if (form.category_id) {
+            return grandChildOptions.filter(
+                (item) => String(item.category_id ?? '') === String(form.category_id),
+            );
+        }
+
+        return grandChildOptions;
+    }, [grandChildOptions, form.subcategory_id, form.category_id]);
 
     const handleVariantRowChange = (rowKey, field, value) => {
         setVariantRows((previous) =>
@@ -469,6 +528,9 @@ export default function EditProduct() {
                     form={form}
                     colorOptions={colorOptions}
                     sizeOptions={sizeOptions}
+                    categoryOptions={categoryOptions}
+                    subCategoryOptions={filteredSubCategoryOptions}
+                    grandChildOptions={filteredGrandChildOptions}
                     isOptionsLoading={isOptionsLoading}
                     colorSelectValue={colorSelectValue}
                     sizeSelectValue={sizeSelectValue}

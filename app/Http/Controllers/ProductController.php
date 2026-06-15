@@ -32,6 +32,7 @@ class ProductController extends Controller
             'color_variant_images',
             'category_id',
             'subcategory_id',
+            'grand_child_id',
             'show_on_best_sellers',
         ];
 
@@ -73,6 +74,7 @@ class ProductController extends Controller
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
+            'grand_child_id' => 'nullable|integer',
             'stock' => 'required|integer',
             'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',
@@ -146,6 +148,7 @@ class ProductController extends Controller
             'clear_gallery' => 'nullable|boolean',
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
+            'grand_child_id' => 'nullable|integer',
             'stock' => 'required|integer',
             'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',

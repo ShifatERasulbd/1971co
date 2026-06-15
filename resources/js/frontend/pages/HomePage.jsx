@@ -32,8 +32,20 @@ const defaultSectionOrder = [
     'newsletter',
 ];
 
+function normalizeSectionOrder(order) {
+    const incoming = Array.isArray(order) ? order : [];
+    const safeOrder = incoming.filter((key) => Object.prototype.hasOwnProperty.call(sectionRegistry, key));
+    const uniqueOrder = [...new Set(safeOrder)];
+
+    if (!uniqueOrder.includes('hero')) {
+        uniqueOrder.unshift('hero');
+    }
+
+    return uniqueOrder;
+}
+
 export default function HomePage() {
-    const [sectionOrder, setSectionOrder] = useState(defaultSectionOrder);
+    const [sectionOrder, setSectionOrder] = useState(() => normalizeSectionOrder(defaultSectionOrder));
     const [bestSellersConfig, setBestSellersConfig] = useState({
         title: 'Best Sellers',
         position: 3,
@@ -133,7 +145,7 @@ export default function HomePage() {
                 return;
             }
 
-            const safeOrder = incomingOrder.filter((key) => Object.prototype.hasOwnProperty.call(sectionRegistry, key));
+            const safeOrder = normalizeSectionOrder(incomingOrder);
             if (safeOrder.length > 0) {
                 setSectionOrder(safeOrder);
             }

@@ -26,6 +26,7 @@ class Product extends Model
         'color_variant_images',
         'category_id',
         'subcategory_id',
+        'grand_child_id',
         'stock',
         'show_on_best_sellers',
     ];
