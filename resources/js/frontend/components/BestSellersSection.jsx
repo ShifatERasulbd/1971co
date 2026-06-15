@@ -28,7 +28,22 @@ function normalizeProductColors(value) {
     return [];
 }
 
-function getSwatchColor(value) {
+function normalizeColorLookupEntry(record) {
+    if (!record || typeof record !== 'object') {
+        return null;
+    }
+
+    const name = String(record.name || '').trim();
+    const colorCode = String(record.color_code || '').trim();
+
+    if (!name || !/^#[0-9a-f]{6}$/i.test(colorCode)) {
+        return null;
+    }
+
+    return [name.toLowerCase(), colorCode];
+}
+
+function getSwatchColor(value, colorLookup = {}) {
     if (typeof value !== 'string') {
         return '#d4d4d8';
     }
@@ -40,6 +55,11 @@ function getSwatchColor(value) {
 
     if (/^[a-z]+$/i.test(trimmed)) {
         return trimmed.toLowerCase();
+    }
+
+    const mappedColor = colorLookup[trimmed.toLowerCase()];
+    if (mappedColor) {
+        return mappedColor;
     }
 
     return '#d4d4d8';
@@ -126,22 +146,17 @@ function groupProductsByName(products) {
     return [...grouped.values()];
 }
 
-function ColorSwatch({ color, active, onClick }) {
+function ColorSwatch({ color, active, onClick, colorLookup }) {
     return (
         <button
             type="button"
             title={color}
             onClick={onClick}
-            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:border-zinc-500 ${
-                active ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-700'
+            className={`inline-block size-4 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 ${
+                active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
             }`}
-        >
-            <span
-                className="inline-block size-3 rounded-full border border-black/10"
-                style={{ backgroundColor: getSwatchColor(color) }}
-            />
-            <span>{color}</span>
-        </button>
+            style={{ backgroundColor: getSwatchColor(color, colorLookup) }}
+        />
     );
 }
 
@@ -165,7 +180,7 @@ function normalizeImageKey(path) {
     return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
 }
 
-function ProductCard({ product, autoPlay = false }) {
+function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
     const colors = useMemo(
         () => normalizeProductColors(product.color),
         [product.color],
@@ -322,6 +337,7 @@ function ProductCard({ product, autoPlay = false }) {
                                 key={`${c}-${i}`}
                                 color={c}
                                 active={selectedColor === c}
+                                colorLookup={colorLookup}
                                 onClick={(event) => handleSelectColor(c, event)}
                             />
                         ))}
@@ -344,6 +360,7 @@ function ProductCard({ product, autoPlay = false }) {
 
 export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
     const [products, setProducts] = useState([]);
+    const [colorLookup, setColorLookup] = useState({});
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
     const [isBuilderPreview] = useState(() => {
@@ -399,6 +416,10 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
 
         async function load() {
             try {
+                const colorPromise = fetch('/api/public/colors', {
+                    headers: { Accept: 'application/json' },
+                });
+
                 const res = await fetch('/api/public/products', {
                     headers: { Accept: 'application/json' },
                 });
@@ -422,12 +443,30 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                     }
                 }
 
+                const colorRes = await colorPromise;
+                let nextColorLookup = {};
+
+                if (colorRes.ok) {
+                    const colorData = await colorRes.json();
+                    const colorList = Array.isArray(colorData)
+                        ? colorData
+                        : (Array.isArray(colorData?.data) ? colorData.data : []);
+
+                    nextColorLookup = Object.fromEntries(
+                        colorList
+                            .map(normalizeColorLookupEntry)
+                            .filter(Boolean),
+                    );
+                }
+
                 if (!ignore) {
                     setProducts(finalProducts);
+                    setColorLookup(nextColorLookup);
                 }
             } catch {
                 if (!ignore) {
                     setProducts([]);
+                    setColorLookup({});
                 }
             } finally {
                 if (!ignore) setLoading(false);
@@ -477,7 +516,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                                 notifyBuilderSelection(index);
                             }}
                         >
-                            <ProductCard product={product} autoPlay={isBuilderPreview} />
+                            <ProductCard product={product} autoPlay={isBuilderPreview} colorLookup={colorLookup} />
                         </div>
                     ))}
                 </div>

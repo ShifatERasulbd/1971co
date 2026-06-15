@@ -55,6 +55,7 @@ Route::prefix('api')->withoutMiddleware([ValidateCsrfToken::class])->group(funct
     Route::get('/public/hero', [HeroController::class, 'publicHero']);
     Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
     Route::get('/public/features', [FeaturesController::class, 'publicIndex']);
+    Route::get('/public/colors', [ColorController::class, 'index']);
     Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
     Route::get('/public/our-story', [OurStorySectionController::class, 'publicIndex']);
     Route::get('/public/products', [\App\Http\Controllers\ProductController::class, 'publicIndex']);
