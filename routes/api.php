@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ColorController;
 use App\Http\Controllers\AboutHeroController;
+use App\Http\Controllers\AboutGivingBackController;
 use App\Http\Controllers\AboutMissionController;
 use App\Http\Controllers\AboutStoryController;
 use App\Http\Controllers\FeaturesController;
@@ -26,6 +27,7 @@ Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
 Route::get('/public/about-hero', [AboutHeroController::class, 'publicIndex']);
 Route::get('/public/about-story', [AboutStoryController::class, 'publicIndex']);
 Route::get('/public/about-mission', [AboutMissionController::class, 'publicIndex']);
+Route::get('/public/about-giving-back', [AboutGivingBackController::class, 'publicIndex']);
 Route::get('/public/features', [FeaturesController::class, 'publicIndex']);
 Route::get('/public/colors', [ColorController::class, 'index']);
 Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
@@ -55,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/about-story', [AboutStoryController::class, 'update']);
 	Route::get('/about-mission', [AboutMissionController::class, 'index']);
 	Route::post('/about-mission', [AboutMissionController::class, 'update']);
+	Route::get('/about-giving-back', [AboutGivingBackController::class, 'index']);
+	Route::post('/about-giving-back', [AboutGivingBackController::class, 'update']);
 	Route::apiResource('/features', FeaturesController::class);
 
 	Route::get('/collections', [CollectionController::class, 'index']);

@@ -7,12 +7,15 @@ import { useAppContext } from '@/context/AppContext';
 import AboutHeroEditorDrawer from '@/components/website/AboutHeroEditorDrawer';
 import AboutStoryEditorDrawer from '@/components/website/AboutStoryEditorDrawer';
 import AboutMissionEditorDrawer from '@/components/website/AboutMissionEditorDrawer';
+import AboutGivingBackEditorDrawer from '@/components/website/AboutGivingBackEditorDrawer';
 import AboutPagePreviewCard from '@/components/website/AboutPagePreviewCard';
 import AboutPageSectionsCard from '@/components/website/AboutPageSectionsCard';
 import { aboutSections } from '@/components/website/aboutPageBuilderData';
 import { fetchAboutHero, updateAboutHero } from '@/pages/Website/aboutHeroApi';
 import { fetchAboutStory, updateAboutStory } from '@/pages/Website/aboutStoryApi';
 import { fetchAboutMission, updateAboutMission } from '@/pages/Website/aboutMissionApi';
+import { fetchAboutGivingBack, updateAboutGivingBack } from '@/pages/Website/aboutGivingBackApi';
+import { defaultAboutGivingBackDraft } from '@/pages/Website/aboutGivingBackDefaults';
 
 const defaultAboutHeroDraft = {
     background_image: '/uploads/heroes/images/hero1.webp',
@@ -59,6 +62,10 @@ export default function AboutPageBuilder() {
     const [aboutMissionDraft, setAboutMissionDraft] = useState(defaultAboutMissionDraft);
     const [aboutMissionImageFile, setAboutMissionImageFile] = useState(null);
     const [isSavingAboutMission, setIsSavingAboutMission] = useState(false);
+    const [isGivingBackDrawerOpen, setIsGivingBackDrawerOpen] = useState(false);
+    const [aboutGivingBackDraft, setAboutGivingBackDraft] = useState(defaultAboutGivingBackDraft);
+    const [aboutGivingBackImageFile, setAboutGivingBackImageFile] = useState(null);
+    const [isSavingGivingBack, setIsSavingGivingBack] = useState(false);
 
     useEffect(() => {
         setPageTitle('About Page Builder');
@@ -88,6 +95,39 @@ export default function AboutPageBuilder() {
         }
 
         loadAboutHero();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadAboutGivingBack() {
+            try {
+                const payload = await fetchAboutGivingBack();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                setAboutGivingBackDraft((previous) => ({
+                    ...previous,
+                    image: payload.image || previous.image,
+                    section_title: payload.section_title || previous.section_title,
+                    title: payload.title || previous.title,
+                    description: payload.description ?? previous.description,
+                    points: Array.isArray(payload.points) && payload.points.length > 0
+                        ? payload.points
+                        : previous.points,
+                }));
+                setAboutGivingBackImageFile(null);
+            } catch {
+                // Keep default draft when endpoint is unavailable.
+            }
+        }
+
+        loadAboutGivingBack();
 
         return () => {
             ignore = true;
@@ -244,6 +284,21 @@ export default function AboutPageBuilder() {
     }, [aboutMissionDraft]);
 
     useEffect(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_GIVING_BACK_PREVIEW_UPDATE',
+                payload: aboutGivingBackDraft,
+            },
+            window.location.origin
+        );
+    }, [aboutGivingBackDraft]);
+
+    useEffect(() => {
         function handlePreviewMessage(event) {
             if (event.origin !== window.location.origin) {
                 return;
@@ -259,6 +314,7 @@ export default function AboutPageBuilder() {
                 setIsAboutHeroDrawerOpen(true);
                 setIsAboutStoryDrawerOpen(false);
                 setIsAboutMissionDrawerOpen(false);
+                setIsGivingBackDrawerOpen(false);
                 return;
             }
 
@@ -267,6 +323,7 @@ export default function AboutPageBuilder() {
                 setIsAboutStoryDrawerOpen(true);
                 setIsAboutHeroDrawerOpen(false);
                 setIsAboutMissionDrawerOpen(false);
+                setIsGivingBackDrawerOpen(false);
                 const target = iframeRef.current?.contentWindow;
                 if (target) {
                     target.postMessage(
@@ -285,6 +342,7 @@ export default function AboutPageBuilder() {
                 setIsAboutMissionDrawerOpen(true);
                 setIsAboutHeroDrawerOpen(false);
                 setIsAboutStoryDrawerOpen(false);
+                setIsGivingBackDrawerOpen(false);
 
                 const target = iframeRef.current?.contentWindow;
                 if (target) {
@@ -292,6 +350,26 @@ export default function AboutPageBuilder() {
                         {
                             type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
                             payload: { sectionKey: 'our-mission' },
+                        },
+                        window.location.origin
+                    );
+                }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_GIVING_BACK_SECTION_SELECTED') {
+                setSelectedSectionKey('giving-back');
+                setIsGivingBackDrawerOpen(true);
+                setIsAboutHeroDrawerOpen(false);
+                setIsAboutStoryDrawerOpen(false);
+                setIsAboutMissionDrawerOpen(false);
+
+                const target = iframeRef.current?.contentWindow;
+                if (target) {
+                    target.postMessage(
+                        {
+                            type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                            payload: { sectionKey: 'giving-back' },
                         },
                         window.location.origin
                     );
@@ -340,6 +418,7 @@ export default function AboutPageBuilder() {
             setIsAboutHeroDrawerOpen(true);
             setIsAboutStoryDrawerOpen(false);
             setIsAboutMissionDrawerOpen(false);
+            setIsGivingBackDrawerOpen(false);
             return;
         }
 
@@ -347,6 +426,7 @@ export default function AboutPageBuilder() {
             setIsAboutStoryDrawerOpen(true);
             setIsAboutHeroDrawerOpen(false);
             setIsAboutMissionDrawerOpen(false);
+            setIsGivingBackDrawerOpen(false);
 
             const target = iframeRef.current?.contentWindow;
             if (target) {
@@ -365,6 +445,7 @@ export default function AboutPageBuilder() {
             setIsAboutMissionDrawerOpen(true);
             setIsAboutHeroDrawerOpen(false);
             setIsAboutStoryDrawerOpen(false);
+            setIsGivingBackDrawerOpen(false);
 
             const target = iframeRef.current?.contentWindow;
             if (target) {
@@ -379,9 +460,29 @@ export default function AboutPageBuilder() {
             return;
         }
 
+        if (section.key === 'giving-back') {
+            setIsGivingBackDrawerOpen(true);
+            setIsAboutHeroDrawerOpen(false);
+            setIsAboutStoryDrawerOpen(false);
+            setIsAboutMissionDrawerOpen(false);
+
+            const target = iframeRef.current?.contentWindow;
+            if (target) {
+                target.postMessage(
+                    {
+                        type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                        payload: { sectionKey: 'giving-back' },
+                    },
+                    window.location.origin
+                );
+            }
+            return;
+        }
+
         setIsAboutHeroDrawerOpen(false);
         setIsAboutStoryDrawerOpen(false);
         setIsAboutMissionDrawerOpen(false);
+        setIsGivingBackDrawerOpen(false);
     }
 
     function handleAboutHeroChangeField(field, value) {
@@ -581,6 +682,101 @@ export default function AboutPageBuilder() {
         }
     }
 
+    function handleAboutGivingBackChangeField(field, value) {
+        setAboutGivingBackDraft((previous) => ({
+            ...previous,
+            [field]: value,
+        }));
+    }
+
+    function handleAboutGivingBackImageUpload(file) {
+        setAboutGivingBackImageFile(file);
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleAboutGivingBackChangeField('image', reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleAboutGivingBackPointChange(index, value) {
+        setAboutGivingBackDraft((previous) => ({
+            ...previous,
+            points: (previous.points || []).map((point, pointIndex) =>
+                pointIndex === index ? value : point
+            ),
+        }));
+    }
+
+    function handleAddGivingBackPoint() {
+        setAboutGivingBackDraft((previous) => ({
+            ...previous,
+            points: [...(previous.points || []), `Point ${(previous.points || []).length + 1}`],
+        }));
+    }
+
+    function handleRemoveGivingBackPoint(index) {
+        setAboutGivingBackDraft((previous) => ({
+            ...previous,
+            points: (previous.points || []).filter((_, pointIndex) => pointIndex !== index),
+        }));
+    }
+
+    function handleReorderGivingBackPoint(sourceIndex, targetIndex) {
+        setAboutGivingBackDraft((previous) => {
+            const nextPoints = [...(previous.points || [])];
+            if (
+                sourceIndex < 0 ||
+                targetIndex < 0 ||
+                sourceIndex >= nextPoints.length ||
+                targetIndex >= nextPoints.length ||
+                sourceIndex === targetIndex
+            ) {
+                return previous;
+            }
+
+            const [moved] = nextPoints.splice(sourceIndex, 1);
+            nextPoints.splice(targetIndex, 0, moved);
+            return { ...previous, points: nextPoints };
+        });
+    }
+
+    async function handleSaveAboutGivingBack() {
+        setIsSavingGivingBack(true);
+
+        try {
+            const payload = await updateAboutGivingBack({
+                ...aboutGivingBackDraft,
+                image: aboutGivingBackImageFile || aboutGivingBackDraft.image,
+            });
+
+            const normalized = {
+                image: payload?.image || defaultAboutGivingBackDraft.image,
+                section_title: payload?.section_title || defaultAboutGivingBackDraft.section_title,
+                title: payload?.title || defaultAboutGivingBackDraft.title,
+                description: payload?.description ?? defaultAboutGivingBackDraft.description,
+                points: Array.isArray(payload?.points) && payload.points.length > 0
+                    ? payload.points
+                    : defaultAboutGivingBackDraft.points,
+            };
+
+            setAboutGivingBackDraft(normalized);
+            setAboutGivingBackImageFile(null);
+
+            toast.success('Giving back saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save giving back section.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingGivingBack(false);
+        }
+    }
+
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="grid items-start gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
@@ -632,6 +828,20 @@ export default function AboutPageBuilder() {
                 onReorderItem={handleReorderMissionItem}
                 onSave={handleSaveAboutMission}
                 isSaving={isSavingAboutMission}
+            />
+
+            <AboutGivingBackEditorDrawer
+                open={isGivingBackDrawerOpen}
+                onOpenChange={setIsGivingBackDrawerOpen}
+                value={aboutGivingBackDraft}
+                onChangeField={handleAboutGivingBackChangeField}
+                onUploadImage={handleAboutGivingBackImageUpload}
+                onChangePoint={handleAboutGivingBackPointChange}
+                onAddPoint={handleAddGivingBackPoint}
+                onRemovePoint={handleRemoveGivingBackPoint}
+                onReorderPoint={handleReorderGivingBackPoint}
+                onSave={handleSaveAboutGivingBack}
+                isSaving={isSavingGivingBack}
             />
         </DndProvider>
     );
