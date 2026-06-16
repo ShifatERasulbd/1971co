@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 
 const ITEM_TYPE = 'ABOUT_SECTION';
 
-function SectionRow({ section, index, selectedSectionKey, onSelectSection, onStatusToggle, onReorder }) {
+function SectionRow({
+    section,
+    index,
+    selectedSectionKey,
+    onSelectSection,
+    onSectionActivate,
+    onStatusToggle,
+    onReorder,
+}) {
     const ref = useRef(null);
 
     const [{ isDragging }, drag] = useDrag(
@@ -65,10 +73,14 @@ function SectionRow({ section, index, selectedSectionKey, onSelectSection, onSta
             ref={ref}
             role="button"
             tabIndex={0}
-            onClick={() => onSelectSection?.(section.key)}
+            onClick={() => {
+                onSelectSection?.(section.key);
+                onSectionActivate?.(section);
+            }}
             onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                     onSelectSection?.(section.key);
+                    onSectionActivate?.(section);
                 }
             }}
             className={[
@@ -124,6 +136,7 @@ export default function AboutPageSectionsCard({
     sections,
     selectedSectionKey,
     onSectionSelect,
+    onSectionActivate,
     onStatusToggle,
     onReorder,
 }) {
@@ -146,6 +159,7 @@ export default function AboutPageSectionsCard({
                         index={index}
                         selectedSectionKey={selectedSectionKey}
                         onSelectSection={onSectionSelect}
+                            onSectionActivate={onSectionActivate}
                         onStatusToggle={onStatusToggle}
                         onReorder={onReorder}
                     />

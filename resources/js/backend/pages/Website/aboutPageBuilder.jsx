@@ -1,20 +1,160 @@
 import { useEffect, useRef, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { toast } from 'sonner';
+
 import { useAppContext } from '@/context/AppContext';
+import AboutHeroEditorDrawer from '@/components/website/AboutHeroEditorDrawer';
+import AboutStoryEditorDrawer from '@/components/website/AboutStoryEditorDrawer';
+import AboutMissionEditorDrawer from '@/components/website/AboutMissionEditorDrawer';
 import AboutPagePreviewCard from '@/components/website/AboutPagePreviewCard';
 import AboutPageSectionsCard from '@/components/website/AboutPageSectionsCard';
 import { aboutSections } from '@/components/website/aboutPageBuilderData';
+import { fetchAboutHero, updateAboutHero } from '@/pages/Website/aboutHeroApi';
+import { fetchAboutStory, updateAboutStory } from '@/pages/Website/aboutStoryApi';
+import { fetchAboutMission, updateAboutMission } from '@/pages/Website/aboutMissionApi';
+
+const defaultAboutHeroDraft = {
+    background_image: '/uploads/heroes/images/hero1.webp',
+    section_title: 'Our Story',
+    title: 'Heritage. Culture. Style.',
+    description: 'Redefining streetwear through bold design and authentic self-expression.',
+};
+
+const defaultAboutStoryDraft = {
+    background_image: '/uploads/heroes/images/hero1.webp',
+    section_title: 'The Beginning',
+    title: 'Why 1971?',
+    description_html:
+        '<p>"1971" carries deep historical significance representing independence, pride, and cultural identity. It signals that our brand is rooted in Bangladeshi legacy, not copying Western streetwear but redefining its own path.</p><p>The "Co" brings a fresh, youthful street vibe clean, approachable, and contemporary. Together, they represent our mission: heritage meets modern street culture.</p><p>At 1971Co, we believe streetwear is more than clothing. It\'s a statement of identity and confidence. Our designs combine bold aesthetics, urban culture influences, and high-quality craftsmanship to help individuals express themselves fearlessly.</p>',
+};
+
+const defaultAboutMissionDraft = {
+    background_image: '/uploads/heroes/images/hero1.webp',
+    title: 'Our Mission',
+    description:
+        'Our mission is to make personalized fashion accessible, premium, and expressive. We aim to deliver apparel that combines comfort, durability, and modern design while giving customers the freedom to create styles that represent their identity.',
+    items: [
+        { icon: 'BadgeCheck', title: 'Premium-Quality' },
+        { icon: 'SlidersHorizontal', title: 'Creative Customization' },
+        { icon: 'Gift', title: 'Long-Term Partnerships' },
+        { icon: 'Handshake', title: 'Modern Fashion Designed' },
+    ],
+};
 
 export default function AboutPageBuilder() {
     const { setPageTitle } = useAppContext();
     const iframeRef = useRef(null);
     const [sections, setSections] = useState(aboutSections);
     const [selectedSectionKey, setSelectedSectionKey] = useState(null);
+    const [isAboutHeroDrawerOpen, setIsAboutHeroDrawerOpen] = useState(false);
+    const [aboutHeroDraft, setAboutHeroDraft] = useState(defaultAboutHeroDraft);
+    const [aboutHeroImageFile, setAboutHeroImageFile] = useState(null);
+    const [isSavingAboutHero, setIsSavingAboutHero] = useState(false);
+    const [isAboutStoryDrawerOpen, setIsAboutStoryDrawerOpen] = useState(false);
+    const [aboutStoryDraft, setAboutStoryDraft] = useState(defaultAboutStoryDraft);
+    const [aboutStoryImageFile, setAboutStoryImageFile] = useState(null);
+    const [isSavingAboutStory, setIsSavingAboutStory] = useState(false);
+    const [isAboutMissionDrawerOpen, setIsAboutMissionDrawerOpen] = useState(false);
+    const [aboutMissionDraft, setAboutMissionDraft] = useState(defaultAboutMissionDraft);
+    const [aboutMissionImageFile, setAboutMissionImageFile] = useState(null);
+    const [isSavingAboutMission, setIsSavingAboutMission] = useState(false);
 
     useEffect(() => {
         setPageTitle('About Page Builder');
     }, [setPageTitle]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadAboutHero() {
+            try {
+                const payload = await fetchAboutHero();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                setAboutHeroDraft((previous) => ({
+                    ...previous,
+                    background_image: payload.background_image || previous.background_image,
+                    section_title: payload.section_title || previous.section_title,
+                    title: payload.title || previous.title,
+                    description: payload.description ?? previous.description,
+                }));
+                setAboutHeroImageFile(null);
+            } catch {
+                // Keep the default draft if the about hero endpoint is unavailable.
+            }
+        }
+
+        loadAboutHero();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadAboutStory() {
+            try {
+                const payload = await fetchAboutStory();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                setAboutStoryDraft((previous) => ({
+                    ...previous,
+                    background_image: payload.background_image || previous.background_image,
+                    section_title: payload.section_title || previous.section_title,
+                    title: payload.title || previous.title,
+                    description_html: payload.description_html ?? previous.description_html,
+                }));
+                setAboutStoryImageFile(null);
+            } catch {
+                // Keep the default draft if the about story endpoint is unavailable.
+            }
+        }
+
+        loadAboutStory();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadAboutMission() {
+            try {
+                const payload = await fetchAboutMission();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                setAboutMissionDraft((previous) => ({
+                    ...previous,
+                    background_image: payload.background_image || previous.background_image,
+                    title: payload.title || previous.title,
+                    description: payload.description ?? previous.description,
+                    items: Array.isArray(payload.items) && payload.items.length > 0
+                        ? payload.items
+                        : previous.items,
+                }));
+                setAboutMissionImageFile(null);
+            } catch {
+                // Keep the default draft if the mission endpoint is unavailable.
+            }
+        }
+
+        loadAboutMission();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     const publishSectionsLayout = () => {
         const target = iframeRef.current?.contentWindow;
@@ -58,6 +198,113 @@ export default function AboutPageBuilder() {
         publishPreviewMode();
     }, []);
 
+    useEffect(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_ABOUT_HERO_PREVIEW_UPDATE',
+                payload: aboutHeroDraft,
+            },
+            window.location.origin
+        );
+    }, [aboutHeroDraft]);
+
+    useEffect(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_1971_STORY_PREVIEW_UPDATE',
+                payload: aboutStoryDraft,
+            },
+            window.location.origin
+        );
+    }, [aboutStoryDraft]);
+
+    useEffect(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_OUR_MISSION_PREVIEW_UPDATE',
+                payload: aboutMissionDraft,
+            },
+            window.location.origin
+        );
+    }, [aboutMissionDraft]);
+
+    useEffect(() => {
+        function handlePreviewMessage(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+
+            const data = event.data;
+            if (!data) {
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_ABOUT_HERO_SECTION_SELECTED') {
+                setSelectedSectionKey('hero');
+                setIsAboutHeroDrawerOpen(true);
+                setIsAboutStoryDrawerOpen(false);
+                setIsAboutMissionDrawerOpen(false);
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_1971_STORY_SECTION_SELECTED') {
+                setSelectedSectionKey('1971-about');
+                setIsAboutStoryDrawerOpen(true);
+                setIsAboutHeroDrawerOpen(false);
+                setIsAboutMissionDrawerOpen(false);
+                const target = iframeRef.current?.contentWindow;
+                if (target) {
+                    target.postMessage(
+                        {
+                            type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                            payload: { sectionKey: '1971-about' },
+                        },
+                        window.location.origin
+                    );
+                }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_OUR_MISSION_SECTION_SELECTED') {
+                setSelectedSectionKey('our-mission');
+                setIsAboutMissionDrawerOpen(true);
+                setIsAboutHeroDrawerOpen(false);
+                setIsAboutStoryDrawerOpen(false);
+
+                const target = iframeRef.current?.contentWindow;
+                if (target) {
+                    target.postMessage(
+                        {
+                            type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                            payload: { sectionKey: 'our-mission' },
+                        },
+                        window.location.origin
+                    );
+                }
+            }
+        }
+
+        window.addEventListener('message', handlePreviewMessage);
+        return () => {
+            window.removeEventListener('message', handlePreviewMessage);
+        };
+    }, []);
+
     const handleSectionStatusToggle = (sectionKey) => {
         setSections((prev) =>
             prev.map((section) =>
@@ -86,6 +333,254 @@ export default function AboutPageBuilder() {
         setSections(newSections);
     };
 
+    function handleSectionActivate(section) {
+        setSelectedSectionKey(section.key);
+
+        if (section.key === 'hero') {
+            setIsAboutHeroDrawerOpen(true);
+            setIsAboutStoryDrawerOpen(false);
+            setIsAboutMissionDrawerOpen(false);
+            return;
+        }
+
+        if (section.key === '1971-about') {
+            setIsAboutStoryDrawerOpen(true);
+            setIsAboutHeroDrawerOpen(false);
+            setIsAboutMissionDrawerOpen(false);
+
+            const target = iframeRef.current?.contentWindow;
+            if (target) {
+                target.postMessage(
+                    {
+                        type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                        payload: { sectionKey: '1971-about' },
+                    },
+                    window.location.origin
+                );
+            }
+            return;
+        }
+
+        if (section.key === 'our-mission') {
+            setIsAboutMissionDrawerOpen(true);
+            setIsAboutHeroDrawerOpen(false);
+            setIsAboutStoryDrawerOpen(false);
+
+            const target = iframeRef.current?.contentWindow;
+            if (target) {
+                target.postMessage(
+                    {
+                        type: 'TIMLESS_PAGE_BUILDER_SCROLL_TO_SECTION',
+                        payload: { sectionKey: 'our-mission' },
+                    },
+                    window.location.origin
+                );
+            }
+            return;
+        }
+
+        setIsAboutHeroDrawerOpen(false);
+        setIsAboutStoryDrawerOpen(false);
+        setIsAboutMissionDrawerOpen(false);
+    }
+
+    function handleAboutHeroChangeField(field, value) {
+        setAboutHeroDraft((previous) => ({
+            ...previous,
+            [field]: value,
+        }));
+    }
+
+    function handleAboutHeroImageUpload(file) {
+        setAboutHeroImageFile(file);
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleAboutHeroChangeField('background_image', reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function handleSaveAboutHero() {
+        setIsSavingAboutHero(true);
+
+        try {
+            const payload = await updateAboutHero({
+                ...aboutHeroDraft,
+                background_image: aboutHeroImageFile || aboutHeroDraft.background_image,
+            });
+
+            const normalized = {
+                background_image: payload?.background_image || defaultAboutHeroDraft.background_image,
+                section_title: payload?.section_title || defaultAboutHeroDraft.section_title,
+                title: payload?.title || defaultAboutHeroDraft.title,
+                description: payload?.description ?? defaultAboutHeroDraft.description,
+            };
+
+            setAboutHeroDraft(normalized);
+            setAboutHeroImageFile(null);
+
+            toast.success('About hero saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save About hero.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingAboutHero(false);
+        }
+    }
+
+    function handleAboutStoryChangeField(field, value) {
+        setAboutStoryDraft((previous) => ({
+            ...previous,
+            [field]: value,
+        }));
+    }
+
+    function handleAboutStoryImageUpload(file) {
+        setAboutStoryImageFile(file);
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleAboutStoryChangeField('background_image', reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function handleSaveAboutStory() {
+        setIsSavingAboutStory(true);
+
+        try {
+            const payload = await updateAboutStory({
+                ...aboutStoryDraft,
+                background_image: aboutStoryImageFile || aboutStoryDraft.background_image,
+            });
+
+            const normalized = {
+                background_image: payload?.background_image || defaultAboutStoryDraft.background_image,
+                section_title: payload?.section_title || defaultAboutStoryDraft.section_title,
+                title: payload?.title || defaultAboutStoryDraft.title,
+                description_html: payload?.description_html ?? defaultAboutStoryDraft.description_html,
+            };
+
+            setAboutStoryDraft(normalized);
+            setAboutStoryImageFile(null);
+
+            toast.success('1971 story saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save 1971 story.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingAboutStory(false);
+        }
+    }
+
+    function handleAboutMissionChangeField(field, value) {
+        setAboutMissionDraft((previous) => ({
+            ...previous,
+            [field]: value,
+        }));
+    }
+
+    function handleAboutMissionImageUpload(file) {
+        setAboutMissionImageFile(file);
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleAboutMissionChangeField('background_image', reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleAboutMissionItemChange(index, field, value) {
+        setAboutMissionDraft((previous) => ({
+            ...previous,
+            items: (previous.items || []).map((item, itemIndex) =>
+                itemIndex === index ? { ...item, [field]: value } : item
+            ),
+        }));
+    }
+
+    function handleAddMissionItem() {
+        setAboutMissionDraft((previous) => ({
+            ...previous,
+            items: [
+                ...(previous.items || []),
+                { icon: 'BadgeCheck', title: `Mission Item ${(previous.items || []).length + 1}` },
+            ],
+        }));
+    }
+
+    function handleRemoveMissionItem(index) {
+        setAboutMissionDraft((previous) => ({
+            ...previous,
+            items: (previous.items || []).filter((_, itemIndex) => itemIndex !== index),
+        }));
+    }
+
+    function handleReorderMissionItem(sourceIndex, targetIndex) {
+        setAboutMissionDraft((previous) => {
+            const nextItems = [...(previous.items || [])];
+            if (
+                sourceIndex < 0 ||
+                targetIndex < 0 ||
+                sourceIndex >= nextItems.length ||
+                targetIndex >= nextItems.length ||
+                sourceIndex === targetIndex
+            ) {
+                return previous;
+            }
+
+            const [moved] = nextItems.splice(sourceIndex, 1);
+            nextItems.splice(targetIndex, 0, moved);
+            return { ...previous, items: nextItems };
+        });
+    }
+
+    async function handleSaveAboutMission() {
+        setIsSavingAboutMission(true);
+
+        try {
+            const payload = await updateAboutMission({
+                ...aboutMissionDraft,
+                background_image: aboutMissionImageFile || aboutMissionDraft.background_image,
+            });
+
+            const normalized = {
+                background_image: payload?.background_image || defaultAboutMissionDraft.background_image,
+                title: payload?.title || defaultAboutMissionDraft.title,
+                description: payload?.description ?? defaultAboutMissionDraft.description,
+                items: Array.isArray(payload?.items) && payload.items.length > 0
+                    ? payload.items
+                    : defaultAboutMissionDraft.items,
+            };
+
+            setAboutMissionDraft(normalized);
+            setAboutMissionImageFile(null);
+
+            toast.success('Our mission saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save our mission.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingAboutMission(false);
+        }
+    }
+
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="grid items-start gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
@@ -94,6 +589,7 @@ export default function AboutPageBuilder() {
                         sections={sections}
                         selectedSectionKey={selectedSectionKey}
                         onSectionSelect={setSelectedSectionKey}
+                        onSectionActivate={handleSectionActivate}
                         onStatusToggle={handleSectionStatusToggle}
                         onReorder={handleSectionReorder}
                     />
@@ -103,6 +599,40 @@ export default function AboutPageBuilder() {
                     <AboutPagePreviewCard ref={iframeRef} />
                 </div>
             </div>
+
+            <AboutHeroEditorDrawer
+                open={isAboutHeroDrawerOpen}
+                onOpenChange={setIsAboutHeroDrawerOpen}
+                value={aboutHeroDraft}
+                onChangeField={handleAboutHeroChangeField}
+                onUploadImage={handleAboutHeroImageUpload}
+                onSave={handleSaveAboutHero}
+                isSaving={isSavingAboutHero}
+            />
+
+            <AboutStoryEditorDrawer
+                open={isAboutStoryDrawerOpen}
+                onOpenChange={setIsAboutStoryDrawerOpen}
+                value={aboutStoryDraft}
+                onChangeField={handleAboutStoryChangeField}
+                onUploadImage={handleAboutStoryImageUpload}
+                onSave={handleSaveAboutStory}
+                isSaving={isSavingAboutStory}
+            />
+
+            <AboutMissionEditorDrawer
+                open={isAboutMissionDrawerOpen}
+                onOpenChange={setIsAboutMissionDrawerOpen}
+                value={aboutMissionDraft}
+                onChangeField={handleAboutMissionChangeField}
+                onUploadImage={handleAboutMissionImageUpload}
+                onChangeItem={handleAboutMissionItemChange}
+                onAddItem={handleAddMissionItem}
+                onRemoveItem={handleRemoveMissionItem}
+                onReorderItem={handleReorderMissionItem}
+                onSave={handleSaveAboutMission}
+                isSaving={isSavingAboutMission}
+            />
         </DndProvider>
     );
 }
