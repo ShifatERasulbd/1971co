@@ -3,6 +3,7 @@ import { Menu, Search, ShoppingCart, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
+import { useCart } from '../context/CartContext';
 import { timelessFontClass } from '../utils/typography';
 
 const fallbackMegaMenuColumns = [
@@ -64,6 +65,7 @@ const utilityIcons = [
 ];
 
 export default function Header() {
+    const { itemCount, openCartDrawer } = useCart();
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
     const [grandChilds, setGrandChilds] = useState([]);
@@ -349,7 +351,22 @@ export default function Header() {
                 <div className="ml-auto flex items-center gap-2 sm:gap-3 xl:gap-8">
                     <div className="hidden items-center gap-1 md:flex">
                         {utilityIcons.map(({ label, icon: Icon, href }) => (
-                            href.startsWith('/') ? (
+                            label === 'Cart' ? (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    aria-label={label}
+                                    onClick={openCartDrawer}
+                                    className="relative inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                >
+                                    <Icon className="size-5" strokeWidth={1.75} />
+                                    {itemCount > 0 ? (
+                                        <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-semibold leading-4 text-white">
+                                            {itemCount > 99 ? '99+' : itemCount}
+                                        </span>
+                                    ) : null}
+                                </button>
+                            ) : href.startsWith('/') ? (
                                 <Link
                                     key={label}
                                     to={href}

@@ -24,6 +24,10 @@ Route::get('/contact', function () {
     return view('home');
 });
 
+Route::get('/checkout', function () {
+    return view('home');
+});
+
 Route::get('/login', function () {
     return view('home');
 });

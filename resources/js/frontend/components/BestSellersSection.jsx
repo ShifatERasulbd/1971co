@@ -1,13 +1,16 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Heart } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Navigation } from 'swiper/modules';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Autoplay, Navigation } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 import { timelessFontClass } from '../utils/typography';
+import { useCart } from '../context/CartContext';
+import ProductVariantModal from './ProductVariantModal.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
@@ -28,6 +31,23 @@ function normalizeProductColors(value) {
 
     if (typeof value === 'string' && value.trim()) {
         return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+
+    return [];
+}
+
+function normalizeProductSizes(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        return value
+            .split(',')
+            .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
     }
 
     return [];
@@ -100,6 +120,15 @@ function groupProductsByName(products) {
         const key = name.toLowerCase() || `unnamed-${product?.id ?? index}`;
         const existing = grouped.get(key);
         const productColors = normalizeProductColors(product?.color);
+        const productSizes = [
+            ...normalizeProductSizes(product?.sizes),
+            ...normalizeProductSizes(product?.size_variants),
+            ...normalizeProductSizes(product?.size_variant?.size),
+            ...normalizeProductSizes(product?.size),
+            ...((Array.isArray(product?.variant_rows)
+                ? product.variant_rows.map((row) => row?.size)
+                : []).flatMap((value) => normalizeProductSizes(value))),
+        ];
         const productImageCandidates = collectVariantImages(product);
         const directVariantImages =
             product?.color_variant_images && typeof product.color_variant_images === 'object'
@@ -110,6 +139,7 @@ function groupProductsByName(products) {
             const next = {
                 ...product,
                 color: [...productColors],
+                sizes: [...new Set(productSizes)],
                 image_gallery: [],
                 color_variant_images: {},
             };
@@ -121,6 +151,10 @@ function groupProductsByName(products) {
         const mergedColors = new Set(normalizeProductColors(target.color));
         productColors.forEach((color) => mergedColors.add(color));
         target.color = [...mergedColors];
+
+        const mergedSizes = new Set(normalizeProductSizes(target.sizes));
+        productSizes.forEach((size) => mergedSizes.add(size));
+        target.sizes = [...mergedSizes];
 
         const mergedGallery = new Set(Array.isArray(target.image_gallery) ? target.image_gallery.filter(Boolean) : []);
         productImageCandidates.forEach((image) => mergedGallery.add(image));
@@ -143,7 +177,7 @@ function groupProductsByName(products) {
             if (merged.size > 0) {
                 variantMap[color] = [...merged];
             }
-        });
+        });    
 
         target.color_variant_images = variantMap;
     });
@@ -185,7 +219,8 @@ function normalizeImageKey(path) {
     return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
 }
 
-function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
+function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart, allowAddToCart = true }) {
+    const navigate = useNavigate();
     const colors = useMemo(
         () => normalizeProductColors(product.color),
         [product.color],
@@ -287,6 +322,29 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
         ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
         : `/singleProduct?name=${encodeURIComponent(productName)}`;
 
+    function handleAddToCart(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        onAddToCart?.(product, {
+            selectedColor,
+            quantity: 1,
+            image: imageSrc,
+        });
+    }
+
+    function handleQuickView(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate(productLink);
+    }
+
+    function handleWishlist(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toast.info('Wishlist will be available soon');
+    }
+
     return (
         <article className="group w-full cursor-pointer">
             <Link to={productLink} className="block">
@@ -296,6 +354,34 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
                         alt={product.name}
                         className="h-[320px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[360px] lg:h-[400px]"
                     />
+
+                    {allowAddToCart ? (
+                        <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                            <button
+                                type="button"
+                                onClick={handleAddToCart}
+                                className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
+                            >
+                                Add to cart
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleWishlist}
+                                aria-label="Add to wishlist"
+                                className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                            >
+                                <Heart className="size-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleQuickView}
+                                aria-label="Preview product"
+                                className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                            >
+                                <Eye className="size-4" />
+                            </button>
+                        </div>
+                    ) : null}
 
                     {galleryImages.length > 1 ? (
                         <>
@@ -368,9 +454,11 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
 }
 
 export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
+    const { addToCart, openCartDrawer } = useCart();
     const [products, setProducts] = useState([]);
     const [colorLookup, setColorLookup] = useState({});
     const [loading, setLoading] = useState(true);
+    const [variantModalState, setVariantModalState] = useState(null);
     const sliderId = useId().replace(/:/g, '');
     const prevNavClass = `best-sellers-prev-${sliderId}`;
     const nextNavClass = `best-sellers-next-${sliderId}`;
@@ -492,17 +580,35 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
         ? PLACEHOLDER_PRODUCTS
         : groupProductsByName(products);
 
+    function handleAddToCart(product, options = {}) {
+        setVariantModalState({
+            product,
+            defaults: options,
+        });
+    }
+
+    function handleConfirmVariant(options = {}) {
+        if (!variantModalState?.product) {
+            return;
+        }
+
+        const nextItem = addToCart(variantModalState.product, options);
+        setVariantModalState(null);
+        toast.success(`${nextItem.name} added to cart`);
+        openCartDrawer();
+    }
+
     return (
         <section
             className={`${timelessFontClass} bg-[#f8f8f7] py-10 sm:py-14`}
             onClick={() => notifyBuilderSelection(null)}
         >
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">
-                <div className="mb-6 flex items-center justify-between sm:mb-8">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
                     <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
                         {sectionTitle}
                     </h2>
-                    <div className="flex items-center gap-4 sm:gap-5">
+                    <div className="flex items-center gap-3 sm:gap-5">
                         <button
                             type="button"
                             aria-label="Previous best seller products"
@@ -527,11 +633,17 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                 </div>
 
                 <Swiper
-                    modules={[Navigation]}
+                    modules={[Navigation, Autoplay]}
                     navigation={{
                         prevEl: `.${prevNavClass}`,
                         nextEl: `.${nextNavClass}`,
                     }}
+                    autoplay={{
+                        delay: 2800,
+                        disableOnInteraction: false,
+                        pauseOnMouseEnter: true,
+                    }}
+                    loop={displayProducts.length > 1}
                     spaceBetween={16}
                     slidesPerView={1.15}
                     breakpoints={{
@@ -557,7 +669,13 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                                 notifyBuilderSelection(index);
                             }}
                         >
-                            <ProductCard product={product} autoPlay={isBuilderPreview} colorLookup={colorLookup} />
+                            <ProductCard
+                                product={product}
+                                autoPlay={isBuilderPreview}
+                                colorLookup={colorLookup}
+                                onAddToCart={handleAddToCart}
+                                allowAddToCart={!loading}
+                            />
                         </SwiperSlide>
                     ))}
                 </Swiper>
@@ -565,6 +683,15 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                 {!loading && displayProducts.length === 0 ? (
                     <p className="mt-3 text-sm text-zinc-500">No products are marked as Best Sellers.</p>
                 ) : null}
+
+                <ProductVariantModal
+                    isOpen={Boolean(variantModalState?.product)}
+                    product={variantModalState?.product || null}
+                    colorLookup={colorLookup}
+                    defaults={variantModalState?.defaults || {}}
+                    onClose={() => setVariantModalState(null)}
+                    onConfirm={handleConfirmVariant}
+                />
             </div>
         </section>
     );

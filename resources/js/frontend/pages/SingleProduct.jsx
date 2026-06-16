@@ -134,9 +134,7 @@ export default function SingleProductPage() {
             <LazySection heightClass="h-[220px]" variant="newsletter">
                 <NewsletterSection />
             </LazySection>
-            <LazySection heightClass="h-[320px]" variant="instagram">
-                <InstagramSection />
-            </LazySection>
+           
         </div>
     );
 }

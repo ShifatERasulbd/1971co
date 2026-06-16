@@ -1,10 +1,13 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
+import CartDrawer from './frontend/components/CartDrawer.jsx';
 import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
+import { CartProvider } from './frontend/context/CartContext.jsx';
 import { bootstrapPublicSettings } from './utils/siteSettings';
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
@@ -13,6 +16,7 @@ const SingleProductPage = lazy(() => import('./frontend/pages/singleProduct.jsx'
 const AboutPage = lazy(() => import('./frontend/pages/about.jsx'));
 const ContactPage = lazy(() => import('./frontend/pages/contact.jsx'));
 const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
+const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 
 function withPageFallback(Component) {
     return (
@@ -30,6 +34,8 @@ function FrontendLayout() {
                 <Outlet />
             </main>
             <Footer />
+            <CartDrawer />
+            <Toaster position="top-right" richColors />
         </div>
     );
 }
@@ -40,20 +46,23 @@ function AppRouter() {
     }, []);
 
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<FrontendLayout />}>
-                    <Route index element={withPageFallback(HomePage)} />
-                    <Route path="shop" element={withPageFallback(ShopPage)} />
-                    <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />
-                    <Route path="about" element={withPageFallback(AboutPage)} />
-                    <Route path="contact" element={withPageFallback(ContactPage)} />
-                    <Route path="login" element={withPageFallback(AuthPage)} />
-                    <Route path="register" element={withPageFallback(AuthPage)} />
-                </Route>
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </BrowserRouter>
+        <CartProvider>
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/" element={<FrontendLayout />}>
+                        <Route index element={withPageFallback(HomePage)} />
+                        <Route path="shop" element={withPageFallback(ShopPage)} />
+                        <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />
+                        <Route path="about" element={withPageFallback(AboutPage)} />
+                        <Route path="contact" element={withPageFallback(ContactPage)} />
+                        <Route path="checkout" element={withPageFallback(CheckoutPage)} />
+                        <Route path="login" element={withPageFallback(AuthPage)} />
+                        <Route path="register" element={withPageFallback(AuthPage)} />
+                    </Route>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </BrowserRouter>
+        </CartProvider>
     );
 }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\CanadaWarehouseStockController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ColorController;
+use App\Http\Controllers\CheckoutOrderController;
 use App\Http\Controllers\AboutHeroController;
 use App\Http\Controllers\AboutGivingBackController;
 use App\Http\Controllers\AboutMissionController;
@@ -40,6 +41,7 @@ Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
 Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
 Route::get('/public/settings', [SettingsController::class, 'publicLatest']);
 Route::get('/public/best-sellers-section', [SettingsController::class, 'publicBestSellersSection']);
+Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/user', function (Request $request) {

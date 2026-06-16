@@ -1,7 +1,12 @@
 import { ArrowLeft, ArrowRight, Eye, Heart } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { useCart } from '../context/CartContext';
+import ProductVariantModal from './ProductVariantModal.jsx';
 import { featuresFontClass } from '../utils/typography';
+import { sectionTypography } from '../utils/sectionTypography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
 
@@ -17,29 +22,59 @@ function toAbsoluteImageUrl(path) {
     return `/${path.replace(/^\/+/, '')}`;
 }
 
-function RelatedProductCard({ product }) {
+function RelatedProductCard({ product, onAddToCart }) {
+    const navigate = useNavigate();
     const imageSource = toAbsoluteImageUrl(product?.cover_image || product?.image_gallery?.[0] || fallbackImage);
+    const productSlug = String(product?.slug || '').trim();
+    const productName = String(product?.name || '').trim();
+    const productLink = productSlug
+        ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
+        : `/singleProduct?name=${encodeURIComponent(productName)}`;
+
+    function handleAddToCart(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        onAddToCart?.(product, {
+            quantity: 1,
+            image: imageSource,
+        });
+    }
+
+    function handleQuickView(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate(productLink);
+    }
+
+    function handleWishlist(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toast.info('Wishlist will be available soon');
+    }
 
     return (
         <article className="group cursor-pointer">
-            {/* Soft gray card/image box frame to hold the product safely */}
             <div className="relative overflow-hidden bg-[#f6f6f6]">
+                <Link to={productLink} className="block">
                 <img
                     src={imageSource}
                     alt={product.name}
                     className="h-[280px] w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-102 sm:h-[340px] lg:h-[440px]"
                 />
+                </Link>
 
-                {/* Hover Quick Actions Area */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-5 left-0 flex items-center justify-center gap-2 px-4 opacity-0 transition-all duration-300 transform translate-y-2 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0">
                     <button
                         type="button"
+                        onClick={handleAddToCart}
                         className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.75rem] font-medium uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
                     >
                         Add to cart
                     </button>
                     <button
                         type="button"
+                        onClick={handleWishlist}
                         aria-label="Add to wishlist"
                         className="inline-flex size-9 items-center justify-center bg-white text-zinc-700 border border-zinc-200 transition-colors duration-200 hover:text-zinc-950"
                     >
@@ -47,6 +82,7 @@ function RelatedProductCard({ product }) {
                     </button>
                     <button
                         type="button"
+                        onClick={handleQuickView}
                         aria-label="Preview product"
                         className="inline-flex size-9 items-center justify-center bg-white text-zinc-700 border border-zinc-200 transition-colors duration-200 hover:text-zinc-950"
                     >
@@ -55,24 +91,44 @@ function RelatedProductCard({ product }) {
                 </div>
             </div>
 
-            {/* Compact Typography Container */}
             <div className="pt-3 text-left">
-                <h3 className="text-[0.92rem] font-medium tracking-wide text-zinc-800 transition-colors group-hover:text-zinc-600 sm:text-[0.98rem]">
-                    {product.name}
-                </h3>
-                <p className="mt-1 text-sm font-semibold text-zinc-950">${Number(product?.price || 0).toFixed(2)}</p>
+                <Link to={productLink} className="block">
+                    <h3 className={`${sectionTypography.productName} text-zinc-900 line-clamp-2 transition-opacity hover:opacity-70`}>
+                        {product.name}
+                    </h3>
+                </Link>
+                <p className={`mt-1 ${sectionTypography.productPrice} text-zinc-950`}>${Number(product?.price || 0).toFixed(2)}</p>
             </div>
         </article>
     );
 }
 
 export default function RelatedProductsSection({ products = [] }) {
+    const { addToCart, openCartDrawer } = useCart();
+    const [variantModalState, setVariantModalState] = useState(null);
+
+    function handleAddToCart(product, options = {}) {
+        setVariantModalState({
+            product,
+            defaults: options,
+        });
+    }
+
+    function handleConfirmVariant(options = {}) {
+        if (!variantModalState?.product) {
+            return;
+        }
+
+        const nextItem = addToCart(variantModalState.product, options);
+        setVariantModalState(null);
+        toast.success(`${nextItem.name} added to cart`);
+        openCartDrawer();
+    }
+
     return (
-        // Changed to clean white background with fine border partitioning
         <section className={`${featuresFontClass} bg-white border-t border-zinc-100 py-16 sm:py-20 lg:py-24`}>
             <div className="mx-auto w-full max-w-[1540px] px-5 sm:px-8 lg:px-12">
                 
-                {/* Header Layout Section */}
                 <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 className="font-serif text-[1.8rem] uppercase tracking-wide text-zinc-900 sm:text-[2.2rem]">
@@ -91,7 +147,6 @@ export default function RelatedProductsSection({ products = [] }) {
                     </Link>
                 </div>
 
-                {/* Slider / Grid Container with Refined Control Navigation */}
                 <div className="relative">
                     <button
                         type="button"
@@ -103,14 +158,7 @@ export default function RelatedProductsSection({ products = [] }) {
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
                         {products.map((product) => (
-                            <Link
-                                key={product.id}
-                                to={String(product?.slug || '').trim()
-                                    ? `/singleProduct?slug=${encodeURIComponent(String(product.slug).trim())}`
-                                    : `/singleProduct?name=${encodeURIComponent(String(product?.name || '').trim())}`}
-                            >
-                                <RelatedProductCard product={product} />
-                            </Link>
+                            <RelatedProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
                         ))}
                     </div>
 
@@ -122,8 +170,15 @@ export default function RelatedProductsSection({ products = [] }) {
                         <ArrowRight className="size-7" strokeWidth={1.2} />
                     </button>
                 </div>
-
             </div>
+
+            <ProductVariantModal
+                isOpen={Boolean(variantModalState?.product)}
+                product={variantModalState?.product || null}
+                defaults={variantModalState?.defaults || {}}
+                onClose={() => setVariantModalState(null)}
+                onConfirm={handleConfirmVariant}
+            />
         </section>
     );
 }

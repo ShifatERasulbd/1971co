@@ -1,8 +1,11 @@
-import { ChevronLeft, ChevronRight, PackageSearch, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Heart, PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { useCart } from '../context/CartContext';
 import { featuresFontClass } from '../utils/typography';
+import ProductVariantModal from './ProductVariantModal.jsx';
 import ShopSidebar from './ShopSidebar.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
@@ -203,7 +206,8 @@ function ColorSwatch({ color, active, onClick, colorLookup }) {
     );
 }
 
-function ProductCard({ product, colorLookup = {} }) {
+function ProductCard({ product, colorLookup = {}, onAddToCart }) {
+    const navigate = useNavigate();
     const colors = useMemo(() => normalizeProductColors(product.color), [product.color]);
 
     const galleryImages = useMemo(() => {
@@ -286,6 +290,29 @@ function ProductCard({ product, colorLookup = {} }) {
         ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
         : `/singleProduct?name=${encodeURIComponent(productName)}`;
 
+    function handleAddToCart(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        onAddToCart?.(product, {
+            selectedColor,
+            quantity: 1,
+            image: imageSrc,
+        });
+    }
+
+    function handleQuickView(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate(productLink);
+    }
+
+    function handleWishlist(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toast.info('Wishlist will be available soon');
+    }
+
     return (
         <article className="group overflow-hidden border border-zinc-200 bg-white">
             <Link to={productLink} className="block">
@@ -295,6 +322,32 @@ function ProductCard({ product, colorLookup = {} }) {
                         alt={product.name}
                         className="h-[250px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[320px]"
                     />
+
+                    <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                        <button
+                            type="button"
+                            onClick={handleAddToCart}
+                            className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
+                        >
+                            Add to cart
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleWishlist}
+                            aria-label="Add to wishlist"
+                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                        >
+                            <Heart className="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleQuickView}
+                            aria-label="Preview product"
+                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                        >
+                            <Eye className="size-4" />
+                        </button>
+                    </div>
 
                     {product.tag ? (
                         <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white">
@@ -379,6 +432,7 @@ function ShopProductsGrid({
     totalPages = 1,
     totalResults = 0,
     onPageChange,
+    onAddToCart,
 }) {
     const visibleProducts = Array.isArray(products) ? products : [];
     const start = visibleProducts.length > 0 ? (currentPage - 1) * PRODUCTS_PER_PAGE + 1 : 0;
@@ -401,9 +455,9 @@ function ShopProductsGrid({
             </div>
 
             {visibleProducts.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} />
+                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} onAddToCart={onAddToCart} />
                     ))}
                 </div>
             ) : (
@@ -437,6 +491,7 @@ function ShopProductsGrid({
 }
 
 export default function ShopCatalogSection() {
+    const { addToCart, openCartDrawer } = useCart();
     const location = useLocation();
     const [isLoading, setIsLoading] = useState(true);
     const [products, setProducts] = useState([]);
@@ -454,6 +509,7 @@ export default function ShopCatalogSection() {
     const [maxPrice, setMaxPrice] = useState('59.99');
     const [highestDbPrice, setHighestDbPrice] = useState('0.00');
     const [currentPage, setCurrentPage] = useState(1);
+    const [variantModalState, setVariantModalState] = useState(null);
 
     useEffect(() => {
         let ignore = false;
@@ -683,6 +739,24 @@ export default function ShopCatalogSection() {
         return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
     }, [filteredProducts, safeCurrentPage]);
 
+    function handleAddToCart(product, options = {}) {
+        setVariantModalState({
+            product,
+            defaults: options,
+        });
+    }
+
+    function handleConfirmVariant(options = {}) {
+        if (!variantModalState?.product) {
+            return;
+        }
+
+        const nextItem = addToCart(variantModalState.product, options);
+        setVariantModalState(null);
+        toast.success(`${nextItem.name} added to cart`);
+        openCartDrawer();
+    }
+
     if (isLoading) {
         return (
             <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
@@ -750,6 +824,16 @@ export default function ShopCatalogSection() {
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}
                     onPageChange={setCurrentPage}
+                    onAddToCart={handleAddToCart}
+                />
+
+                <ProductVariantModal
+                    isOpen={Boolean(variantModalState?.product)}
+                    product={variantModalState?.product || null}
+                    colorLookup={colorLookup}
+                    defaults={variantModalState?.defaults || {}}
+                    onClose={() => setVariantModalState(null)}
+                    onConfirm={handleConfirmVariant}
                 />
             </div>
         </section>

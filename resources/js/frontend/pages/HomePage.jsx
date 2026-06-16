@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
 
@@ -10,8 +10,51 @@ const OurStorySection = lazy(() => import('../components/OurStorySection.jsx'));
 
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 
-function LazySection({ children, heightClass, variant = 'generic' }) {
-    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>{children}</Suspense>;
+function LazySection({ children, heightClass, variant = 'generic', defer = true }) {
+    const containerRef = useRef(null);
+    const [isVisible, setIsVisible] = useState(() => !defer);
+
+    useEffect(() => {
+        if (!defer) {
+            setIsVisible(true);
+            return;
+        }
+
+        if (isVisible) {
+            return;
+        }
+
+        const node = containerRef.current;
+        if (!node) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const [entry] = entries;
+                if (entry?.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '240px 0px' },
+        );
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [defer, isVisible]);
+
+    return (
+        <div ref={containerRef}>
+            {isVisible ? (
+                <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>
+                    {children}
+                </Suspense>
+            ) : (
+                <SectionSkeleton heightClass={heightClass} variant={variant} />
+            )}
+        </div>
+    );
 }
 
 const sectionRegistry = {
@@ -45,6 +88,13 @@ function normalizeSectionOrder(order) {
 }
 
 export default function HomePage() {
+    const [isBuilderPreview] = useState(() => {
+        try {
+            return window.self !== window.top;
+        } catch {
+            return false;
+        }
+    });
     const [sectionOrder, setSectionOrder] = useState(() => normalizeSectionOrder(defaultSectionOrder));
     const [bestSellersConfig, setBestSellersConfig] = useState({
         title: 'Best Sellers',
@@ -173,7 +223,11 @@ export default function HomePage() {
                         data-section-key={sectionKey}
                         className="scroll-mt-24"
                     >
-                        <LazySection heightClass={section.height} variant={section.variant}>
+                        <LazySection
+                            heightClass={section.height}
+                            variant={section.variant}
+                            defer={!isBuilderPreview && sectionKey !== 'hero'}
+                        >
                             {sectionKey === 'best-sellers' ? (
                                 <Component sectionTitle={bestSellersConfig.title} />
                             ) : (
