@@ -87,4 +87,12 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/products', [ProductController::class, 'store']);
 	Route::put('/products/{product}', [ProductController::class, 'update']);
 	Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+
+	// Order Management
+	Route::get('/orders', [CheckoutOrderController::class, 'index']);
+	Route::get('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'show']);
+	Route::put('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'update']);
+	Route::delete('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'destroy']);
+	Route::post('/orders/bulk-update', [CheckoutOrderController::class, 'bulkUpdate']);
+	Route::post('/orders/bulk-delete', [CheckoutOrderController::class, 'bulkDelete']);
 });

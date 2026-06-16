@@ -75,6 +75,10 @@ const Products = lazyWithRetry(() => import('@/pages/Product/products'), 'produc
 const AddProduct = lazyWithRetry(() => import('@/pages/Product/addProduct'), 'add-product');
 const EditProduct = lazyWithRetry(() => import('@/pages/Product/editProduct'), 'edit-product');
 
+// Order Management
+const Orders = lazyWithRetry(() => import('@/pages/Order/orders'), 'orders');
+const EditOrder = lazyWithRetry(() => import('@/pages/Order/editOrder'), 'edit-order');
+
 // Settings Management
 const Settings = lazyWithRetry(() => import('@/pages/Settings/settings'), 'settings');
 const AddSettings = lazyWithRetry(() => import('@/pages/Settings/addSettings'), 'add-settings');
@@ -143,6 +147,10 @@ export default function App() {
                             <Route path="products" element={<Products />} />
                             <Route path="products/add" element={<AddProduct />} />
                             <Route path="products/:id/edit" element={<EditProduct />} />
+
+                            {/* Order Management */}
+                            <Route path="orders" element={<Orders />} />
+                            <Route path="orders/:id/edit" element={<EditOrder />} />
 
                             {/* Settings Management */}
                             <Route path="settings" element={<Settings />} />

@@ -6,8 +6,8 @@ import {
     LayoutList,
     Package,
     LogOut,
-    Settings
-  
+    Settings,
+    ShoppingBag,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -51,10 +51,14 @@ const inventoryItems = [
     { title: 'Products', icon: Package, path: '/admin/products' },
 ];
 
+const orderItems = [
+    { title: 'Orders', icon: ShoppingBag, path: '/admin/orders' },
+];
+
 
 const SettingsItems = [
     { title: 'Settings', icon: Settings, path: '/admin/settings' },
-]
+];
 
 
 
@@ -188,6 +192,30 @@ export function AppSidebar(props) {
               
 
                 
+                {orderItems.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Orders</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {orderItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.title}
+                                            isActive={isMenuItemActive(item.path)}
+                                        >
+                                            <Link to={item.path}>
+                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
                 {inventoryItems.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Inventory</SidebarGroupLabel>

@@ -8,6 +8,91 @@ use Illuminate\Http\Request;
 
 class CheckoutOrderController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        $query = CheckoutOrder::query()->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+
+        $orders = $query->paginate((int) $request->input('per_page', 20));
+
+        return response()->json($orders);
+    }
+
+    public function show(CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        return response()->json($checkoutOrder);
+    }
+
+    public function update(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $validated = $request->validate([
+            'first_name'      => 'sometimes|required|string|max:100',
+            'last_name'       => 'sometimes|required|string|max:100',
+            'email'           => 'sometimes|required|email|max:255',
+            'phone'           => 'nullable|string|max:50',
+            'address_line_1'  => 'sometimes|required|string|max:255',
+            'address_line_2'  => 'nullable|string|max:255',
+            'city'            => 'sometimes|required|string|max:120',
+            'state'           => 'nullable|string|max:120',
+            'postal_code'     => 'nullable|string|max:40',
+            'country'         => 'nullable|string|max:120',
+            'notes'           => 'nullable|string|max:3000',
+            'status'          => 'nullable|string|in:pending,processing,shipped,delivered,cancelled,refunded',
+        ]);
+
+        $checkoutOrder->update($validated);
+
+        return response()->json([
+            'message' => 'Order updated successfully',
+            'order'   => $checkoutOrder->fresh(),
+        ]);
+    }
+
+    public function destroy(CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $checkoutOrder->delete();
+
+        return response()->json(['message' => 'Order deleted successfully']);
+    }
+
+    public function bulkUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids'    => 'required|array|min:1',
+            'ids.*'  => 'integer',
+            'status' => 'required|string|in:pending,processing,shipped,delivered,cancelled,refunded',
+        ]);
+
+        CheckoutOrder::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
+
+        return response()->json(['message' => 'Orders updated successfully']);
+    }
+
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ]);
+
+        CheckoutOrder::whereIn('id', $validated['ids'])->delete();
+
+        return response()->json(['message' => 'Orders deleted successfully']);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
