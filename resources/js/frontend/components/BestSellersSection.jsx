@@ -1,8 +1,13 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Navigation } from 'swiper/modules';
+import { Swiper, SwiperSlide } from 'swiper/react';
 
-import { timelessFontClass } from '../../utils/typography';
+import 'swiper/css';
+import 'swiper/css/navigation';
+
+import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
@@ -283,7 +288,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
         : `/singleProduct?name=${encodeURIComponent(productName)}`;
 
     return (
-        <article className="group flex-none w-[230px] sm:w-[260px] lg:w-[290px] cursor-pointer">
+        <article className="group w-full cursor-pointer">
             <Link to={productLink} className="block">
                 <div className="relative overflow-hidden bg-zinc-100">
                     <img
@@ -366,7 +371,9 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
     const [products, setProducts] = useState([]);
     const [colorLookup, setColorLookup] = useState({});
     const [loading, setLoading] = useState(true);
-    const scrollRef = useRef(null);
+    const sliderId = useId().replace(/:/g, '');
+    const prevNavClass = `best-sellers-prev-${sliderId}`;
+    const nextNavClass = `best-sellers-next-${sliderId}`;
     const [isBuilderPreview] = useState(() => {
         try {
             return window.self !== window.top;
@@ -495,21 +502,51 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                     <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
                         {sectionTitle}
                     </h2>
-                    <Link
-                        to="/shop"
-                        className={`${sectionTypography.sectionMetaLink} text-zinc-500 transition-colors hover:text-zinc-900`}
-                    >
-                        Shop All
-                    </Link>
+                    <div className="flex items-center gap-4 sm:gap-5">
+                        <button
+                            type="button"
+                            aria-label="Previous best seller products"
+                            className={`${prevNavClass} inline-flex size-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-zinc-900 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-35`}
+                        >
+                            <ChevronLeft className="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Next best seller products"
+                            className={`${nextNavClass} inline-flex size-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-zinc-900 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-35`}
+                        >
+                            <ChevronRight className="size-4" />
+                        </button>
+                        <Link
+                            to="/shop"
+                            className={`${sectionTypography.sectionMetaLink} text-zinc-500 transition-colors hover:text-zinc-900`}
+                        >
+                            Shop All
+                        </Link>
+                    </div>
                 </div>
 
-                <div
-                    ref={scrollRef}
-                    className="flex gap-3 overflow-x-auto pb-4 sm:gap-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                <Swiper
+                    modules={[Navigation]}
+                    navigation={{
+                        prevEl: `.${prevNavClass}`,
+                        nextEl: `.${nextNavClass}`,
+                    }}
+                    spaceBetween={16}
+                    slidesPerView={1.15}
+                    breakpoints={{
+                        480: { slidesPerView: 1.45 },
+                        640: { slidesPerView: 2.1 },
+                        860: { slidesPerView: 3.1 },
+                        1180: { slidesPerView: 4.1 },
+                        1460: { slidesPerView: 5.1 },
+                    }}
+                    className="best-sellers-swiper pb-4"
                 >
                     {displayProducts.map((product, index) => (
-                        <div
+                        <SwiperSlide
                             key={product.id || `${product.name}-${index}`}
+                            className="h-auto"
                             onClick={(event) => {
                                 if (!isBuilderPreview) {
                                     return;
@@ -521,9 +558,9 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                             }}
                         >
                             <ProductCard product={product} autoPlay={isBuilderPreview} colorLookup={colorLookup} />
-                        </div>
+                        </SwiperSlide>
                     ))}
-                </div>
+                </Swiper>
 
                 {!loading && displayProducts.length === 0 ? (
                     <p className="mt-3 text-sm text-zinc-500">No products are marked as Best Sellers.</p>

@@ -28,11 +28,11 @@ export default function AuthPage() {
                         {isRegister ? 'Create Account' : 'Login'}
                     </h1>
 
-                    <Suspense fallback={<SectionSkeleton heightClass="h-[80px]" className="px-0 py-2" />}>
+                    <Suspense fallback={<SectionSkeleton heightClass="h-[80px]" className="px-0 py-2" variant="form" />}>
                         <AuthUserTypeTabs userType={userType} onChangeUserType={setUserType} />
                     </Suspense>
 
-                    <Suspense fallback={<SectionSkeleton heightClass="h-[540px]" className="px-0 py-2" />}>
+                    <Suspense fallback={<SectionSkeleton heightClass="h-[540px]" className="px-0 py-2" variant="form" />}>
                         {isRegister ? <AuthRegisterForm userType={userType} /> : <AuthLoginForm userType={userType} />}
                     </Suspense>
                 </div>

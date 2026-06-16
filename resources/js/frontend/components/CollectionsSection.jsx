@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 // Used only as last-resort fallback when the API call fails entirely.

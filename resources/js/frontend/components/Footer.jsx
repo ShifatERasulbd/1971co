@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const shopLinks = [

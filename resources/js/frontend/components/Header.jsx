@@ -3,7 +3,7 @@ import { Menu, Search, ShoppingCart, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 
 const fallbackMegaMenuColumns = [
     {

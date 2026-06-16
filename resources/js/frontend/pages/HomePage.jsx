@@ -10,17 +10,17 @@ const OurStorySection = lazy(() => import('../components/OurStorySection.jsx'));
 
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 
-function LazySection({ children, heightClass }) {
-    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} />}>{children}</Suspense>;
+function LazySection({ children, heightClass, variant = 'generic' }) {
+    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>{children}</Suspense>;
 }
 
 const sectionRegistry = {
-    hero: { height: 'h-[520px]', component: Hero },
-    collections: { height: 'h-[560px]', component: CollectionsSection },
-    'best-sellers': { height: 'h-[520px]', component: BestSellersSection },
-    features: { height: 'h-[80px]', component: FeaturesSection },
-    'our-story': { height: 'h-[580px]', component: OurStorySection },
-    newsletter: { height: 'h-[220px]', component: NewsletterSection },
+    hero: { height: 'h-[520px]', variant: 'hero', component: Hero },
+    collections: { height: 'h-[560px]', variant: 'catalog', component: CollectionsSection },
+    'best-sellers': { height: 'h-[520px]', variant: 'catalog', component: BestSellersSection },
+    features: { height: 'h-[80px]', variant: 'generic', component: FeaturesSection },
+    'our-story': { height: 'h-[580px]', variant: 'split', component: OurStorySection },
+    newsletter: { height: 'h-[220px]', variant: 'newsletter', component: NewsletterSection },
 };
 
 const defaultSectionOrder = [
@@ -173,7 +173,7 @@ export default function HomePage() {
                         data-section-key={sectionKey}
                         className="scroll-mt-24"
                     >
-                        <LazySection heightClass={section.height}>
+                        <LazySection heightClass={section.height} variant={section.variant}>
                             {sectionKey === 'best-sellers' ? (
                                 <Component sectionTitle={bestSellersConfig.title} />
                             ) : (

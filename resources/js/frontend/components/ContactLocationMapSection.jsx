@@ -1,6 +1,6 @@
 import { MapPin } from 'lucide-react';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 
 const locationLabel = '70 Washington Square S, New York, NY 10012, USA';
 const mapEmbedUrl =

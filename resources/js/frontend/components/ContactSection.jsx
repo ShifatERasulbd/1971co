@@ -1,4 +1,4 @@
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 import ContactInformationPanel from './ContactInformationPanel.jsx';
 import ContactLocationCards from './ContactLocationCards.jsx';
 import ContactQuestionForm from './ContactQuestionForm.jsx';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 
 export default function SingleProductInfoTabs({ product }) {
     const tabs = [

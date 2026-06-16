@@ -5,13 +5,13 @@ export const sectionTypography = {
 
     cardLabel: 'text-[0.72rem] font-bold uppercase tracking-[0.14em]',
 
-    productName: 'text-[0.72rem] font-bold uppercase tracking-[0.08em] leading-snug',
+    productName: 'frontend-title-font text-[0.72rem] font-normal uppercase tracking-[0.08em] leading-snug',
 
-    productPrice: 'text-[0.82rem] font-medium',
+    productPrice: 'frontend-text-font text-[0.82rem] font-semibold',
 
-    title: 'text-[0.8rem] font-bold uppercase tracking-[0.12em]',
+    title: 'frontend-title-font text-[0.8rem] font-normal uppercase tracking-[0.12em]',
 
-    description: 'text-[0.9rem] leading-7',
+    description: 'frontend-text-font text-[0.9rem] font-semibold leading-7',
 
     heroTitle: 'font-black uppercase leading-[0.9] tracking-[0.01em]',
 

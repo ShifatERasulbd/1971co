@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 
 const heroImage = '/uploads/heroes/images/hero1.webp';
 

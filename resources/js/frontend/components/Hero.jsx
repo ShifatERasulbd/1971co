@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 import {
     resolveHeroFontFamily,
     resolveHeroFontSize,

@@ -9,8 +9,8 @@ const RelatedProductsSection = lazy(() => import('../components/RelatedProductsS
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 const InstagramSection = lazy(() => import('../components/InstagramSection.jsx'));
 
-function LazySection({ children, heightClass }) {
-    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} />}>{children}</Suspense>;
+function LazySection({ children, heightClass, variant = 'generic' }) {
+    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>{children}</Suspense>;
 }
 
 export default function SingleProductPage() {
@@ -105,8 +105,8 @@ export default function SingleProductPage() {
     if (isLoading) {
         return (
             <div className="bg-white">
-                <LazySection heightClass="h-[760px]">
-                    <SectionSkeleton heightClass="h-[760px]" />
+                <LazySection heightClass="h-[760px]" variant="product">
+                    <SectionSkeleton heightClass="h-[760px]" variant="product" />
                 </LazySection>
             </div>
         );
@@ -122,19 +122,19 @@ export default function SingleProductPage() {
 
     return (
         <div className="bg-white">
-            <LazySection heightClass="h-[760px]">
+            <LazySection heightClass="h-[760px]" variant="product">
                 <SingleProductMainSection product={currentProduct} />
             </LazySection>
-            <LazySection heightClass="h-[320px]">
+            <LazySection heightClass="h-[320px]" variant="generic">
                 <SingleProductInfoTabs product={currentProduct} />
             </LazySection>
-            <LazySection heightClass="h-[640px]">
+            <LazySection heightClass="h-[640px]" variant="catalog">
                 <RelatedProductsSection products={relatedProducts} />
             </LazySection>
-            <LazySection heightClass="h-[220px]">
+            <LazySection heightClass="h-[220px]" variant="newsletter">
                 <NewsletterSection />
             </LazySection>
-            <LazySection heightClass="h-[320px]">
+            <LazySection heightClass="h-[320px]" variant="instagram">
                 <InstagramSection />
             </LazySection>
         </div>

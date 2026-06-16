@@ -1,7 +1,7 @@
 import { Layers, RefreshCw, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const FALLBACK_FEATURES = [

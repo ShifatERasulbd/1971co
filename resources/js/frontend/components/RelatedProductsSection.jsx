@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, Eye, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
 

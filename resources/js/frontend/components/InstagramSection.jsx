@@ -1,4 +1,4 @@
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 
 const imageSource = '/uploads/heroes/images/hero1.webp';
 

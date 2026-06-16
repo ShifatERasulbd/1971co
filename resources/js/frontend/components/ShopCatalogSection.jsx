@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, PackageSearch, SlidersHorizontal } from 'luc
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 import ShopSidebar from './ShopSidebar.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
@@ -438,6 +438,7 @@ function ShopProductsGrid({
 
 export default function ShopCatalogSection() {
     const location = useLocation();
+    const [isLoading, setIsLoading] = useState(true);
     const [products, setProducts] = useState([]);
     const [colorLookup, setColorLookup] = useState({});
     const [allCategories, setAllCategories] = useState([]);
@@ -459,6 +460,10 @@ export default function ShopCatalogSection() {
 
         async function loadShopData() {
             try {
+                if (!ignore) {
+                    setIsLoading(true);
+                }
+
                 const [sizesRes, categoriesRes, subCategoriesRes, grandChildsRes, productsRes] = await Promise.all([
                     fetch('/api/public/sizes', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/categories', { headers: { Accept: 'application/json' } }),
@@ -539,6 +544,10 @@ export default function ShopCatalogSection() {
                 setMinPrice('0.00');
                 setMaxPrice('0.00');
                 setHighestDbPrice('0.00');
+            }
+
+            if (!ignore) {
+                setIsLoading(false);
             }
         }
 
@@ -673,6 +682,42 @@ export default function ShopCatalogSection() {
         const startIndex = (safeCurrentPage - 1) * PRODUCTS_PER_PAGE;
         return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
     }, [filteredProducts, safeCurrentPage]);
+
+    if (isLoading) {
+        return (
+            <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+                <div className="mx-auto grid w-full max-w-[1709px] animate-pulse gap-8 lg:grid-cols-[360px_1fr] lg:gap-10">
+                    <div className="space-y-4 rounded border border-zinc-200 bg-white p-5">
+                        <div className="h-5 w-28 rounded bg-zinc-200" />
+                        <div className="h-10 rounded bg-zinc-200" />
+                        <div className="h-10 rounded bg-zinc-200" />
+                        <div className="h-10 rounded bg-zinc-200" />
+                        <div className="h-10 rounded bg-zinc-200" />
+                        <div className="h-10 rounded bg-zinc-200" />
+                    </div>
+
+                    <div>
+                        <div className="mb-5 flex items-center justify-between gap-3 py-4">
+                            <div className="h-4 w-52 rounded bg-zinc-200" />
+                            <div className="h-9 w-28 rounded bg-zinc-200" />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {Array.from({ length: 8 }).map((_, index) => (
+                                <article key={`shop-card-skeleton-${index}`} className="overflow-hidden border border-zinc-200 bg-white">
+                                    <div className="h-[250px] bg-zinc-200 sm:h-[320px]" />
+                                    <div className="space-y-2 p-4">
+                                        <div className="h-3.5 w-[80%] rounded bg-zinc-200" />
+                                        <div className="h-3.5 w-20 rounded bg-zinc-200" />
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>

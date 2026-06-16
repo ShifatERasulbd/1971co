@@ -10,8 +10,8 @@ const GivingBackSection = lazy(() => import('../components/GivingBackSection.jsx
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 const InstagramSection = lazy(() => import('../components/InstagramSection.jsx'));
 
-function LazySection({ children, heightClass }) {
-    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} />}>{children}</Suspense>;
+function LazySection({ children, heightClass, variant = 'generic' }) {
+    return <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>{children}</Suspense>;
 }
 export default function AboutPage() {
     useEffect(() => {
@@ -43,25 +43,25 @@ export default function AboutPage() {
     return (
         <div className="bg-white">
             <div id="section-hero">
-                <LazySection heightClass="h-[520px]">
+                <LazySection heightClass="h-[520px]" variant="hero">
                     <AboutHeroSection />
                 </LazySection>
             </div>
 
             <div id="section-1971-about">
-                <LazySection heightClass="h-[520px]">
+                <LazySection heightClass="h-[520px]" variant="split">
                     <About1971Section />
                 </LazySection>
             </div>
 
             <div id="section-our-mission">
-                <LazySection heightClass="h-[540px]">
+                <LazySection heightClass="h-[540px]" variant="split">
                     <OurMission />
                 </LazySection>
             </div>
 
             <div id="section-giving-back">
-                <LazySection heightClass="h-[560px]">
+                <LazySection heightClass="h-[560px]" variant="split">
                     <GivingBackSection />
                 </LazySection>
             </div>

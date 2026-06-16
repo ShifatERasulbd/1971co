@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 
-import { timelessFontClass } from '../../utils/typography';
+import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 export default function NewsletterSection() {

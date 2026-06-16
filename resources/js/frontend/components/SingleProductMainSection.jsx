@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { featuresFontClass } from '../../utils/typography';
+import { featuresFontClass } from '../utils/typography';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
 import SingleProductMediaGallery from './SingleProductMediaGallery.jsx';
 
