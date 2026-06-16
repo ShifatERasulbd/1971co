@@ -35,3 +35,16 @@ export async function bulkDeleteOrders(ids) {
         body: JSON.stringify({ ids }),
     });
 }
+
+export async function fetchCustomerOrders({ page = 1, perPage = 20, status = '', search = '' } = {}) {
+    const params = new URLSearchParams({ page, per_page: perPage });
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    return requestJson(`/api/customer/orders?${params.toString()}`);
+}
+
+export async function cancelCustomerOrder(id) {
+    return requestJson(`/api/customer/orders/${id}/cancel`, {
+        method: 'PUT',
+    });
+}

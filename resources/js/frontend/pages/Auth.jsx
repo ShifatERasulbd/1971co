@@ -1,9 +1,8 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
 
-const AuthUserTypeTabs = lazy(() => import('../components/AuthUserTypeTabs.jsx'));
 const AuthLoginForm = lazy(() => import('../components/AuthLoginForm.jsx'));
 const AuthRegisterForm = lazy(() => import('../components/AuthRegisterForm.jsx'));
 
@@ -12,9 +11,7 @@ const authShowcaseImage = '/uploads/heroes/images/hero1.webp';
 export default function AuthPage() {
     const location = useLocation();
     const isRegister = location.pathname.toLowerCase() === '/register';
-    const [userType, setUserType] = useState('normal');
-    const isCorporate = userType === 'corporate';
-    const swapSides = isCorporate;
+    const swapSides = false;
 
     return (
         <section className="bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
@@ -28,12 +25,8 @@ export default function AuthPage() {
                         {isRegister ? 'Create Account' : 'Login'}
                     </h1>
 
-                    <Suspense fallback={<SectionSkeleton heightClass="h-[80px]" className="px-0 py-2" variant="form" />}>
-                        <AuthUserTypeTabs userType={userType} onChangeUserType={setUserType} />
-                    </Suspense>
-
                     <Suspense fallback={<SectionSkeleton heightClass="h-[540px]" className="px-0 py-2" variant="form" />}>
-                        {isRegister ? <AuthRegisterForm userType={userType} /> : <AuthLoginForm userType={userType} />}
+                        {isRegister ? <AuthRegisterForm /> : <AuthLoginForm />}
                     </Suspense>
                 </div>
 

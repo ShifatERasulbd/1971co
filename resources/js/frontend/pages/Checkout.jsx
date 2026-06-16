@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useCart } from '../context/CartContext';
@@ -20,6 +20,7 @@ function toImageUrl(value) {
 }
 
 export default function CheckoutPage() {
+    const navigate = useNavigate();
     const { items, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderNumber, setOrderNumber] = useState('');
@@ -184,6 +185,7 @@ export default function CheckoutPage() {
             setOrderNumber(String(payload?.order_number || ''));
             clearCart();
             toast.success('Order placed successfully');
+            navigate(`/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}`);
         } catch {
             toast.error('Unable to place order right now. Please try again.');
         } finally {
@@ -201,13 +203,6 @@ export default function CheckoutPage() {
                         </h1>
                         <p className="mt-1 text-[0.85rem] text-zinc-400 uppercase tracking-[0.12em]">Complete your order</p>
                     </div>
-
-                    {orderNumber ? (
-                        <div className="mt-5 flex items-start gap-3 border border-emerald-200 bg-emerald-50 px-4 py-4 text-[0.9rem] text-emerald-800">
-                            <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            <span>Order placed successfully. Your order number is <span className="font-semibold">{orderNumber}</span>.</span>
-                        </div>
-                    ) : null}
 
                     {/* Contact Information */}
                     <div className="mt-7">

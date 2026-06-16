@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,9 @@ export default function AppLayout() {
                 });
 
                 if (!response.ok || ignore) {
+                    if (!ignore && response.status === 401) {
+                        navigate('/admin');
+                    }
                     return;
                 }
 
@@ -45,11 +48,26 @@ export default function AppLayout() {
         return () => {
             ignore = true;
         };
-    }, [setUser, user]);
+    }, [navigate, setUser, user]);
+
+    useEffect(() => {
+        if (!user || user.user_type !== 'customer') {
+            return;
+        }
+
+        const isDashboardPath = location.pathname === '/admin/dashboard';
+        const isOrdersPath = location.pathname === '/admin/orders';
+
+        if (!isDashboardPath && !isOrdersPath) {
+            navigate('/admin/dashboard', { replace: true });
+        }
+    }, [location.pathname, navigate, user]);
 
     const warehouseName = user?.warehouse?.name || 'No Warehouse Assigned';
     const isHomePageBuilder = location.pathname.startsWith('/admin/website/home-page');
     const isAboutPageBuilder = location.pathname.startsWith('/admin/website/about-page');
+    const isCustomer = user?.user_type === 'customer';
+    const isCustomerAllowedPath = location.pathname === '/admin/dashboard' || location.pathname === '/admin/orders';
 
     const renderBuilderShell = () => (
         <div className="min-h-screen bg-background">
@@ -72,6 +90,18 @@ export default function AppLayout() {
             </div>
         </div>
     );
+
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-background px-6 py-10 text-sm text-muted-foreground">
+                Loading dashboard...
+            </div>
+        );
+    }
+
+    if (isCustomer && !isCustomerAllowedPath) {
+        return <Navigate to="/admin/dashboard" replace />;
+    }
 
     if (isHomePageBuilder || isAboutPageBuilder) {
         return renderBuilderShell();

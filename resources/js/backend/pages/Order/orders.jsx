@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAppContext } from '@/context/AppContext';
 
-import { bulkDeleteOrders, bulkUpdateOrders, fetchOrders } from './api';
+import { bulkDeleteOrders, bulkUpdateOrders, cancelCustomerOrder, fetchCustomerOrders, fetchOrders } from './api';
 
 const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
@@ -38,7 +38,8 @@ function StatusBadge({ status }) {
 
 export default function Orders() {
     const navigate = useNavigate();
-    const { setPageTitle } = useAppContext();
+    const { setPageTitle, user } = useAppContext();
+    const isCustomer = user?.user_type === 'customer';
 
     const [orders, setOrders]           = useState([]);
     const [meta, setMeta]               = useState({});
@@ -58,10 +59,15 @@ export default function Orders() {
     }, [setPageTitle]);
 
     useEffect(() => {
+        if (!user) {
+            return;
+        }
+
         let cancelled = false;
         setIsLoading(true);
 
-        fetchOrders({ page, perPage: 20, status: filterStatus, search })
+        const fetcher = isCustomer ? fetchCustomerOrders : fetchOrders;
+        fetcher({ page, perPage: 20, status: filterStatus, search })
             .then((data) => {
                 if (cancelled) return;
                 setOrders(data.data ?? []);
@@ -76,7 +82,7 @@ export default function Orders() {
             });
 
         return () => { cancelled = true; };
-    }, [page, filterStatus, search]);
+    }, [filterStatus, isCustomer, page, search, user]);
 
     function handleSearchChange(value) {
         setSearchInput(value);
@@ -97,12 +103,22 @@ export default function Orders() {
         // force re-fetch by toggling page state without actual page change
         setPage((p) => p);
         // eslint-disable-next-line no-unused-expressions
-        fetchOrders({ page, perPage: 20, status: filterStatus, search })
+        (isCustomer ? fetchCustomerOrders : fetchOrders)({ page, perPage: 20, status: filterStatus, search })
             .then((data) => {
                 setOrders(data.data ?? []);
                 setMeta(data.meta ?? {});
             })
             .catch(() => {});
+    }
+
+    async function handleCustomerCancel(orderId) {
+        try {
+            await cancelCustomerOrder(orderId);
+            toast.success('Order cancelled');
+            reload();
+        } catch (error) {
+            toast.error(error.message || 'Unable to cancel this order');
+        }
     }
 
     // --- Selection helpers ---
@@ -201,7 +217,7 @@ export default function Orders() {
             </div>
 
             {/* Bulk action bar */}
-            {someSelected && (
+            {!isCustomer && someSelected && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-4 py-2.5">
                     <span className="text-sm font-medium text-zinc-700">{selected.size} selected</span>
                     <select
@@ -244,12 +260,14 @@ export default function Orders() {
                     <thead className="bg-zinc-50">
                         <tr>
                             <th className="w-10 px-3 py-3">
-                                <input
-                                    type="checkbox"
-                                    checked={allSelected}
-                                    onChange={(e) => toggleAll(e.target.checked)}
-                                    className="h-4 w-4 rounded border-zinc-400 accent-zinc-800"
-                                />
+                                {!isCustomer ? (
+                                    <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        onChange={(e) => toggleAll(e.target.checked)}
+                                        className="h-4 w-4 rounded border-zinc-400 accent-zinc-800"
+                                    />
+                                ) : null}
                             </th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Order #</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Customer</th>
@@ -273,12 +291,14 @@ export default function Orders() {
                         ) : orders.map((order) => (
                             <tr key={order.id} className="hover:bg-zinc-50">
                                 <td className="px-3 py-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.has(order.id)}
-                                        onChange={() => toggleOne(order.id)}
-                                        className="h-4 w-4 rounded border-zinc-400 accent-zinc-800"
-                                    />
+                                    {!isCustomer ? (
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(order.id)}
+                                            onChange={() => toggleOne(order.id)}
+                                            className="h-4 w-4 rounded border-zinc-400 accent-zinc-800"
+                                        />
+                                    ) : null}
                                 </td>
                                 <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.order_number}</td>
                                 <td className="px-4 py-3 text-zinc-800">{order.first_name} {order.last_name}</td>
@@ -290,12 +310,22 @@ export default function Orders() {
                                     {new Date(order.created_at).toLocaleDateString()}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                    <button
-                                        onClick={() => navigate(`/admin/orders/${order.id}/edit`)}
-                                        className="rounded border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
-                                    >
-                                        Edit
-                                    </button>
+                                    {isCustomer ? (
+                                        <button
+                                            onClick={() => handleCustomerCancel(order.id)}
+                                            disabled={!['pending', 'processing'].includes(order.status)}
+                                            className="rounded border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => navigate(`/admin/orders/${order.id}/edit`)}
+                                            className="rounded border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+                                        >
+                                            Edit
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}

@@ -18,8 +18,11 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
+        'user_type',
         'warehouse_ids',
     ];
 
@@ -45,6 +48,16 @@ class User extends Authenticatable
             'password' => 'hashed',
             'warehouse_ids' => 'array',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->user_type === 'admin';
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->user_type === 'customer';
     }
 
     public function roles(): BelongsToMany

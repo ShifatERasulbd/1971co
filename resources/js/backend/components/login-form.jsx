@@ -139,7 +139,7 @@ export function LoginForm() {
 
                     <p className="text-center text-sm text-muted-foreground">
                         Don&apos;t have an account?{' '}
-                        <a href="#" className="font-medium text-foreground underline underline-offset-4">
+                        <a href="/register" className="font-medium text-foreground underline underline-offset-4">
                             Sign up
                         </a>
                     </p>

@@ -17,6 +17,7 @@ const AboutPage = lazy(() => import('./frontend/pages/about.jsx'));
 const ContactPage = lazy(() => import('./frontend/pages/contact.jsx'));
 const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
+const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
 
 function withPageFallback(Component) {
     return (
@@ -56,6 +57,7 @@ function AppRouter() {
                         <Route path="about" element={withPageFallback(AboutPage)} />
                         <Route path="contact" element={withPageFallback(ContactPage)} />
                         <Route path="checkout" element={withPageFallback(CheckoutPage)} />
+                        <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />
                         <Route path="register" element={withPageFallback(AuthPage)} />
                     </Route>

@@ -8,6 +8,20 @@ use Illuminate\Http\Request;
 
 class CheckoutOrderController extends Controller
 {
+    protected function customerScopedOrders(Request $request)
+    {
+        $user = $request->user();
+
+        return CheckoutOrder::query()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhere(function ($subQuery) use ($user) {
+                        $subQuery->whereNull('user_id')
+                            ->where('email', $user->email);
+                    });
+            });
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = CheckoutOrder::query()->latest();
@@ -31,9 +45,68 @@ class CheckoutOrderController extends Controller
         return response()->json($orders);
     }
 
+    public function customerIndex(Request $request): JsonResponse
+    {
+        $query = $this->customerScopedOrders($request)->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+
+        $orders = $query->paginate((int) $request->input('per_page', 20));
+
+        return response()->json($orders);
+    }
+
     public function show(CheckoutOrder $checkoutOrder): JsonResponse
     {
         return response()->json($checkoutOrder);
+    }
+
+    public function customerShow(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $exists = $this->customerScopedOrders($request)
+            ->whereKey($checkoutOrder->id)
+            ->exists();
+
+        if (! $exists) {
+            abort(403, 'Forbidden');
+        }
+
+        return response()->json($checkoutOrder);
+    }
+
+    public function customerCancel(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $ownedOrder = $this->customerScopedOrders($request)
+            ->whereKey($checkoutOrder->id)
+            ->first();
+
+        if (! $ownedOrder) {
+            abort(403, 'Forbidden');
+        }
+
+        if (! in_array($ownedOrder->status, ['pending', 'processing'], true)) {
+            return response()->json([
+                'message' => 'Only pending or processing orders can be cancelled.',
+            ], 422);
+        }
+
+        $ownedOrder->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'message' => 'Order cancelled successfully',
+            'order' => $ownedOrder->fresh(),
+        ]);
     }
 
     public function update(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
@@ -124,6 +197,7 @@ class CheckoutOrderController extends Controller
         $orderNumber = sprintf('ORD-%s-%04d', now()->format('YmdHis'), random_int(0, 9999));
 
         $order = CheckoutOrder::create([
+            'user_id' => $request->user()?->id,
             'order_number' => $orderNumber,
             'first_name' => trim($validated['first_name']),
             'last_name' => trim($validated['last_name']),

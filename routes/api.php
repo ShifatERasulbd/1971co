@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
+Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
 Route::get('/public/hero', [HeroController::class, 'publicHero']);
 Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
 Route::get('/public/about-hero', [AboutHeroController::class, 'publicIndex']);
@@ -49,6 +50,14 @@ Route::middleware('auth:sanctum')->group(function () {
 	});
 
 	Route::post('/logout', [AuthController::class, 'logout'])->middleware('web');
+
+	Route::middleware('user-type:customer')->group(function () {
+		Route::get('/customer/orders', [CheckoutOrderController::class, 'customerIndex']);
+		Route::get('/customer/orders/{checkoutOrder}', [CheckoutOrderController::class, 'customerShow']);
+		Route::put('/customer/orders/{checkoutOrder}/cancel', [CheckoutOrderController::class, 'customerCancel']);
+	});
+
+	Route::middleware('user-type:admin')->group(function () {
 
 	Route::apiResource('/sizes', SizeController::class);
 	Route::apiResource('/colors', ColorController::class);
@@ -95,4 +104,5 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::delete('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'destroy']);
 	Route::post('/orders/bulk-update', [CheckoutOrderController::class, 'bulkUpdate']);
 	Route::post('/orders/bulk-delete', [CheckoutOrderController::class, 'bulkDelete']);
+	});
 });

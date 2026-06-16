@@ -24,6 +24,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useAppContext } from '@/context/AppContext';
 
 const homeItems = [
     { title: 'Dashboard', icon: Gauge, path: '/admin/dashboard' },
@@ -70,7 +71,9 @@ export function AppSidebar(props) {
 
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAppContext();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const isCustomer = user?.user_type === 'customer';
 
    
     
@@ -140,7 +143,7 @@ export function AppSidebar(props) {
                 )}
 
                 {/* location Management  */}
-                 {websiteItems.length > 0 && (
+                 {!isCustomer && websiteItems.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Website Management</SidebarGroupLabel>
                         <SidebarGroupContent>
@@ -165,7 +168,7 @@ export function AppSidebar(props) {
                 )}
 
                   {/* Product Features Management  */}
-                 {ProductFeatures.length > 0 && (
+                 {!isCustomer && ProductFeatures.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Product Features Management</SidebarGroupLabel>
                         <SidebarGroupContent>
@@ -216,7 +219,7 @@ export function AppSidebar(props) {
                     </SidebarGroup>
                 )}
 
-                {inventoryItems.length > 0 && (
+                {!isCustomer && inventoryItems.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Inventory</SidebarGroupLabel>
                         <SidebarGroupContent>
@@ -240,7 +243,7 @@ export function AppSidebar(props) {
                     </SidebarGroup>
                 )}
 
-                  {SettingsItems.length > 0 && (
+                  {!isCustomer && SettingsItems.length > 0 && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Settings</SidebarGroupLabel>
                         <SidebarGroupContent>
