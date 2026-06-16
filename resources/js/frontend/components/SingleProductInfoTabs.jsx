@@ -2,74 +2,42 @@ import { useState } from 'react';
 
 import { featuresFontClass } from '../../utils/typography';
 
-const tabs = [
-    {
-        id: 'description',
-        label: 'Description',
-        content: (
-            <div className="space-y-7 text-[1.05rem] leading-9 text-slate-600 sm:text-[1.08rem]">
-                <p>
-                    A modern essential designed for professional everyday wear. The Corporate Full Sleeve
-                    T-shirt combines premium-quality fabric, a comfortable fit, and a clean minimal
-                    design, perfect for teams, branding, and corporate environments.
-                </p>
-
-                <div>
-                    <h3 className="text-[2.2rem] font-medium leading-none text-zinc-900">Fabric Care</h3>
-                    <ul className="mt-4 list-disc space-y-1.5 pl-7">
-                        <li>Bio-washed premium cotton fabric</li>
-                        <li>Do not bleach</li>
-                        <li>Iron inside out on low heat</li>
-                    </ul>
+export default function SingleProductInfoTabs({ product }) {
+    const tabs = [
+        {
+            id: 'description',
+            label: 'Description',
+            content: (
+                <div className="space-y-7 text-[1.05rem] leading-9 text-slate-600 sm:text-[1.08rem]">
+                    <p>{String(product?.description || 'No product description available.')}</p>
+                    {product?.long_description ? (
+                        <p>{String(product.long_description)}</p>
+                    ) : null}
                 </div>
-
-                <div>
-                    <h3 className="text-[2.2rem] font-medium leading-none text-zinc-900">Fit &amp; Mesurement</h3>
-                    <ul className="mt-4 list-disc space-y-1.5 pl-7">
-                        <li>Regular fit for everyday comfort</li>
-                        <li>Full sleeve design with a modern silhouette</li>
-                        <li>Product color may slightly vary due to lighting or screen settings.</li>
-                    </ul>
+            ),
+        },
+        {
+            id: 'additional',
+            label: 'Additional Information',
+            content: (
+                <div className="space-y-4 text-[1.05rem] leading-8 text-slate-600 sm:text-[1.08rem]">
+                    <p>{String(product?.additional_information || 'No additional information available.')}</p>
                 </div>
-            </div>
-        ),
-    },
-    {
-        id: 'additional',
-        label: 'Additional Information',
-        content: (
-            <div className="space-y-4 text-[1.05rem] leading-8 text-slate-600 sm:text-[1.08rem]">
-                <p>Material: 100% Premium Cotton</p>
-                <p>Style: Corporate Full Sleeve</p>
-                <p>Neck: Crew Neck</p>
-                <p>Fit: Regular Fit</p>
-                <p>Origin: Designed and finished in Canada</p>
-            </div>
-        ),
-    },
-    {
-        id: 'shipping',
-        label: 'Shipping & Returns',
-        content: (
-            <div className="space-y-4 text-[1.05rem] leading-8 text-slate-600 sm:text-[1.08rem]">
-                <p>Shipping usually takes 3-7 business days depending on your location.</p>
-                <p>Bulk and customized orders may require additional preparation time.</p>
-                <p>Returns accepted within 14 days for non-customized products in original condition.</p>
-            </div>
-        ),
-    },
-    {
-        id: 'reviews',
-        label: 'Reviews (0)',
-        content: (
-            <p className="text-[1.05rem] leading-8 text-slate-600 sm:text-[1.08rem]">
-                There are no reviews yet. Be the first to review this product.
-            </p>
-        ),
-    },
-];
+            ),
+        },
+        {
+            id: 'shipping',
+            label: 'Shipping & Returns',
+            content: (
+                <div className="space-y-4 text-[1.05rem] leading-8 text-slate-600 sm:text-[1.08rem]">
+                    <p>Shipping usually takes 3-7 business days depending on your location.</p>
+                    <p>Bulk and customized orders may require additional preparation time.</p>
+                    <p>Returns accepted within 14 days for non-customized products in original condition.</p>
+                </div>
+            ),
+        },
+    ];
 
-export default function SingleProductInfoTabs() {
     const [activeTab, setActiveTab] = useState('description');
 
     const currentTab = tabs.find((tab) => tab.id === activeTab) || tabs[0];

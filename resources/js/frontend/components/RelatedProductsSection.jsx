@@ -3,40 +3,29 @@ import { Link } from 'react-router-dom';
 
 import { featuresFontClass } from '../../utils/typography';
 
-const products = [
-    {
-        id: 1,
-        name: 'Corporate Full Sleeve T-Shirt',
-        price: '$54.00',
-        image: '/uploads/personalizer/order/order-design-ec8725a6-cb1f-456a-b929-ebf789cc956d.png',
-    },
-    {
-        id: 2,
-        name: 'Corporate Full Sleeve T-Shirt',
-        price: '$95.00',
-        image: '/uploads/personalizer/order/order-design-7069fa1a-7e0f-4ed7-80df-3b10ac7092d0.png',
-    },
-    {
-        id: 3,
-        name: 'Corporate Full Sleeve T-Shirt',
-        price: '$56.00',
-        image: '/uploads/personalizer/order/order-design-e9e2e99a-d9f7-40a1-9a43-773d8aa00524.png',
-    },
-    {
-        id: 4,
-        name: 'Corporate Full Sleeve T-Shirt',
-        price: '$65.00',
-        image: '/uploads/personalizer/order/order-design-a821648d-34d4-4db9-b17b-986431fd341b.png',
-    },
-];
+const fallbackImage = '/uploads/heroes/images/hero1.webp';
+
+function toAbsoluteImageUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return fallbackImage;
+    }
+
+    if (path.startsWith('http')) {
+        return path;
+    }
+
+    return `/${path.replace(/^\/+/, '')}`;
+}
 
 function RelatedProductCard({ product }) {
+    const imageSource = toAbsoluteImageUrl(product?.cover_image || product?.image_gallery?.[0] || fallbackImage);
+
     return (
         <article className="group cursor-pointer">
             {/* Soft gray card/image box frame to hold the product safely */}
             <div className="relative overflow-hidden bg-[#f6f6f6]">
                 <img
-                    src={product.image}
+                    src={imageSource}
                     alt={product.name}
                     className="h-[280px] w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-102 sm:h-[340px] lg:h-[440px]"
                 />
@@ -71,13 +60,13 @@ function RelatedProductCard({ product }) {
                 <h3 className="text-[0.92rem] font-medium tracking-wide text-zinc-800 transition-colors group-hover:text-zinc-600 sm:text-[0.98rem]">
                     {product.name}
                 </h3>
-                <p className="mt-1 text-sm font-semibold text-zinc-950">{product.price}</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-950">${Number(product?.price || 0).toFixed(2)}</p>
             </div>
         </article>
     );
 }
 
-export default function RelatedProductsSection() {
+export default function RelatedProductsSection({ products = [] }) {
     return (
         // Changed to clean white background with fine border partitioning
         <section className={`${featuresFontClass} bg-white border-t border-zinc-100 py-16 sm:py-20 lg:py-24`}>
@@ -114,7 +103,9 @@ export default function RelatedProductsSection() {
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
                         {products.map((product) => (
-                            <RelatedProductCard key={product.id} product={product} />
+                            <Link key={product.id} to={`/singleProduct?id=${product.id}`}>
+                                <RelatedProductCard product={product} />
+                            </Link>
                         ))}
                     </div>
 

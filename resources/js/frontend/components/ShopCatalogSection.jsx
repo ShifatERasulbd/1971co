@@ -280,7 +280,7 @@ function ProductCard({ product, colorLookup = {} }) {
         }
     }
 
-    const productLink = product.slug ? `/shop/${product.slug}` : `/shop?id=${product.id}`;
+    const productLink = `/singleProduct?id=${product.id}`;
 
     return (
         <article className="group overflow-hidden border border-zinc-200 bg-white">

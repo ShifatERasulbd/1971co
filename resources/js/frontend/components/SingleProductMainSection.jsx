@@ -1,45 +1,176 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { featuresFontClass } from '../../utils/typography';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
 import SingleProductMediaGallery from './SingleProductMediaGallery.jsx';
 
-const product = {
-    name: 'Corporate Full Sleeve T-Shirt',
-    price: '$16.95',
-    description:
-        'Designed for comfort and professionalism, the Corporate Full Sleeve T-shirt combines premium fabric with a clean modern fit.',
-    colors: [
-        { label: 'Black', value: '#000000' },
-        { label: 'Green', value: '#5d9b88' },
-        { label: 'Cream', value: '#e8e3c7' },
-    ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
-};
+const fallbackImage = '/uploads/heroes/images/hero1.webp';
 
-const productImages = [
-    '/uploads/personalizer/order/order-design-ec8725a6-cb1f-456a-b929-ebf789cc956d.png',
-    '/uploads/heroes/images/hero1.webp',
-    '/uploads/personalizer/order/order-design-7069fa1a-7e0f-4ed7-80df-3b10ac7092d0.png',
-    '/uploads/personalizer/order/order-design-e9e2e99a-d9f7-40a1-9a43-773d8aa00524.png',
-    '/uploads/personalizer/order/order-design-a821648d-34d4-4db9-b17b-986431fd341b.png',
-    '/uploads/personalizer/order/order-design-9eff0a64-52bc-48c1-9eaf-ddfd438b40f0.png',
-];
+function toAbsoluteImageUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return fallbackImage;
+    }
 
-export default function SingleProductMainSection() {
-    const [selectedImage, setSelectedImage] = useState(productImages[0]);
-    const [selectedColor, setSelectedColor] = useState(product.colors[0].label);
-    const [selectedSize, setSelectedSize] = useState('M');
+    if (path.startsWith('http')) {
+        return path;
+    }
+
+    return `/${path.replace(/^\/+/, '')}`;
+}
+
+function normalizeImageKey(path) {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+
+    return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
+}
+
+function normalizeColors(value) {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string') {
+        return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+
+    return [];
+}
+
+function normalizeSizes(product) {
+    if (typeof product?.size === 'string' && product.size.trim()) {
+        return product.size.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    const extracted = variants
+        .map((row) => String(row?.size || '').trim())
+        .filter(Boolean);
+
+    return [...new Set(extracted)];
+}
+
+function normalizeColorVariantImages(mapping) {
+    if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+        return {};
+    }
+
+    return mapping;
+}
+
+export default function SingleProductMainSection({ product }) {
+    const [colorLookup, setColorLookup] = useState({});
+
+    const imageList = useMemo(() => {
+        const gallery = Array.isArray(product?.image_gallery) ? product.image_gallery : [];
+        const candidates = [product?.cover_image, ...gallery].filter(Boolean);
+        const seen = new Set();
+
+        const unique = candidates.filter((item) => {
+            const key = normalizeImageKey(item);
+            if (!key || seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        });
+
+        if (unique.length === 0) {
+            return [fallbackImage];
+        }
+
+        return unique.map((item) => toAbsoluteImageUrl(item));
+    }, [product?.cover_image, product?.image_gallery]);
+
+    const colors = useMemo(() => normalizeColors(product?.color), [product?.color]);
+    const colorVariantImages = useMemo(
+        () => normalizeColorVariantImages(product?.color_variant_images),
+        [product?.color_variant_images],
+    );
+    const sizes = useMemo(() => normalizeSizes(product), [product]);
+    const [selectedImage, setSelectedImage] = useState(imageList[0]);
+    const [selectedColor, setSelectedColor] = useState(colors[0] || '');
+    const [selectedSize, setSelectedSize] = useState(sizes[0] || '');
     const [quantity, setQuantity] = useState(1);
+
+    useEffect(() => {
+        setSelectedImage(imageList[0]);
+    }, [imageList]);
+
+    useEffect(() => {
+        setSelectedColor(colors[0] || '');
+    }, [colors]);
+
+    useEffect(() => {
+        setSelectedSize(sizes[0] || '');
+    }, [sizes]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadColorLookup() {
+            try {
+                const response = await fetch('/api/public/colors', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setColorLookup({});
+                    }
+                    return;
+                }
+
+                const payload = await response.json();
+                const list = Array.isArray(payload)
+                    ? payload
+                    : (Array.isArray(payload?.data) ? payload.data : []);
+
+                const nextLookup = {};
+                list.forEach((item) => {
+                    const id = String(item?.id || '').trim();
+                    const name = String(item?.name || '').trim().toLowerCase();
+                    const code = String(item?.color_code || '').trim();
+
+                    if (!/^#[0-9a-f]{6}$/i.test(code)) {
+                        return;
+                    }
+
+                    if (name) {
+                        nextLookup[name] = code;
+                    }
+
+                    if (id) {
+                        nextLookup[id] = code;
+                    }
+                });
+
+                if (!ignore) {
+                    setColorLookup(nextLookup);
+                }
+            } catch {
+                if (!ignore) {
+                    setColorLookup({});
+                }
+            }
+        }
+
+        loadColorLookup();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     const breadcrumbs = useMemo(
         () => [
             { label: 'Home', to: '/' },
             { label: 'Shop', to: '/shop' },
-            { label: 'Ribbed Tank Top', to: '/singleProduct' },
+            { label: String(product?.name || 'Product'), to: `/singleProduct?id=${product?.id}` },
         ],
-        []
+        [product?.id, product?.name]
     );
 
     function decreaseQuantity() {
@@ -50,9 +181,26 @@ export default function SingleProductMainSection() {
         setQuantity((previous) => previous + 1);
     }
 
+    function handleSelectColor(colorLabel) {
+        setSelectedColor(colorLabel);
+
+        const mappedImages = Array.isArray(colorVariantImages?.[colorLabel])
+            ? colorVariantImages[colorLabel]
+            : [];
+
+        if (mappedImages.length === 0) {
+            return;
+        }
+
+        const firstMapped = toAbsoluteImageUrl(mappedImages[0]);
+        if (imageList.includes(firstMapped)) {
+            setSelectedImage(firstMapped);
+        }
+    }
+
     return (
-        <section className={`${featuresFontClass} bg-white px-5 py-8 sm:px-8 lg:px-12 lg:py-10`}>
-            <div className="mx-auto w-full max-w-[1520px]">
+        <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
+            <div className="mx-auto w-full max-w-[1720px]">
                 <p className="mb-4 text-[0.95rem] uppercase tracking-[0.08em] text-slate-600 sm:mb-6">
                     {breadcrumbs.map((crumb, index) => (
                         <span key={crumb.label}>
@@ -64,25 +212,35 @@ export default function SingleProductMainSection() {
                     ))}
                 </p>
 
-                <div className="grid items-start gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:gap-10">
+                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-8">
                     <div className="self-start">
                         <SingleProductMediaGallery
-                            images={productImages}
+                            images={imageList}
                             selectedImage={selectedImage}
                             onSelectImage={setSelectedImage}
                         />
                     </div>
 
-                    <SingleProductDetailsPanel
-                        product={product}
-                        selectedColor={selectedColor}
-                        onSelectColor={setSelectedColor}
-                        selectedSize={selectedSize}
-                        onSelectSize={setSelectedSize}
-                        quantity={quantity}
-                        onDecreaseQuantity={decreaseQuantity}
-                        onIncreaseQuantity={increaseQuantity}
-                    />
+                    <div className="xl:sticky xl:top-24">
+                        <SingleProductDetailsPanel
+                            product={{
+                                name: String(product?.name || 'Untitled Product'),
+                                sku: String(product?.sku || 'N/A'),
+                                price: `$${Number(product?.price || 0).toFixed(2)}`,
+                                description: String(product?.description || 'No description available.'),
+                                colors: colors.map((color) => ({ label: color, value: color })),
+                                sizes,
+                            }}
+                            colorLookup={colorLookup}
+                            selectedColor={selectedColor}
+                            onSelectColor={handleSelectColor}
+                            selectedSize={selectedSize}
+                            onSelectSize={setSelectedSize}
+                            quantity={quantity}
+                            onDecreaseQuantity={decreaseQuantity}
+                            onIncreaseQuantity={increaseQuantity}
+                        />
+                    </div>
                 </div>
             </div>
         </section>

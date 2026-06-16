@@ -276,7 +276,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
         }
     }
 
-    const productLink = product.slug ? `/shop/${product.slug}` : `/shop?id=${product.id}`;
+    const productLink = `/singleProduct?id=${product.id}`;
 
     return (
         <article className="group flex-none w-[230px] sm:w-[260px] lg:w-[290px] cursor-pointer">

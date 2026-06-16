@@ -13,8 +13,27 @@ function RulerIcon() {
     );
 }
 
+function resolveSwatchColor(value, colorLookup = {}) {
+    const raw = String(value || '').trim();
+    if (/^#[0-9a-f]{3,8}$/i.test(raw)) {
+        return raw;
+    }
+
+    const mappedColor = colorLookup[raw.toLowerCase()] || colorLookup[raw];
+    if (mappedColor && /^#[0-9a-f]{6}$/i.test(String(mappedColor))) {
+        return mappedColor;
+    }
+
+    if (/^[a-z]+$/i.test(raw)) {
+        return raw.toLowerCase();
+    }
+
+    return '#d4d4d8';
+}
+
 export default function SingleProductDetailsPanel({
     product,
+    colorLookup,
     selectedColor,
     onSelectColor,
     selectedSize,
@@ -23,9 +42,17 @@ export default function SingleProductDetailsPanel({
     onDecreaseQuantity,
     onIncreaseQuantity,
 }) {
+    const displayColors = Array.isArray(product.colors) && product.colors.length > 0
+        ? product.colors
+        : [{ label: 'Default', value: '#d4d4d8' }];
+
+    const displaySizes = Array.isArray(product.sizes) && product.sizes.length > 0
+        ? product.sizes
+        : ['One Size'];
+
     return (
-        <div>
-            <h1 className="font-serif text-[2.1rem] uppercase leading-tight tracking-[0.03em] text-zinc-900 sm:text-[2.2rem]">
+        <div className="bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:p-5">
+            <h1 className="font-serif text-[2rem] uppercase leading-tight tracking-[0.02em] text-zinc-900 sm:text-[2.15rem]">
                 {product.name}
             </h1>
 
@@ -34,17 +61,17 @@ export default function SingleProductDetailsPanel({
                 <span>(5.0)</span>
             </div>
 
-            <p className="mt-3 text-[2.05rem] font-medium leading-none text-zinc-900">{product.price}</p>
+            <p className="mt-2.5 text-[1.95rem] font-medium leading-none text-zinc-900">{product.price}</p>
 
             <p className="mt-3.5 max-w-[52ch] text-[0.98rem] leading-7 text-zinc-600">
                 {product.description}
             </p>
 
-            <div className="mt-5 space-y-4.5">
+            <div className="mt-5 space-y-4">
                 <div>
-                    <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.05em] text-zinc-900">Color</h2>
+                    <h2 className="text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-zinc-900">Color</h2>
                     <div className="mt-2.5 flex items-center gap-2.5">
-                        {product.colors.map((color) => (
+                        {displayColors.map((color) => (
                             <button
                                 key={color.label}
                                 type="button"
@@ -58,7 +85,7 @@ export default function SingleProductDetailsPanel({
                             >
                                 <span
                                     className="size-7 rounded-full border border-zinc-300"
-                                    style={{ backgroundColor: color.value }}
+                                    style={{ backgroundColor: resolveSwatchColor(color.value, colorLookup) }}
                                 />
                             </button>
                         ))}
@@ -66,9 +93,9 @@ export default function SingleProductDetailsPanel({
                 </div>
 
                 <div>
-                    <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.05em] text-zinc-900">Size</h2>
+                    <h2 className="text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-zinc-900">Size</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                        {product.sizes.map((size) => (
+                        {displaySizes.map((size) => (
                             <button
                                 key={size}
                                 type="button"
@@ -142,7 +169,7 @@ export default function SingleProductDetailsPanel({
                     </button>
                 </div>
 
-                <p className="border-t border-zinc-200 pt-2.5 text-[0.98rem] text-zinc-500">SKU: N/A</p>
+                <p className="border-t border-zinc-200 pt-2.5 text-[0.98rem] text-zinc-500">SKU: {product.sku || 'N/A'}</p>
             </div>
         </div>
     );
