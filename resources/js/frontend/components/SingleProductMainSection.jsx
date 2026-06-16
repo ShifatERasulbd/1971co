@@ -62,6 +62,7 @@ function normalizeColorVariantImages(mapping) {
 
 export default function SingleProductMainSection({ product }) {
     const [colorLookup, setColorLookup] = useState({});
+    const [colorRecords, setColorRecords] = useState([]);
 
     const imageList = useMemo(() => {
         const gallery = Array.isArray(product?.image_gallery) ? product.image_gallery : [];
@@ -129,6 +130,7 @@ export default function SingleProductMainSection({ product }) {
                     : (Array.isArray(payload?.data) ? payload.data : []);
 
                 const nextLookup = {};
+                const nextRecords = [];
                 list.forEach((item) => {
                     const id = String(item?.id || '').trim();
                     const name = String(item?.name || '').trim().toLowerCase();
@@ -137,6 +139,8 @@ export default function SingleProductMainSection({ product }) {
                     if (!/^#[0-9a-f]{6}$/i.test(code)) {
                         return;
                     }
+
+                    nextRecords.push(item);
 
                     if (name) {
                         nextLookup[name] = code;
@@ -149,10 +153,12 @@ export default function SingleProductMainSection({ product }) {
 
                 if (!ignore) {
                     setColorLookup(nextLookup);
+                    setColorRecords(nextRecords);
                 }
             } catch {
                 if (!ignore) {
                     setColorLookup({});
+                    setColorRecords([]);
                 }
             }
         }
@@ -183,20 +189,62 @@ export default function SingleProductMainSection({ product }) {
 
     function handleSelectColor(colorLabel) {
         setSelectedColor(colorLabel);
+    }
 
-        const mappedImages = Array.isArray(colorVariantImages?.[colorLabel])
-            ? colorVariantImages[colorLabel]
-            : [];
+    const filteredImages = useMemo(() => {
+        if (!selectedColor) {
+            return imageList;
+        }
+
+        const rawSelected = String(selectedColor).trim();
+        const matchedById = colorRecords.find((record) => String(record?.id) === rawSelected);
+        const matchedByName = colorRecords.find(
+            (record) => String(record?.name || '').trim().toLowerCase() === rawSelected.toLowerCase(),
+        );
+        const matchedColor = matchedById || matchedByName;
+
+        const candidateKeys = [
+            rawSelected,
+            rawSelected.toLowerCase(),
+            String(matchedColor?.name || '').trim(),
+            String(matchedColor?.name || '').trim().toLowerCase(),
+            String(matchedColor?.id || '').trim(),
+        ].filter(Boolean);
+
+        let mappedImages = [];
+        for (const key of candidateKeys) {
+            const directMatch = colorVariantImages?.[key];
+            if (Array.isArray(directMatch) && directMatch.length > 0) {
+                mappedImages = directMatch;
+                break;
+            }
+
+            const ciKey = Object.keys(colorVariantImages).find(
+                (existingKey) => existingKey.toLowerCase() === key.toLowerCase(),
+            );
+            if (ciKey && Array.isArray(colorVariantImages[ciKey]) && colorVariantImages[ciKey].length > 0) {
+                mappedImages = colorVariantImages[ciKey];
+                break;
+            }
+        }
 
         if (mappedImages.length === 0) {
-            return;
+            return imageList;
         }
 
-        const firstMapped = toAbsoluteImageUrl(mappedImages[0]);
-        if (imageList.includes(firstMapped)) {
-            setSelectedImage(firstMapped);
+        const imageSet = new Set(imageList.map((item) => normalizeImageKey(item)));
+        const filtered = mappedImages
+            .map((item) => toAbsoluteImageUrl(item))
+            .filter((item) => imageSet.has(normalizeImageKey(item)));
+
+        return filtered.length > 0 ? filtered : imageList;
+    }, [selectedColor, colorRecords, colorVariantImages, imageList]);
+
+    useEffect(() => {
+        if (!filteredImages.includes(selectedImage)) {
+            setSelectedImage(filteredImages[0] || imageList[0]);
         }
-    }
+    }, [filteredImages, selectedImage, imageList]);
 
     return (
         <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
@@ -215,7 +263,7 @@ export default function SingleProductMainSection({ product }) {
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-8">
                     <div className="self-start">
                         <SingleProductMediaGallery
-                            images={imageList}
+                            images={filteredImages}
                             selectedImage={selectedImage}
                             onSelectImage={setSelectedImage}
                         />
