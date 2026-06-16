@@ -14,18 +14,12 @@ function LazySection({ children, heightClass }) {
 export default function ShopPage() {
     return (
         <div className="bg-white">
-            <LazySection heightClass="h-[480px]">
-                <ShopHeroSection />
-            </LazySection>
+           
             <LazySection heightClass="h-[760px]">
                 <ShopCatalogSection />
             </LazySection>
-            <LazySection heightClass="h-[220px]">
-                <NewsletterSection />
-            </LazySection>
-            <LazySection heightClass="h-[320px]">
-                <InstagramSection />
-            </LazySection>
+            
+           
         </div>
     );
 }

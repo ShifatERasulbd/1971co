@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { timelessFontClass } from '../../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
@@ -75,6 +77,23 @@ function SocialButton({ href, label, children }) {
     );
 }
 
+function resolveAssetUrl(path) {
+    if (typeof path !== 'string') {
+        return '';
+    }
+
+    const raw = path.trim();
+    if (!raw) {
+        return '';
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+        return raw;
+    }
+
+    return `/${raw.replace(/^\/+/, '')}`;
+}
+
 function FooterCol({ heading, links }) {
     return (
         <nav aria-label={heading}>
@@ -107,6 +126,45 @@ function FooterCol({ heading, links }) {
 }
 
 export default function Footer() {
+    const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
+
+    useEffect(() => {
+        const unsubscribe = onSettingsUpdated((payload) => {
+            setSiteSettings(payload || {});
+        });
+
+        setSiteSettings(getSettingsPayload() || {});
+
+        return unsubscribe;
+    }, []);
+
+    const footerLogo = useMemo(
+        () => resolveAssetUrl(siteSettings?.footer_logo || ''),
+        [siteSettings],
+    );
+
+    const socialFromSettings = useMemo(() => {
+        const items = Array.isArray(siteSettings?.social_media) ? siteSettings.social_media : [];
+
+        return items
+            .map((item, index) => {
+                const name = String(item?.name || '').trim() || `Social ${index + 1}`;
+                const link = String(item?.link || '').trim() || '#';
+                const icon = resolveAssetUrl(item?.icon || '');
+
+                return {
+                    label: name,
+                    href: link,
+                    icon,
+                };
+            })
+            .filter((item) => item.label && item.href);
+    }, [siteSettings]);
+
+    const contactEmail = String(siteSettings?.email || '').trim() || 'support@1971co.com';
+    const locationLabel = String(siteSettings?.location || '').trim() || 'United States';
+    const currencyLabel = String(siteSettings?.currency || '').trim() || 'USD $';
+
     return (
         <footer className={`${timelessFontClass} bg-[#1a1a1a] text-white`}>
             {/* Main grid */}
@@ -116,24 +174,45 @@ export default function Footer() {
                     {/* Brand column */}
                     <div className="space-y-5">
                         <Link to="/" className="inline-flex items-baseline gap-0.5">
-                            <span className={`${sectionTypography.footerBrandPrimary} text-white`}>
-                                1971
-                            </span>
-                            <span className={`${sectionTypography.footerBrandSecondary} text-white`}>
-                                Co.
-                            </span>
+                            {footerLogo ? (
+                                <img
+                                    src={footerLogo}
+                                    alt="1971Co"
+                                    className="h-8 w-auto max-w-[220px] object-contain"
+                                />
+                            ) : (
+                                <>
+                                    <span className={`${sectionTypography.footerBrandPrimary} text-white`}>
+                                        1971
+                                    </span>
+                                    <span className={`${sectionTypography.footerBrandSecondary} text-white`}>
+                                        Co.
+                                    </span>
+                                </>
+                            )}
                         </Link>
 
                         <p className={`max-w-[260px] ${sectionTypography.footerText} text-zinc-400`}>
-                            Premium minimal streetwear. Built for those who value quiet confidence.
+                            {locationLabel}
                         </p>
 
                         <div className="flex items-center gap-2">
-                            {socialLinks.map((s) => (
-                                <SocialButton key={s.label} href={s.href} label={s.label}>
-                                    {s.icon}
-                                </SocialButton>
-                            ))}
+                            {(socialFromSettings.length > 0 ? socialFromSettings : socialLinks).map((s) =>
+                                typeof s.icon === 'string' && s.icon.trim() !== '' ? (
+                                    <a
+                                        key={s.label}
+                                        href={s.href}
+                                        aria-label={s.label}
+                                        className="inline-flex size-8 items-center justify-center border border-zinc-600 text-zinc-400 transition-colors hover:border-white hover:text-white"
+                                    >
+                                        <img src={s.icon} alt={s.label} className="size-4 object-contain" />
+                                    </a>
+                                ) : (
+                                    <SocialButton key={s.label} href={s.href} label={s.label}>
+                                        {s.icon}
+                                    </SocialButton>
+                                )
+                            )}
                         </div>
                     </div>
 
@@ -147,7 +226,7 @@ export default function Footer() {
                             Stay Connected
                         </h3>
                         <p className={`mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
-                            Get drop alerts and exclusive access.
+                            {contactEmail}
                         </p>
                         <form
                             onSubmit={(e) => e.preventDefault()}
@@ -178,8 +257,8 @@ export default function Footer() {
                 <div className={`mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 ${sectionTypography.footerLegal} text-zinc-500 sm:flex-row sm:px-10 lg:px-16`}>
                     <span>© 2026 1971Co. All rights reserved.</span>
                     <div className="flex items-center gap-4">
-                        <span>USD $</span>
-                        <span>United States</span>
+                        <span>{currencyLabel}</span>
+                        <span>{locationLabel}</span>
                     </div>
                 </div>
             </div>

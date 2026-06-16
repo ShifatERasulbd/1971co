@@ -276,7 +276,11 @@ function ProductCard({ product, autoPlay = false, colorLookup = {} }) {
         }
     }
 
-    const productLink = `/singleProduct?id=${product.id}`;
+    const productSlug = String(product?.slug || '').trim();
+    const productName = String(product?.name || '').trim();
+    const productLink = productSlug
+        ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
+        : `/singleProduct?name=${encodeURIComponent(productName)}`;
 
     return (
         <article className="group flex-none w-[230px] sm:w-[260px] lg:w-[290px] cursor-pointer">

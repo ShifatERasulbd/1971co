@@ -61,20 +61,24 @@ export default function SingleProductPage() {
             return null;
         }
 
-        const idParam = searchParams.get('id');
         const slugParam = searchParams.get('slug');
-
-        if (idParam) {
-            const byId = products.find((item) => String(item?.id) === String(idParam));
-            if (byId) {
-                return byId;
-            }
-        }
+        const nameParam = searchParams.get('name');
 
         if (slugParam) {
             const bySlug = products.find((item) => String(item?.slug || '') === String(slugParam));
             if (bySlug) {
                 return bySlug;
+            }
+        }
+
+        if (nameParam) {
+            const normalizedName = String(nameParam).trim().toLowerCase();
+            const byName = products.find(
+                (item) => String(item?.name || '').trim().toLowerCase() === normalizedName,
+            );
+
+            if (byName) {
+                return byName;
             }
         }
 

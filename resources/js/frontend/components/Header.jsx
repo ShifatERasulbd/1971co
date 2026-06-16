@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Menu, Search, ShoppingCart, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { timelessFontClass } from '../../utils/typography';
 
 const fallbackMegaMenuColumns = [
@@ -66,6 +67,17 @@ export default function Header() {
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
     const [grandChilds, setGrandChilds] = useState([]);
+    const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
+
+    useEffect(() => {
+        const unsubscribe = onSettingsUpdated((payload) => {
+            setSiteSettings(payload || {});
+        });
+
+        setSiteSettings(getSettingsPayload() || {});
+
+        return unsubscribe;
+    }, []);
 
     useEffect(() => {
         let ignore = false;
@@ -224,6 +236,19 @@ export default function Header() {
         });
     }, [shopNavItem, subCategories, grandChilds]);
 
+    const headerLogo = useMemo(() => {
+        const raw = typeof siteSettings?.header_logo === 'string' ? siteSettings.header_logo.trim() : '';
+        if (!raw) {
+            return '';
+        }
+
+        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+            return raw;
+        }
+
+        return `/${raw.replace(/^\/+/, '')}`;
+    }, [siteSettings]);
+
     return (
         <header className={`${timelessFontClass} sticky top-0 z-50 border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
             <div className="mx-auto relative flex h-[90px] max-w-[1920px] items-center px-4 sm:px-6 lg:px-10">
@@ -310,7 +335,15 @@ export default function Header() {
                     className="absolute left-1/2 flex min-w-0 -translate-x-1/2 items-center text-[1.65rem] font-black tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-80 sm:text-[1.9rem]"
                     aria-label="Timeless home"
                 >
-                    TIMLESS
+                    {headerLogo ? (
+                        <img
+                            src={headerLogo}
+                            alt="Timless"
+                            className="h-9 w-auto max-w-[220px] object-contain sm:h-11"
+                        />
+                    ) : (
+                        'TIMLESS'
+                    )}
                 </Link>
 
                 <div className="ml-auto flex items-center gap-2 sm:gap-3 xl:gap-8">

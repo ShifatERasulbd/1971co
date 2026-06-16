@@ -8,7 +8,7 @@ function RulerIcon() {
                 strokeWidth="1.7"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-            />
+                />
         </svg>
     );
 }
@@ -51,7 +51,7 @@ export default function SingleProductDetailsPanel({
         : ['One Size'];
 
     return (
-        <div className="bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:p-5">
+        <div className="p-4 sm:p-5">
             <h1 className="font-serif text-[2rem] uppercase leading-tight tracking-[0.02em] text-zinc-900 sm:text-[2.15rem]">
                 {product.name}
             </h1>
@@ -103,7 +103,7 @@ export default function SingleProductDetailsPanel({
                                 className={`inline-flex min-w-[60px] items-center justify-center border px-3 py-2.5 text-[0.95rem] font-medium uppercase ${
                                     selectedSize === size
                                         ? 'border-zinc-950 bg-zinc-950 text-white'
-                                        : 'border-zinc-300 bg-white text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
+                                        : 'border-zinc-300 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
                                 }`}
                             >
                                 {size}
@@ -117,7 +117,7 @@ export default function SingleProductDetailsPanel({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <div className="inline-flex h-[52px] border border-zinc-300 bg-white">
+                    <div className="inline-flex h-[52px] border border-zinc-300">
                         <button
                             type="button"
                             onClick={onDecreaseQuantity}

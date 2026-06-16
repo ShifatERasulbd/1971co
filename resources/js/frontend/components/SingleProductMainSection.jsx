@@ -171,12 +171,20 @@ export default function SingleProductMainSection({ product }) {
     }, []);
 
     const breadcrumbs = useMemo(
-        () => [
-            { label: 'Home', to: '/' },
-            { label: 'Shop', to: '/shop' },
-            { label: String(product?.name || 'Product'), to: `/singleProduct?id=${product?.id}` },
-        ],
-        [product?.id, product?.name]
+        () => {
+            const slug = String(product?.slug || '').trim();
+            const name = String(product?.name || '').trim();
+            const detailUrl = slug
+                ? `/singleProduct?slug=${encodeURIComponent(slug)}`
+                : `/singleProduct?name=${encodeURIComponent(name)}`;
+
+            return [
+                { label: 'Home', to: '/' },
+                { label: 'Shop', to: '/shop' },
+                { label: String(product?.name || 'Product'), to: detailUrl },
+            ];
+        },
+        [product?.name, product?.slug]
     );
 
     function decreaseQuantity() {
@@ -248,7 +256,7 @@ export default function SingleProductMainSection({ product }) {
 
     return (
         <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
-            <div className="mx-auto w-full max-w-[1720px]">
+            <div className="mx-auto w-full max-w-[1800px]">
                 <p className="mb-4 text-[0.95rem] uppercase tracking-[0.08em] text-slate-600 sm:mb-6">
                     {breadcrumbs.map((crumb, index) => (
                         <span key={crumb.label}>
@@ -260,7 +268,8 @@ export default function SingleProductMainSection({ product }) {
                     ))}
                 </p>
 
-                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-8">
+                {/* UPDATED: Adjusted the grid system tracking to give more width to the gallery and less to the panel */}
+                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_440px] xl:gap-12">
                     <div className="self-start">
                         <SingleProductMediaGallery
                             images={filteredImages}

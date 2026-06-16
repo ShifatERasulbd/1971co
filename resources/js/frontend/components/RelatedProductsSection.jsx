@@ -103,7 +103,12 @@ export default function RelatedProductsSection({ products = [] }) {
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
                         {products.map((product) => (
-                            <Link key={product.id} to={`/singleProduct?id=${product.id}`}>
+                            <Link
+                                key={product.id}
+                                to={String(product?.slug || '').trim()
+                                    ? `/singleProduct?slug=${encodeURIComponent(String(product.slug).trim())}`
+                                    : `/singleProduct?name=${encodeURIComponent(String(product?.name || '').trim())}`}
+                            >
                                 <RelatedProductCard product={product} />
                             </Link>
                         ))}

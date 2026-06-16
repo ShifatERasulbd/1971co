@@ -280,7 +280,11 @@ function ProductCard({ product, colorLookup = {} }) {
         }
     }
 
-    const productLink = `/singleProduct?id=${product.id}`;
+    const productSlug = String(product?.slug || '').trim();
+    const productName = String(product?.name || '').trim();
+    const productLink = productSlug
+        ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
+        : `/singleProduct?name=${encodeURIComponent(productName)}`;
 
     return (
         <article className="group overflow-hidden border border-zinc-200 bg-white">
