@@ -96,12 +96,18 @@ export default function SingleProductDetailsPanel({
             }
         }
 
+        const previousBodyOverflow = document.body.style.overflow;
+
         if (isSizeChartModalOpen) {
+            document.body.style.overflow = 'hidden';
             window.addEventListener('keydown', handleEscape);
+        } else {
+            document.body.style.overflow = previousBodyOverflow;
         }
 
         return () => {
             window.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = previousBodyOverflow;
         };
     }, [isSizeChartModalOpen]);
 
