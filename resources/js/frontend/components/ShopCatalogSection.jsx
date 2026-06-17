@@ -192,6 +192,18 @@ function normalizeImageKey(path) {
     return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
 }
 
+function isBestSellerProduct(product) {
+    if (!product || typeof product !== 'object') {
+        return false;
+    }
+
+    if (product.show_on_best_sellers === true) {
+        return true;
+    }
+
+    return Number(product.show_on_best_sellers) === 1;
+}
+
 function ColorSwatch({ color, active, onClick, colorLookup }) {
     return (
         <button
@@ -418,7 +430,7 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
                 </Link>
 
                 <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
-                    ${Number(product.price).toFixed(2)}
+                    ${Number(product.priceValue).toFixed(2)}
                 </p>
             </div>
         </article>
@@ -510,6 +522,16 @@ export default function ShopCatalogSection() {
     const [highestDbPrice, setHighestDbPrice] = useState('0.00');
     const [currentPage, setCurrentPage] = useState(1);
     const [variantModalState, setVariantModalState] = useState(null);
+
+    const isBestSellersView = useMemo(() => {
+        const pathName = String(location.pathname || '').toLowerCase();
+        if (pathName === '/best-sellers') {
+            return true;
+        }
+
+        const params = new URLSearchParams(location.search);
+        return normalizeQueryValue(params.get('category')) === 'best-sellers';
+    }, [location.pathname, location.search]);
 
     useEffect(() => {
         let ignore = false;
@@ -616,7 +638,9 @@ export default function ShopCatalogSection() {
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
-        const categoryValue = params.get('category');
+        const pathName = String(location.pathname || '').toLowerCase();
+        const categoryValueFromPath = pathName === '/best-sellers' ? 'best-sellers' : '';
+        const categoryValue = categoryValueFromPath || params.get('category');
         const subCategoryValue = params.get('sub_category');
         const grandChildValue = params.get('grand_child');
         const rawSearch = params.get('search') || params.get('q') || '';
@@ -682,6 +706,10 @@ export default function ShopCatalogSection() {
         const hasMax = Number.isFinite(max);
 
         return products.filter((product) => {
+            if (isBestSellersView && !isBestSellerProduct(product)) {
+                return false;
+            }
+
             if (selectedAvailability.length > 0) {
                 const inStock = product.stockValue > 0;
                 const matchesAvailability = selectedAvailability.some((value) =>
@@ -723,7 +751,16 @@ export default function ShopCatalogSection() {
 
             return true;
         });
-    }, [products, selectedAvailability, selectedSizes, selectedCategories, minPrice, maxPrice, searchTerm]);
+    }, [
+        products,
+        selectedAvailability,
+        selectedSizes,
+        selectedCategories,
+        minPrice,
+        maxPrice,
+        searchTerm,
+        isBestSellersView,
+    ]);
 
     const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
     const safeCurrentPage = Math.min(currentPage, totalPages);

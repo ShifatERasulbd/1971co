@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
 
 const SingleProductMainSection = lazy(() => import('../components/SingleProductMainSection.jsx'));
-const SingleProductInfoTabs = lazy(() => import('../components/SingleProductInfoTabs.jsx'));
+// const SingleProductInfoTabs = lazy(() => import('../components/SingleProductInfoTabs.jsx'));
 const RelatedProductsSection = lazy(() => import('../components/RelatedProductsSection.jsx'));
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 const InstagramSection = lazy(() => import('../components/InstagramSection.jsx'));
@@ -126,7 +126,7 @@ export default function SingleProductPage() {
                 <SingleProductMainSection product={currentProduct} />
             </LazySection>
             <LazySection heightClass="h-[320px]" variant="generic">
-                <SingleProductInfoTabs product={currentProduct} />
+                {/* <SingleProductInfoTabs product={currentProduct} /> */}
             </LazySection>
             <LazySection heightClass="h-[640px]" variant="catalog">
                 <RelatedProductsSection products={relatedProducts} />

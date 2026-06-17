@@ -90,6 +90,16 @@ function getSwatchColor(value, colorLookup = {}) {
     return '#d4d4d8';
 }
 
+function getSwatchBorderClass(value) {
+    const color = String(value || '').trim().toLowerCase();
+
+    if (color === '#fff' || color === '#ffffff' || color === 'white' || color === 'off-white' || color === 'ivory') {
+        return 'border-zinc-300';
+    }
+
+    return 'border-zinc-200';
+}
+
 function collectVariantImages(product) {
     const images = [];
 
@@ -186,16 +196,23 @@ function groupProductsByName(products) {
 }
 
 function ColorSwatch({ color, active, onClick, colorLookup }) {
+    const swatchColor = getSwatchColor(color, colorLookup);
+    const borderClass = getSwatchBorderClass(swatchColor);
+
     return (
         <button
             type="button"
             title={color}
             onClick={onClick}
-            className={`inline-block size-5 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
-                active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
+            className={`inline-flex size-5 items-center justify-center rounded-full bg-white p-[2px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
+                active ? 'ring-1 ring-zinc-900/25' : borderClass
             }`}
-            style={{ backgroundColor: getSwatchColor(color, colorLookup) }}
-        />
+        >
+            <span
+                className="block size-full rounded-full"
+                style={{ backgroundColor: swatchColor }}
+            />
+        </button>
     );
 }
 

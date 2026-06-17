@@ -139,11 +139,15 @@ export default function Header() {
         const categoryItems = visibleCategories.length > 0
             ? visibleCategories.map((category) => {
                 const categoryLabel = category?.name || 'Category';
+                const categorySlug = String(category?.slug || '').trim().toLowerCase();
+                const categoryHref = categorySlug === 'best-sellers'
+                    ? '/best-sellers'
+                    : `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`;
                 return {
                     id: category?.id,
                     slug: category?.slug,
                     label: categoryLabel,
-                    href: `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`,
+                    href: categoryHref,
                     isRoute: true,
                     isShop:
                         String(categoryLabel).trim().toLowerCase() === 'shop' ||

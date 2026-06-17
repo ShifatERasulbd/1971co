@@ -53,6 +53,7 @@ function AppRouter() {
                     <Route path="/" element={<FrontendLayout />}>
                         <Route index element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
+                        <Route path="best-sellers" element={withPageFallback(ShopPage)} />
                         <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />
                         <Route path="about" element={withPageFallback(AboutPage)} />
                         <Route path="contact" element={withPageFallback(ContactPage)} />
