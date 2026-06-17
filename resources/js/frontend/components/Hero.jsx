@@ -320,23 +320,23 @@ export default function Hero() {
     }, [heroVideo, isVideoFallback, heroImage]);
 
     return (
-        <section className={`${timelessFontClass} relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
+        <section className={`${timelessFontClass} hero-section relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
             {renderBackground}
 
-            <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_right,rgba(18,18,18,0.48)_0%,rgba(18,18,18,0.48)_33.2%,rgba(16,16,16,0.3)_33.2%,rgba(16,16,16,0.3)_66.6%,rgba(18,18,18,0.48)_66.6%,rgba(18,18,18,0.48)_100%)]" />
-            <div className="absolute inset-y-0 left-1/3 -z-10 w-px bg-white/18" />
-            <div className="absolute inset-y-0 left-2/3 -z-10 w-px bg-white/18" />
+            <div className="hero-grid-overlay absolute inset-0 -z-20 bg-[linear-gradient(to_right,rgba(18,18,18,0.48)_0%,rgba(18,18,18,0.48)_33.2%,rgba(16,16,16,0.3)_33.2%,rgba(16,16,16,0.3)_66.6%,rgba(18,18,18,0.48)_66.6%,rgba(18,18,18,0.48)_100%)]" />
+            <div className="hero-column-line absolute inset-y-0 left-1/3 -z-10 w-px bg-white/18" />
+            <div className="hero-column-line absolute inset-y-0 left-2/3 -z-10 w-px bg-white/18" />
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_48%,rgba(255,255,255,0.07),rgba(0,0,0,0.56)_48%,rgba(0,0,0,0.82)_100%)]" />
 
-            <div className="mx-auto flex min-h-[calc(100vh-90px)] w-full max-w-[1920px] items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
+            <div className="hero-shell mx-auto flex min-h-[calc(100vh-90px)] w-full max-w-[1920px] items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
                 <div
-                    className={`relative mx-auto flex w-full max-w-[760px] flex-col items-center space-y-6 text-center ${
+                    className={`hero-content relative mx-auto flex w-full max-w-[760px] flex-col items-center space-y-6 text-center ${
                         isBuilderPreview ? 'rounded-md border border-dashed border-white/55 p-3' : ''
                     }`}
                     style={{ transform: `translate(${textOffsetX}%, ${textOffsetY}%)` }}
                 >
                     <h1
-                        className={`${sectionTypography.heroTitle} text-white drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
+                        className={`hero-title ${sectionTypography.heroTitle} text-white drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
                             isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                         }`}
                         style={{
@@ -354,7 +354,7 @@ export default function Hero() {
                     </h1>
 
                     <p
-                        className={`${sectionTypography.heroDescription} text-white/90 ${
+                        className={`hero-description ${sectionTypography.heroDescription} text-white/90 ${
                             isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                         }`}
                         style={{
@@ -369,7 +369,7 @@ export default function Hero() {
 
                     {Boolean(displayHeroData.button_enabled ?? true) ? (
                         <div
-                            className="flex flex-col items-center gap-3 sm:flex-row"
+                            className="hero-actions flex flex-col items-center gap-3 sm:flex-row"
                             style={{ transform: `translate(${buttonOffsetX}%, ${buttonOffsetY}%)` }}
                             onMouseDown={(event) => beginPartDrag('button', event)}
                         >
