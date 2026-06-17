@@ -93,6 +93,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:products,slug',
             'sku' => 'required|string|max:255',
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
@@ -144,6 +145,16 @@ class ProductController extends Controller
             $uploadedNameMap,
         );
 
+        $existingProductWithSku = Product::query()
+            ->where('sku', $validated['sku'])
+            ->first(['id']);
+
+        $validated['slug'] = $this->resolveProductSlug(
+            $validated['slug'] ?? null,
+            $validated['name'] ?? '',
+            $existingProductWithSku?->id,
+        );
+
         $product = Product::query()->updateOrCreate(
             ['sku' => $validated['sku']],
             $validated,
@@ -164,6 +175,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:products,slug,' . $product->id,
             'sku' => 'required|string|max:255',
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
@@ -233,6 +245,11 @@ class ProductController extends Controller
             $validated['color_variant_images'] ?? ($product->color_variant_images ?? []),
             $finalGallery,
             $uploadedNameMap,
+        );
+        $validated['slug'] = $this->resolveProductSlug(
+            $validated['slug'] ?? null,
+            $validated['name'] ?? '',
+            $product->id,
         );
 
         $product->update($validated);
@@ -461,5 +478,39 @@ class ProductController extends Controller
         }
 
         return $resolved;
+    }
+
+    private function resolveProductSlug(?string $requestedSlug, string $productName, ?int $ignoreProductId = null): string
+    {
+        $source = trim((string) $requestedSlug);
+        if ($source === '') {
+            $source = trim((string) $productName);
+        }
+
+        $baseSlug = Str::slug($source);
+        if ($baseSlug === '') {
+            $baseSlug = 'product';
+        }
+
+        $slug = $baseSlug;
+        $counter = 2;
+
+        while ($this->productSlugExists($slug, $ignoreProductId)) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    private function productSlugExists(string $slug, ?int $ignoreProductId = null): bool
+    {
+        $query = Product::query()->where('slug', $slug);
+
+        if ($ignoreProductId !== null) {
+            $query->where('id', '!=', $ignoreProductId);
+        }
+
+        return $query->exists();
     }
 }

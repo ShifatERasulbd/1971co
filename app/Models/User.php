@@ -64,4 +64,34 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class, 'role_user');
     }
+
+    public function hasRole(string $role): bool
+    {
+        $normalizedRole = strtolower(trim($role));
+        if ($normalizedRole === '') {
+            return false;
+        }
+
+        return $this->roles()
+            ->whereRaw('LOWER(slug) = ?', [$normalizedRole])
+            ->orWhereRaw('LOWER(name) = ?', [$normalizedRole])
+            ->exists();
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        $normalizedRoles = array_values(array_unique(array_filter(array_map(
+            static fn ($role) => strtolower(trim((string) $role)),
+            $roles
+        ))));
+
+        if ($normalizedRoles === []) {
+            return false;
+        }
+
+        return $this->roles()
+            ->whereIn('slug', $normalizedRoles)
+            ->orWhereIn('name', $normalizedRoles)
+            ->exists();
+    }
 }

@@ -14,6 +14,7 @@ import { fetchProduct, updateProduct } from './api';
 
 const initialForm = {
     name: '',
+    slug: '',
     sku: '',
     color: '',
     size: '',
@@ -175,6 +176,7 @@ export default function EditProduct() {
 
                     setForm({
                         name: data?.name || '',
+                        slug: data?.slug || '',
                         sku: data?.sku || '',
                         color: data?.color || '',
                         size: data?.size || '',

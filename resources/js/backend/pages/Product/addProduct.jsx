@@ -14,6 +14,7 @@ import { createProduct } from './api';
 
 const initialForm = {
     name: '',
+    slug: '',
     sku: '',
     color: '',
     size: '',

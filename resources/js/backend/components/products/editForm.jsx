@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect} from 'react';
 import {
     Card,
     CardContent,
@@ -93,6 +93,28 @@ export default function EditForm({
         closeColorImagesModal();
     };
 
+      const slugify = (text = '') =>
+        text
+            .toString()
+            .toLowerCase()
+            .trim()
+            .replace(/&/g, 'and')
+            .replace(/[\s\W-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    
+        useEffect(() => {
+            if (!form.name) return;
+    
+            const slug = slugify(form.name);
+    
+            onChange({
+                target: {
+                    name: 'slug',
+                    value: slug,
+                },
+            });
+        }, [form.name]);
+
     return (
         <Card>
             <CardHeader>
@@ -118,6 +140,20 @@ export default function EditForm({
                                         placeholder="e.g. Classic Cotton Tee"
                                     />
                                     {errors.name && <p className="text-xs text-destructive">{errors.name[0]}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="product-slug">
+                                        Slug <span className="text-destructive">*</span>
+                                    </Label>
+                                   <Input
+                                        id="product-slug"
+                                        name="slug"
+                                        value={form.slug || ''}
+                                        placeholder="auto-generated"
+                                        disabled
+                                    />
+                                    {errors.slug && <p className="text-xs text-destructive">{errors.slug[0]}</p>}
                                 </div>
 
                                 <div className="space-y-2">

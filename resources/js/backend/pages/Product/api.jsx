@@ -3,6 +3,7 @@ import { requestJson } from '@/lib/apiClient';
 function buildProductPayload(data = {}) {
     return {
         name: data.name?.trim() || '',
+        slug: data.slug?.trim() || '',
         sku: data.sku?.trim() || '',
         color: data.color?.trim() || '',
         size: data.size?.trim() || '',

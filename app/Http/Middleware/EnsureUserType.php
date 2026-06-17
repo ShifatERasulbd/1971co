@@ -20,7 +20,27 @@ class EnsureUserType
             return $next($request);
         }
 
-        if (! in_array($user->user_type, $allowedTypes, true)) {
+        $normalizedAllowedTypes = array_values(array_unique(array_filter(array_map(
+            static fn ($value) => strtolower(trim((string) $value)),
+            $allowedTypes
+        ))));
+
+        $currentUserType = strtolower(trim((string) $user->user_type));
+
+        if (in_array($currentUserType, $normalizedAllowedTypes, true)) {
+            return $next($request);
+        }
+
+        // Compatibility: grant admin APIs to super-admin role holders.
+        if (
+            in_array('admin', $normalizedAllowedTypes, true)
+            && method_exists($user, 'hasAnyRole')
+            && $user->hasAnyRole(['admin', 'super-admin', 'super admin'])
+        ) {
+            return $next($request);
+        }
+
+        if (! in_array($currentUserType, $normalizedAllowedTypes, true)) {
             abort(403, 'Forbidden');
         }
 
