@@ -25,6 +25,8 @@ export default function ProductTable({
     const [search, setSearch] = useState('');
     const [expandedGroups, setExpandedGroups] = useState({});
 
+    const toPlainText = (value = '') => String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
     const filtered = products.filter((product) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
@@ -101,6 +103,9 @@ export default function ProductTable({
                                 <TableHead>SKU</TableHead>
                                 <TableHead>Color</TableHead>
                                 <TableHead>Size</TableHead>
+                                <TableHead>Fit</TableHead>
+                                <TableHead>Fabric & Care</TableHead>
+                                <TableHead className="text-center">Size Chart</TableHead>
                                 <TableHead className="text-right">Stock</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
@@ -109,7 +114,7 @@ export default function ProductTable({
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                                         Loading products...
                                     </TableCell>
                                 </TableRow>
@@ -117,7 +122,7 @@ export default function ProductTable({
 
                             {!isLoading && products.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                                         No products found.
                                     </TableCell>
                                 </TableRow>
@@ -125,7 +130,7 @@ export default function ProductTable({
 
                             {!isLoading && groupedProducts.length === 0 && products.length > 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                                         No products match your search.
                                     </TableCell>
                                 </TableRow>
@@ -177,6 +182,13 @@ export default function ProductTable({
                                                 <TableCell className="font-mono text-xs">{primary.sku}</TableCell>
                                                 <TableCell>{primary.color || '-'}</TableCell>
                                                 <TableCell>{primary.size || '-'}</TableCell>
+                                                <TableCell className="max-w-[180px] truncate" title={toPlainText(primary.fit || primary.long_description || '')}>
+                                                    {toPlainText(primary.fit || primary.long_description || '') || '-'}
+                                                </TableCell>
+                                                <TableCell className="max-w-[180px] truncate" title={toPlainText(primary.fabric_and_care || primary.additional_information || '')}>
+                                                    {toPlainText(primary.fabric_and_care || primary.additional_information || '') || '-'}
+                                                </TableCell>
+                                                <TableCell className="text-center">{primary.size_chart_image ? 'Yes' : 'No'}</TableCell>
                                                 <TableCell className="text-right">{primary.stock ?? 0}</TableCell>
                                                 <TableCell className="text-right">
                                                     {Number(primary.price || 0).toFixed(2)}
@@ -242,6 +254,13 @@ export default function ProductTable({
                                                         <TableCell className="font-mono text-xs">{variant.sku}</TableCell>
                                                         <TableCell>{variant.color || '-'}</TableCell>
                                                         <TableCell>{variant.size || '-'}</TableCell>
+                                                        <TableCell className="max-w-[180px] truncate" title={toPlainText(variant.fit || variant.long_description || '')}>
+                                                            {toPlainText(variant.fit || variant.long_description || '') || '-'}
+                                                        </TableCell>
+                                                        <TableCell className="max-w-[180px] truncate" title={toPlainText(variant.fabric_and_care || variant.additional_information || '')}>
+                                                            {toPlainText(variant.fabric_and_care || variant.additional_information || '') || '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">{variant.size_chart_image ? 'Yes' : 'No'}</TableCell>
                                                         <TableCell className="text-right">{variant.stock ?? 0}</TableCell>
                                                         <TableCell className="text-right">
                                                             {Number(variant.price || 0).toFixed(2)}

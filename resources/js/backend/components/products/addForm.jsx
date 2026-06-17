@@ -40,6 +40,9 @@ export default function AddForm({
     onColorVariantImagesChange,
     onGalleryFilesChange,
     onRemoveGalleryImage,
+    onSizeChartImageChange,
+    onRemoveSizeChartImage,
+    sizeChartPreviewUrl = '',
     galleryPreviewUrls = [],
     onSubmit,
     onCancel,
@@ -172,33 +175,41 @@ export default function AddForm({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="product-description">Description</Label>
-                                <textarea
-                                    id="product-description"
-                                    name="description"
-                                    rows={3}
+                            
+                                
+
+                                 <RichTextEditor
+                                    label="Product Description"
                                     value={form.description || ''}
-                                    onChange={onChange}
-                                    placeholder="Short product description"
-                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                                    onChange={(html) => onChange({ target: { name: 'description', value: html } })}
+                                    placeholder="Detailed product description with formatting"
+                                    error={errors.description}
                                 />
                                 {errors.description && <p className="text-xs text-destructive">{errors.description[0]}</p>}
                             </div>
 
                             <RichTextEditor
-                                label="Long Description"
-                                value={form.long_description || ''}
-                                onChange={(html) => onChange({ target: { name: 'long_description', value: html } })}
-                                placeholder="Detailed product description with formatting"
-                                error={errors.long_description}
+                                label="Fit"
+                                value={form.fit || ''}
+                                onChange={(html) => onChange({ target: { name: 'fit', value: html } })}
+                                placeholder="Describe fit details and sizing notes"
+                                error={errors.fit}
                             />
 
                             <RichTextEditor
-                                label="Additional Information"
-                                value={form.additional_information || ''}
-                                onChange={(html) => onChange({ target: { name: 'additional_information', value: html } })}
-                                placeholder="Additional details, specifications, care instructions, etc."
-                                error={errors.additional_information}
+                                label="Fabric & Care"
+                                value={form.fabric_and_care || ''}
+                                onChange={(html) => onChange({ target: { name: 'fabric_and_care', value: html } })}
+                                placeholder="Fabric composition and care instructions"
+                                error={errors.fabric_and_care}
+                            />
+
+                            <RichTextEditor
+                                label="Product Features"
+                                value={form.product_features || ''}
+                                onChange={(html) => onChange({ target: { name: 'product_features', value: html } })}
+                                placeholder="Highlight key features and selling points"
+                                error={errors.product_features}
                             />
                         </div>
 
@@ -216,6 +227,39 @@ export default function AddForm({
                                 />
                                 <p className="text-xs text-muted-foreground">Select multiple gallery images (JPG, PNG, WEBP, max 4MB each).</p>
                                 {errors.image_gallery && <p className="text-xs text-destructive">{errors.image_gallery[0]}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="product-size-chart-upload">Size Chart Image</Label>
+                                <Input
+                                    id="product-size-chart-upload"
+                                    name="size_chart_image_file"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    onChange={onSizeChartImageChange}
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">Upload one image used as the product size chart.</p>
+                                {errors.size_chart_image_file && <p className="text-xs text-destructive">{errors.size_chart_image_file[0]}</p>}
+                                {sizeChartPreviewUrl ? (
+                                    <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                                        <img
+                                            src={sizeChartPreviewUrl}
+                                            alt="Size chart preview"
+                                            className="h-48 w-full rounded bg-muted/30 object-contain"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={onRemoveSizeChartImage}
+                                            disabled={isSubmitting}
+                                        >
+                                            Remove Size Chart
+                                        </Button>
+                                    </div>
+                                ) : null}
                             </div>
                             <div className="rounded-md border bg-muted/20 p-3">
                                 <p className="mb-3 text-sm font-medium text-muted-foreground">Gallery Preview</p>

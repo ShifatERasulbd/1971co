@@ -8,9 +8,13 @@ function buildProductPayload(data = {}) {
         color: data.color?.trim() || '',
         size: data.size?.trim() || '',
         description: data.description?.trim() || '',
+        fit: data.fit || '',
+        fabric_and_care: data.fabric_and_care || '',
+        product_features: data.product_features || '',
         long_description: data.long_description || '',
         additional_information: data.additional_information || '',
         cover_image: data.cover_image?.trim() || '',
+        size_chart_image: data.size_chart_image?.trim() || '',
         category_id: data.category_id ? Number(data.category_id) : null,
         subcategory_id: data.subcategory_id ? Number(data.subcategory_id) : null,
         grand_child_id: data.grand_child_id ? Number(data.grand_child_id) : null,
@@ -50,6 +54,10 @@ function buildProductFormData(data = {}) {
         formData.append('thumbnail_image', data.thumbnailImageFile);
     }
 
+    if (data.sizeChartImageFile instanceof File) {
+        formData.append('size_chart_image_file', data.sizeChartImageFile);
+    }
+
     if (Array.isArray(data.galleryImageFiles)) {
         data.galleryImageFiles.forEach((file) => {
             if (file instanceof File) {
@@ -63,8 +71,9 @@ function buildProductFormData(data = {}) {
 
 function hasUploadFiles(data = {}) {
     const hasThumbnail = data.thumbnailImageFile instanceof File;
+    const hasSizeChart = data.sizeChartImageFile instanceof File;
     const hasGallery = Array.isArray(data.galleryImageFiles) && data.galleryImageFiles.some((file) => file instanceof File);
-    return hasThumbnail || hasGallery;
+    return hasThumbnail || hasSizeChart || hasGallery;
 }
 
 export async function fetchProducts() {

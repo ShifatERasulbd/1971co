@@ -25,8 +25,12 @@ class ProductController extends Controller
         $columns = [
             'id',
             'name',
+            'fit',
+            'fabric_and_care',
+            'product_features',
             'price',
             'cover_image',
+            'size_chart_image',
             'image_gallery',
             'color',
             'color_variant_images',
@@ -57,8 +61,12 @@ class ProductController extends Controller
         $columns = [
             'id',
             'name',
+            'fit',
+            'fabric_and_care',
+            'product_features',
             'price',
             'cover_image',
+            'size_chart_image',
             'image_gallery',
             'color',
             'color_variant_images',
@@ -98,11 +106,16 @@ class ProductController extends Controller
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'fit' => 'nullable|string',
+            'fabric_and_care' => 'nullable|string',
+            'product_features' => 'nullable|string',
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
             'price' => 'required|numeric',
             'cover_image' => 'nullable|string',
+            'size_chart_image' => 'nullable|string',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery' => 'nullable|array',
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'category_id' => 'nullable|integer',
@@ -126,6 +139,10 @@ class ProductController extends Controller
             $validated['cover_image'] = $this->uploadThumbnailImage($request);
         }
 
+        if ($request->hasFile('size_chart_image_file')) {
+            $validated['size_chart_image'] = $this->uploadSizeChartImage($request);
+        }
+
         $uploadedGallery = [];
         $uploadedNameMap = [];
 
@@ -139,6 +156,10 @@ class ProductController extends Controller
         $finalGallery = is_array($validated['image_gallery'] ?? null) ? $validated['image_gallery'] : [];
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
+        $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? '')));
+        $validated['fabric_and_care'] = trim((string) ($validated['fabric_and_care'] ?? ($validated['additional_information'] ?? '')));
+        $validated['long_description'] = $validated['fit'];
+        $validated['additional_information'] = $validated['fabric_and_care'];
         $validated['color_variant_images'] = $this->resolveColorVariantImages(
             $validated['color_variant_images'] ?? [],
             $finalGallery,
@@ -180,11 +201,16 @@ class ProductController extends Controller
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'fit' => 'nullable|string',
+            'fabric_and_care' => 'nullable|string',
+            'product_features' => 'nullable|string',
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
             'price' => 'required|numeric',
             'cover_image' => 'nullable|string',
+            'size_chart_image' => 'nullable|string',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery' => 'nullable|array',
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery_existing' => 'nullable|array',
@@ -211,6 +237,15 @@ class ProductController extends Controller
             $validated['cover_image'] = $this->uploadThumbnailImage($request, $product->cover_image);
         } elseif (! isset($validated['cover_image']) || trim((string) $validated['cover_image']) === '') {
             unset($validated['cover_image']);
+        }
+
+        if ($request->hasFile('size_chart_image_file')) {
+            $validated['size_chart_image'] = $this->uploadSizeChartImage($request, $product->size_chart_image);
+        } elseif ($request->has('size_chart_image') && trim((string) $request->input('size_chart_image')) === '') {
+            $this->deleteUploadedFile($product->size_chart_image);
+            $validated['size_chart_image'] = null;
+        } elseif (! isset($validated['size_chart_image'])) {
+            unset($validated['size_chart_image']);
         }
 
         $existingGallery = $request->boolean('clear_gallery')
@@ -241,6 +276,10 @@ class ProductController extends Controller
 
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? ($product->variant_rows ?? []));
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
+        $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? ($product->fit ?? ''))));
+        $validated['fabric_and_care'] = trim((string) ($validated['fabric_and_care'] ?? ($validated['additional_information'] ?? ($product->fabric_and_care ?? ''))));
+        $validated['long_description'] = $validated['fit'];
+        $validated['additional_information'] = $validated['fabric_and_care'];
         $validated['color_variant_images'] = $this->resolveColorVariantImages(
             $validated['color_variant_images'] ?? ($product->color_variant_images ?? []),
             $finalGallery,
@@ -300,6 +339,22 @@ class ProductController extends Controller
         $storedPath = $this->storeUploadedFileToPublic(
             $request->file('thumbnail_image'),
             'uploads/products/thumbnails',
+        );
+
+        $this->deleteUploadedFile($existingPath);
+
+        return $storedPath;
+    }
+
+    private function uploadSizeChartImage(Request $request, ?string $existingPath = null): ?string
+    {
+        if (! $request->hasFile('size_chart_image_file')) {
+            return $existingPath;
+        }
+
+        $storedPath = $this->storeUploadedFileToPublic(
+            $request->file('size_chart_image_file'),
+            'uploads/products/size-charts',
         );
 
         $this->deleteUploadedFile($existingPath);

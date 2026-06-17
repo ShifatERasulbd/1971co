@@ -19,10 +19,14 @@ const initialForm = {
     color: '',
     size: '',
     description: '',
+    fit: '',
+    fabric_and_care: '',
+    product_features: '',
     long_description: '',
     additional_information: '',
     price: '',
     cover_image: '',
+    size_chart_image: '',
     category_id: '',
     subcategory_id: '',
     grand_child_id: '',
@@ -66,6 +70,7 @@ export default function AddProduct() {
 
     const [form, setForm] = useState(initialForm);
     const [galleryImageFiles, setGalleryImageFiles] = useState([]);
+    const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
     const [colorSelectValue, setColorSelectValue] = useState('');
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
@@ -91,6 +96,14 @@ export default function AddProduct() {
         })),
         [galleryImageFiles],
     );
+
+    const sizeChartPreviewUrl = useMemo(() => {
+        if (!(sizeChartImageFile instanceof File)) {
+            return '';
+        }
+
+        return URL.createObjectURL(sizeChartImageFile);
+    }, [sizeChartImageFile]);
 
     useEffect(() => {
         setPageTitle('Add Product');
@@ -146,6 +159,14 @@ export default function AddProduct() {
             });
         };
     }, [galleryPreviewUrls]);
+
+    useEffect(() => {
+        return () => {
+            if (sizeChartPreviewUrl) {
+                URL.revokeObjectURL(sizeChartPreviewUrl);
+            }
+        };
+    }, [sizeChartPreviewUrl]);
 
     useEffect(() => {
         const validImageValues = new Set(galleryPreviewUrls.map((item) => item.value));
@@ -266,6 +287,21 @@ export default function AddProduct() {
         setGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
     };
 
+    const handleSizeChartImageChange = (event) => {
+        const [file] = Array.from(event.target.files || []);
+        setSizeChartImageFile(file instanceof File ? file : null);
+        setErrors((previous) => {
+            if (!previous.size_chart_image_file) return previous;
+            const next = { ...previous };
+            delete next.size_chart_image_file;
+            return next;
+        });
+    };
+
+    const handleRemoveSizeChartImage = () => {
+        setSizeChartImageFile(null);
+    };
+
     const handleAddColor = () => {
         if (!colorSelectValue) {
             return;
@@ -336,11 +372,14 @@ export default function AddProduct() {
         try {
             await createProduct({
                 ...form,
+                long_description: form.fit,
+                additional_information: form.fabric_and_care,
                 color: selectedColors.length > 0 ? selectedColors.join(', ') : form.color,
                 size: selectedSizes.length > 0 ? selectedSizes.join(', ') : form.size,
                 variant_rows: variantRows,
                 color_variant_images: colorVariantImageMap,
                 galleryImageFiles,
+                sizeChartImageFile,
             });
             toast.success('Product created successfully', {
                 style: {
@@ -394,6 +433,9 @@ export default function AddProduct() {
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveGalleryImage={handleRemoveGalleryImage}
                     galleryPreviewUrls={galleryPreviewUrls}
+                    onSizeChartImageChange={handleSizeChartImageChange}
+                    onRemoveSizeChartImage={handleRemoveSizeChartImage}
+                    sizeChartPreviewUrl={sizeChartPreviewUrl}
                     onSubmit={handleSubmit}
                     onCancel={() => navigate('/admin/products')}
                     isSubmitting={isSubmitting}

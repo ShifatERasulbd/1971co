@@ -19,10 +19,14 @@ const initialForm = {
     color: '',
     size: '',
     description: '',
+    fit: '',
+    fabric_and_care: '',
+    product_features: '',
     long_description: '',
     additional_information: '',
     price: '',
     cover_image: '',
+    size_chart_image: '',
     category_id: '',
     subcategory_id: '',
     grand_child_id: '',
@@ -51,6 +55,7 @@ export default function EditProduct() {
     const [form, setForm] = useState(initialForm);
     const [existingGalleryUrls, setExistingGalleryUrls] = useState([]);
     const [newGalleryImageFiles, setNewGalleryImageFiles] = useState([]);
+    const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
@@ -93,6 +98,14 @@ export default function EditProduct() {
 
         return [...existing, ...fresh];
     }, [existingGalleryUrls, newGalleryImageFiles]);
+
+    const sizeChartPreviewUrl = useMemo(() => {
+        if (sizeChartImageFile instanceof File) {
+            return URL.createObjectURL(sizeChartImageFile);
+        }
+
+        return form.size_chart_image || '';
+    }, [sizeChartImageFile, form.size_chart_image]);
 
     useEffect(() => {
         setPageTitle('Edit Product');
@@ -152,6 +165,14 @@ export default function EditProduct() {
     }, [galleryPreviewItems]);
 
     useEffect(() => {
+        return () => {
+            if (sizeChartImageFile instanceof File && sizeChartPreviewUrl) {
+                URL.revokeObjectURL(sizeChartPreviewUrl);
+            }
+        };
+    }, [sizeChartImageFile, sizeChartPreviewUrl]);
+
+    useEffect(() => {
         let ignore = false;
 
         async function loadProduct() {
@@ -181,10 +202,14 @@ export default function EditProduct() {
                         color: data?.color || '',
                         size: data?.size || '',
                         description: data?.description || '',
+                        fit: data?.fit || data?.long_description || '',
+                        fabric_and_care: data?.fabric_and_care || data?.additional_information || '',
+                        product_features: data?.product_features || '',
                         long_description: data?.long_description || '',
                         additional_information: data?.additional_information || '',
                         price: data?.price ?? '',
                         cover_image: data?.cover_image || '',
+                        size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
                         grand_child_id: data?.grand_child_id ?? '',
@@ -425,6 +450,25 @@ export default function EditProduct() {
         setNewGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
     };
 
+    const handleSizeChartImageChange = (event) => {
+        const [file] = Array.from(event.target.files || []);
+        setSizeChartImageFile(file instanceof File ? file : null);
+        setErrors((previous) => {
+            if (!previous.size_chart_image_file) return previous;
+            const next = { ...previous };
+            delete next.size_chart_image_file;
+            return next;
+        });
+    };
+
+    const handleRemoveSizeChartImage = () => {
+        setSizeChartImageFile(null);
+        setForm((previous) => ({
+            ...previous,
+            size_chart_image: '',
+        }));
+    };
+
     const handleColorVariantImagesChange = (color, selectedValues) => {
         setColorVariantImageMap((previous) => {
             const next = { ...(previous || {}) };
@@ -481,6 +525,8 @@ export default function EditProduct() {
 
             await updateProduct(id, {
                 ...form,
+                long_description: form.fit,
+                additional_information: form.fabric_and_care,
                 color:
                     variantRows.length > 0
                         ? [...new Set(variantRows.map((row) => row.color).filter(Boolean))].join(', ')
@@ -494,6 +540,7 @@ export default function EditProduct() {
                 galleryImageFiles: newGalleryImageFiles,
                 image_gallery_existing: existingGalleryUrls,
                 clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
+                sizeChartImageFile,
             });
 
             toast.success('Product updated successfully', {
@@ -553,6 +600,9 @@ export default function EditProduct() {
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveExistingGalleryImage={handleRemoveExistingGalleryImage}
                     onRemoveNewGalleryImage={handleRemoveNewGalleryImage}
+                    onSizeChartImageChange={handleSizeChartImageChange}
+                    onRemoveSizeChartImage={handleRemoveSizeChartImage}
+                    sizeChartPreviewUrl={sizeChartPreviewUrl}
                     onChange={handleChange}
                     onSubmit={handleSubmit}
                     onCancel={() => navigate('/admin/products')}
