@@ -113,22 +113,25 @@ export default function SingleProductDetailsPanel({
 
     return (
         <div className="p-4 sm:p-5">
-            <h1 className="font-serif text-[2rem] uppercase leading-tight tracking-[0.02em] text-zinc-900 sm:text-[2.15rem]">
-                {product.name}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+                 <h1 className="font-serif text-[2rem] uppercase leading-tight tracking-[0.02em] text-zinc-900 sm:text-[1.35rem]">
+                     {product.name}
+                </h1>
 
-            <div className="mt-3 flex items-center gap-2.5 text-[0.95rem] text-zinc-600">
-                <span className="text-[1.05rem] tracking-[0.05em] text-amber-500">★★★★★</span>
-                <span>(5.0)</span>
+                {/* <div className="mt-3 flex items-center gap-2.5 text-[0.95rem] text-zinc-600">
+                    <span className="text-[1.05rem] tracking-[0.05em] text-amber-500">★★★★★</span>
+                    <span>(5.0)</span>
+                </div> */}
+
+                <p className="text-[1.15rem] font-medium leading-none text-zinc-900">{product.price}</p>
             </div>
-
-            <p className="mt-2.5 text-[1.95rem] font-medium leading-none text-zinc-900">{product.price}</p>
+           
 
             
 
             <div className="mt-5 space-y-4">
                 <div>
-                    <h2 className="text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-zinc-900">Color</h2>
+                    <h2 className="text-[0.75rem]  tracking-[0.08em] text-zinc-800">Color Varriations</h2>
                     <div className="mt-2.5 flex items-center gap-2.5">
                         {displayColors.map((color) => (
                             <button
@@ -152,7 +155,7 @@ export default function SingleProductDetailsPanel({
                 </div>
 
                 <div>
-                    <h2 className="text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-zinc-900">Size</h2>
+                    <h2 className="text-[0.75rem]  tracking-[0.08em] text-zinc-800">Size Variations</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                         {displaySizes.map((size) => (
                             <button
