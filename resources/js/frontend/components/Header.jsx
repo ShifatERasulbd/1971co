@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Menu, Search, ShoppingCart, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -21,6 +21,32 @@ export default function Header() {
     const [grandChilds, setGrandChilds] = useState([]);
     const [isNavigationLoading, setIsNavigationLoading] = useState(true);
     const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
+    const [isShopMegaMenuOpen, setIsShopMegaMenuOpen] = useState(false);
+    const closeMenuTimerRef = useRef(null);
+
+    function cancelShopMenuClose() {
+        if (closeMenuTimerRef.current) {
+            window.clearTimeout(closeMenuTimerRef.current);
+            closeMenuTimerRef.current = null;
+        }
+    }
+
+    function openShopMenu() {
+        cancelShopMenuClose();
+        setIsShopMegaMenuOpen(true);
+    }
+
+    function closeShopMenuWithDelay() {
+        cancelShopMenuClose();
+        closeMenuTimerRef.current = window.setTimeout(() => {
+            setIsShopMegaMenuOpen(false);
+        }, 220);
+    }
+
+    function closeShopMenuImmediately() {
+        cancelShopMenuClose();
+        setIsShopMegaMenuOpen(false);
+    }
 
     useEffect(() => {
         const unsubscribe = onSettingsUpdated((payload) => {
@@ -89,6 +115,12 @@ export default function Header() {
         return () => {
             ignore = true;
         };
+    }, []);
+
+    useEffect(() => () => {
+        if (closeMenuTimerRef.current) {
+            window.clearTimeout(closeMenuTimerRef.current);
+        }
     }, []);
 
     const visibleCategories = useMemo(() => {
@@ -214,16 +246,38 @@ export default function Header() {
                     ) : (
                         navigationItems.map((item) =>
                             item.isShop ? (
-                                <div key={item.label} className="group relative flex items-center py-4">
+                                <div
+                                    key={item.label}
+                                    className="relative flex items-center py-4"
+                                    onMouseEnter={openShopMenu}
+                                    onMouseLeave={closeShopMenuWithDelay}
+                                    onFocus={openShopMenu}
+                                    onBlur={(event) => {
+                                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                                            closeShopMenuWithDelay();
+                                        }
+                                    }}
+                                >
                                     <Link
                                         to={item.href}
                                         className="site-header-nav-link text-[0.85rem] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        aria-expanded={isShopMegaMenuOpen}
+                                        aria-haspopup="menu"
                                     >
                                         {item.label}
                                     </Link>
 
                                     {/* Mega Menu Dropdown */}
-                                    <div className="invisible fixed left-0 right-0 top-[90px] z-50 max-h-0 w-full overflow-hidden pt-3 opacity-0 transition-[max-height,opacity] duration-300 ease-out group-hover:visible group-hover:max-h-[540px] group-hover:opacity-100">
+                                    <div
+                                        className={`fixed left-0 right-0 top-[90px] z-50 w-full overflow-hidden transition-all duration-300 ease-out ${
+                                            isShopMegaMenuOpen
+                                                ? 'visible max-h-[540px] translate-y-0 opacity-100 pointer-events-auto'
+                                                : 'invisible max-h-0 -translate-y-1 opacity-0 pointer-events-none'
+                                        }`}
+                                        onMouseEnter={openShopMenu}
+                                        onMouseLeave={closeShopMenuWithDelay}
+                                        role="menu"
+                                    >
                                         <div className="border border-zinc-200 bg-white px-4 py-8 shadow-[0_18px_60px_rgba(0,0,0,0.08)] sm:px-6 lg:px-10">
                                             <div className="mx-auto flex w-full max-w-[1920px] items-start gap-8 xl:gap-10">
                                                 <div className="min-w-0 flex-1 overflow-x-auto">
@@ -235,6 +289,7 @@ export default function Header() {
                                                                         <Link
                                                                             to={column.href}
                                                                             className="transition-colors hover:text-zinc-700"
+                                                                            onClick={closeShopMenuImmediately}
                                                                         >
                                                                             {column.title}
                                                                         </Link>
@@ -246,6 +301,7 @@ export default function Header() {
                                                                                 <Link
                                                                                     to={megaItem.href}
                                                                                     className="transition-colors hover:text-zinc-950"
+                                                                                    onClick={closeShopMenuImmediately}
                                                                                 >
                                                                                     {megaItem.label}
                                                                                 </Link>
@@ -265,7 +321,11 @@ export default function Header() {
                                                 {/* Mega Menu Spotlight Image */}
                                                 <div className="flex justify-center">
                                                     <figure className="w-full max-w-[260px] text-center">
-                                                        <Link to="/shop" className="block overflow-hidden bg-zinc-100 p-3">
+                                                        <Link
+                                                            to="/shop"
+                                                            className="block overflow-hidden bg-zinc-100 p-3"
+                                                            onClick={closeShopMenuImmediately}
+                                                        >
                                                             <img
                                                                 src={shopMegaMenuImage}
                                                                 alt="Future Classics New Arrivals"
