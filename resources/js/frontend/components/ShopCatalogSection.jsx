@@ -198,7 +198,7 @@ function ColorSwatch({ color, active, onClick, colorLookup }) {
             type="button"
             title={color}
             onClick={onClick}
-            className={`inline-block size-4 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 ${
+            className={`inline-block size-5 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
                 active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
             }`}
             style={{ backgroundColor: getSwatchColor(color, colorLookup) }}
@@ -374,7 +374,7 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
                                 <ChevronRight className="size-4" />
                             </button>
 
-                            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
+                            {/* <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
                                 {galleryImages.map((_, index) => (
                                     <button
                                         key={`image-dot-${index}`}
@@ -390,15 +390,15 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
                                         aria-label={`Go to image ${index + 1}`}
                                     />
                                 ))}
-                            </div>
+                            </div> */}
                         </>
                     ) : null}
                 </div>
             </Link>
 
-            <div className="space-y-2 p-4">
+            <div className="space-y-1 p-4 pt-3.5">
                 {colors.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2">
                         {colors.slice(0, 6).map((c, i) => (
                             <ColorSwatch
                                 key={`${c}-${i}`}
@@ -411,14 +411,14 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
                     </div>
                 )}
 
-                <Link to={productLink} className="block">
-                    <h3 className={`${sectionTypography.productName} text-zinc-900 line-clamp-2 hover:opacity-70 transition-opacity`}>
+                  <Link to={productLink} className="block">
+                    <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
                         {product.name}
                     </h3>
                 </Link>
 
-                <p className={`${sectionTypography.productPrice} text-zinc-700`}>
-                    ${Number(product.priceValue).toFixed(2)}
+                <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
+                    ${Number(product.price).toFixed(2)}
                 </p>
             </div>
         </article>

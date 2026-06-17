@@ -288,11 +288,6 @@ export default function Hero() {
         <section className={`${timelessFontClass} hero-section relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
             {renderBackground}
 
-            <div className="hero-grid-overlay absolute inset-0 -z-20 bg-[linear-gradient(to_right,rgba(18,18,18,0.48)_0%,rgba(18,18,18,0.48)_33.2%,rgba(16,16,16,0.3)_33.2%,rgba(16,16,16,0.3)_66.6%,rgba(18,18,18,0.48)_66.6%,rgba(18,18,18,0.48)_100%)]" />
-            <div className="hero-column-line absolute inset-y-0 left-1/3 -z-10 w-px bg-white/18" />
-            <div className="hero-column-line absolute inset-y-0 left-2/3 -z-10 w-px bg-white/18" />
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_48%,rgba(255,255,255,0.07),rgba(0,0,0,0.56)_48%,rgba(0,0,0,0.82)_100%)]" />
-
             <div className="hero-shell mx-auto flex min-h-[calc(100vh-90px)] w-full max-w-[1920px] items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
                 <div
                     className={`hero-content relative mx-auto flex w-full max-w-[760px] flex-col items-center space-y-6 text-center ${
