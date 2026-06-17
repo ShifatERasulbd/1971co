@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { featuresFontClass } from '../utils/typography';
+import { useCart } from '../context/CartContext';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
 import SingleProductMediaGallery from './SingleProductMediaGallery.jsx';
 
@@ -61,6 +62,7 @@ function normalizeColorVariantImages(mapping) {
 }
 
 export default function SingleProductMainSection({ product }) {
+    const { addToCart, openCartDrawer } = useCart();
     const [colorLookup, setColorLookup] = useState({});
     const [colorRecords, setColorRecords] = useState([]);
 
@@ -199,6 +201,16 @@ export default function SingleProductMainSection({ product }) {
         setSelectedColor(colorLabel);
     }
 
+    function handleAddToCart() {
+        addToCart(product, {
+            selectedColor,
+            selectedSize,
+            quantity,
+            image: selectedImage,
+        });
+        openCartDrawer();
+    }
+
     const filteredImages = useMemo(() => {
         if (!selectedColor) {
             return imageList;
@@ -281,10 +293,16 @@ export default function SingleProductMainSection({ product }) {
                     <div className="xl:sticky xl:top-24">
                         <SingleProductDetailsPanel
                             product={{
+                                id: product?.id,
+                                slug: product?.slug,
                                 name: String(product?.name || 'Untitled Product'),
                                 sku: String(product?.sku || 'N/A'),
                                 price: `$${Number(product?.price || 0).toFixed(2)}`,
                                 description: String(product?.description || 'No description available.'),
+                                fit: String(product?.fit || ''),
+                                fabric_and_care: String(product?.fabric_and_care || ''),
+                                product_features: String(product?.product_features || ''),
+                                product_composition: String(product?.product_composition || ''),
                                 colors: colors.map((color) => ({ label: color, value: color })),
                                 sizes,
                             }}
@@ -296,6 +314,7 @@ export default function SingleProductMainSection({ product }) {
                             quantity={quantity}
                             onDecreaseQuantity={decreaseQuantity}
                             onIncreaseQuantity={increaseQuantity}
+                            onAddToCart={handleAddToCart}
                         />
                     </div>
                 </div>

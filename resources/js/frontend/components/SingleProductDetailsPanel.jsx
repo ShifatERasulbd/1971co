@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+
 function RulerIcon() {
     return (
         <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
@@ -41,7 +43,10 @@ export default function SingleProductDetailsPanel({
     quantity,
     onDecreaseQuantity,
     onIncreaseQuantity,
+    onAddToCart,
 }) {
+    const [openAccordionKey, setOpenAccordionKey] = useState('description');
+
     const displayColors = Array.isArray(product.colors) && product.colors.length > 0
         ? product.colors
         : [{ label: 'Default', value: '#d4d4d8' }];
@@ -49,6 +54,22 @@ export default function SingleProductDetailsPanel({
     const displaySizes = Array.isArray(product.sizes) && product.sizes.length > 0
         ? product.sizes
         : ['One Size'];
+
+    const accordionItems = useMemo(() => {
+        const candidates = [
+            { key: 'description', title: 'Product Description', content: product?.description || '' },
+            { key: 'fit', title: 'Fit', content: product?.fit || '' },
+            { key: 'fabric', title: 'Fabric & Care', content: product?.fabric_and_care || '' },
+            { key: 'features', title: 'Product Features', content: product?.product_features || '' },
+            { key: 'composition', title: 'Product Composition', content: product?.product_composition || '' },
+        ];
+
+        return candidates.filter((item) => String(item.content || '').trim() !== '');
+    }, [product]);
+
+    function toggleAccordionItem(key) {
+        setOpenAccordionKey((previous) => (previous === key ? '' : key));
+    }
 
     return (
         <div className="p-4 sm:p-5">
@@ -116,22 +137,22 @@ export default function SingleProductDetailsPanel({
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-2.5">
                     <div className="inline-flex h-[52px] border border-zinc-300">
                         <button
                             type="button"
                             onClick={onDecreaseQuantity}
-                            className="inline-flex w-[46px] items-center justify-center text-[1.3rem] text-zinc-700"
+                            className="inline-flex w-[42px] items-center justify-center text-[1.2rem] text-zinc-700"
                         >
                             -
                         </button>
-                        <span className="inline-flex w-[46px] items-center justify-center border-x border-zinc-300 text-[1.2rem] text-zinc-900">
+                        <span className="inline-flex w-[42px] items-center justify-center border-x border-zinc-300 text-[1.1rem] text-zinc-900">
                             {quantity}
                         </span>
                         <button
                             type="button"
                             onClick={onIncreaseQuantity}
-                            className="inline-flex w-[46px] items-center justify-center text-[1.3rem] text-zinc-700"
+                            className="inline-flex w-[42px] items-center justify-center text-[1.2rem] text-zinc-700"
                         >
                             +
                         </button>
@@ -139,35 +160,49 @@ export default function SingleProductDetailsPanel({
 
                     <button
                         type="button"
-                        className="inline-flex h-[52px] flex-1 min-w-[240px] cursor-pointer items-center justify-center bg-zinc-900 px-6 text-[1.2rem] font-semibold uppercase tracking-[0.05em] text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2"
+                        onClick={onAddToCart}
+                        className="inline-flex h-[52px] min-w-0 flex-1 cursor-pointer items-center justify-center bg-zinc-900 px-4 text-[0.95rem] font-semibold uppercase tracking-[0.05em] text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 sm:px-6 sm:text-[1.05rem]"
                     >
                         Add To Cart
                     </button>
 
                     <button
                         type="button"
-                        className="inline-flex size-[52px] items-center justify-center border border-zinc-300 text-[1.65rem] text-zinc-700 hover:border-zinc-600"
+                        className="inline-flex size-[52px] shrink-0 items-center justify-center border border-zinc-300 text-[1.65rem] text-zinc-700 hover:border-zinc-600"
                         aria-label="Add to wishlist"
                     >
                         ♡
                     </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                    <button
-                        type="button"
-                        className="inline-flex h-[50px] flex-1 min-w-[220px] items-center justify-center bg-black text-[1.05rem] font-medium text-white"
-                    >
-                        Buy Now
-                    </button>
+                {accordionItems.length > 0 ? (
+                    <div className="mt-2 border-y border-zinc-200">
+                        {accordionItems.map((item) => {
+                            const isOpen = openAccordionKey === item.key;
 
-                    <button
-                        type="button"
-                        className="inline-flex h-[50px] flex-1 min-w-[220px] items-center justify-center bg-[#4f3ed8] text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-white"
-                    >
-                        Start Customizing
-                    </button>
-                </div>
+                            return (
+                                <div key={item.key} className="border-b border-zinc-200 last:border-b-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleAccordionItem(item.key)}
+                                        className="flex w-full items-center justify-between py-4 text-left text-[0.96rem] font-medium text-zinc-800"
+                                        aria-expanded={isOpen}
+                                    >
+                                        <span>{item.title}</span>
+                                        <span className="text-[1.2rem] leading-none text-zinc-500">{isOpen ? '-' : '+'}</span>
+                                    </button>
+
+                                    {isOpen ? (
+                                        <div
+                                            className="pb-4 text-[0.95rem] leading-7 text-zinc-600"
+                                            dangerouslySetInnerHTML={{ __html: item.content }}
+                                        />
+                                    ) : null}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : null}
 
                 <p className="border-t border-zinc-200 pt-2.5 text-[0.98rem] text-zinc-500">SKU: {product.sku || 'N/A'}</p>
             </div>

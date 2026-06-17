@@ -211,6 +211,14 @@ export default function AddForm({
                                 placeholder="Highlight key features and selling points"
                                 error={errors.product_features}
                             />
+
+                            <RichTextEditor
+                                label="Product Composition"
+                                value={form.product_composition || ''}
+                                onChange={(html) => onChange({ target: { name: 'product_composition', value: html } })}
+                                placeholder="Detail the materials and composition of the product"
+                                error={errors.product_composition}
+                            />
                         </div>
 
                         <div className="space-y-6">

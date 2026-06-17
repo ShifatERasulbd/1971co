@@ -21,6 +21,7 @@ class Product extends Model
         'fit',
         'fabric_and_care',
         'product_features',
+        'product_composition',
         'long_description',
         'additional_information',
         'price',

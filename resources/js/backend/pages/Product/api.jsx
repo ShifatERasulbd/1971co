@@ -11,6 +11,7 @@ function buildProductPayload(data = {}) {
         fit: data.fit || '',
         fabric_and_care: data.fabric_and_care || '',
         product_features: data.product_features || '',
+        product_composition: data.product_composition || '',
         long_description: data.long_description || '',
         additional_information: data.additional_information || '',
         cover_image: data.cover_image?.trim() || '',
