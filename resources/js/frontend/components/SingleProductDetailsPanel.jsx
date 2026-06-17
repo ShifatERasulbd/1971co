@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function RulerIcon() {
     return (
@@ -33,6 +33,23 @@ function resolveSwatchColor(value, colorLookup = {}) {
     return '#d4d4d8';
 }
 
+function toOptionalImageUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+
+    const trimmed = path.trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/')) {
+        return trimmed;
+    }
+
+    return `/${trimmed.replace(/^\/+/, '')}`;
+}
+
 export default function SingleProductDetailsPanel({
     product,
     colorLookup,
@@ -46,6 +63,7 @@ export default function SingleProductDetailsPanel({
     onAddToCart,
 }) {
     const [openAccordionKey, setOpenAccordionKey] = useState('description');
+    const [isSizeChartModalOpen, setIsSizeChartModalOpen] = useState(false);
 
     const displayColors = Array.isArray(product.colors) && product.colors.length > 0
         ? product.colors
@@ -55,21 +73,37 @@ export default function SingleProductDetailsPanel({
         ? product.sizes
         : ['One Size'];
 
+    const sizeChartImage = useMemo(() => toOptionalImageUrl(product?.size_chart_image), [product?.size_chart_image]);
+
     const accordionItems = useMemo(() => {
-        const candidates = [
+        return [
             { key: 'description', title: 'Product Description', content: product?.description || '' },
             { key: 'fit', title: 'Fit', content: product?.fit || '' },
             { key: 'fabric', title: 'Fabric & Care', content: product?.fabric_and_care || '' },
             { key: 'features', title: 'Product Features', content: product?.product_features || '' },
             { key: 'composition', title: 'Product Composition', content: product?.product_composition || '' },
         ];
-
-        return candidates.filter((item) => String(item.content || '').trim() !== '');
     }, [product]);
 
     function toggleAccordionItem(key) {
         setOpenAccordionKey((previous) => (previous === key ? '' : key));
     }
+
+    useEffect(() => {
+        function handleEscape(event) {
+            if (event.key === 'Escape') {
+                setIsSizeChartModalOpen(false);
+            }
+        }
+
+        if (isSizeChartModalOpen) {
+            window.addEventListener('keydown', handleEscape);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isSizeChartModalOpen]);
 
     return (
         <div className="p-4 sm:p-5">
@@ -84,9 +118,7 @@ export default function SingleProductDetailsPanel({
 
             <p className="mt-2.5 text-[1.95rem] font-medium leading-none text-zinc-900">{product.price}</p>
 
-            <p className="mt-3.5 max-w-[52ch] text-[0.98rem] leading-7 text-zinc-600">
-                {product.description}
-            </p>
+            
 
             <div className="mt-5 space-y-4">
                 <div>
@@ -132,9 +164,22 @@ export default function SingleProductDetailsPanel({
                         ))}
                     </div>
 
-                    <p className="mt-2.5 inline-flex items-center gap-2 text-[1rem] font-medium text-zinc-800">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (sizeChartImage) {
+                                setIsSizeChartModalOpen(true);
+                            }
+                        }}
+                        className={`mt-2.5 inline-flex items-center gap-2 text-[1rem] font-medium ${
+                            sizeChartImage
+                                ? 'cursor-pointer text-zinc-800 hover:text-zinc-900'
+                                : 'cursor-not-allowed text-zinc-400'
+                        }`}
+                        disabled={!sizeChartImage}
+                    >
                         SIZE Chart <RulerIcon />
-                    </p>
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-2.5">
@@ -175,37 +220,75 @@ export default function SingleProductDetailsPanel({
                     </button>
                 </div>
 
-                {accordionItems.length > 0 ? (
-                    <div className="mt-2 border-y border-zinc-200">
-                        {accordionItems.map((item) => {
-                            const isOpen = openAccordionKey === item.key;
+                <div className="mt-2 border-y border-zinc-200">
+                    {accordionItems.map((item) => {
+                        const isOpen = openAccordionKey === item.key;
+                        const hasContent = String(item.content || '').trim() !== '';
 
-                            return (
-                                <div key={item.key} className="border-b border-zinc-200 last:border-b-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleAccordionItem(item.key)}
-                                        className="flex w-full items-center justify-between py-4 text-left text-[0.96rem] font-medium text-zinc-800"
-                                        aria-expanded={isOpen}
-                                    >
-                                        <span>{item.title}</span>
-                                        <span className="text-[1.2rem] leading-none text-zinc-500">{isOpen ? '-' : '+'}</span>
-                                    </button>
+                        return (
+                            <div key={item.key} className="border-b border-zinc-200 last:border-b-0">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleAccordionItem(item.key)}
+                                    className="flex w-full items-center justify-between py-4 text-left text-[0.96rem] font-medium text-zinc-800"
+                                    aria-expanded={isOpen}
+                                >
+                                    <span>{item.title}</span>
+                                    <span className="text-[1.2rem] leading-none text-zinc-500">{isOpen ? '-' : '+'}</span>
+                                </button>
 
-                                    {isOpen ? (
+                                {isOpen ? (
+                                    hasContent ? (
                                         <div
                                             className="pb-4 text-[0.95rem] leading-7 text-zinc-600"
                                             dangerouslySetInnerHTML={{ __html: item.content }}
                                         />
-                                    ) : null}
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : null}
+                                    ) : (
+                                        <p className="pb-4 text-[0.95rem] text-zinc-500">No details available.</p>
+                                    )
+                                ) : null}
+                            </div>
+                        );
+                    })}
+                </div>
 
                 <p className="border-t border-zinc-200 pt-2.5 text-[0.98rem] text-zinc-500">SKU: {product.sku || 'N/A'}</p>
             </div>
+
+            {isSizeChartModalOpen ? (
+                <div
+                    className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/65 px-4 py-8 sm:items-center sm:pt-12 lg:pt-16"
+                    onClick={() => setIsSizeChartModalOpen(false)}
+                >
+                    <div
+                        className="relative mt-6 w-full max-w-3xl rounded-xl bg-white p-3 shadow-2xl sm:mt-0 sm:p-4"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setIsSizeChartModalOpen(false)}
+                            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-lg text-zinc-700 transition hover:bg-zinc-100"
+                            aria-label="Close size chart"
+                        >
+                            x
+                        </button>
+
+                        <h3 className="mb-3 pr-10 text-[1.05rem] font-semibold text-zinc-900">Size Chart</h3>
+
+                        {sizeChartImage ? (
+                            <div className="max-h-[80vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:p-3">
+                                <img
+                                    src={sizeChartImage}
+                                    alt="Product size chart"
+                                    className="mx-auto block h-auto max-h-[74vh] w-auto max-w-full object-contain"
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-zinc-500">No size chart available for this product.</p>
+                        )}
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
