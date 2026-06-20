@@ -36,6 +36,10 @@ Route::get('/register', function () {
     return view('home');
 });
 
+Route::get('/reset-password/{token}', function () {
+    return view('home');
+})->name('password.reset');
+
 Route::get('/admin', function () {
     return view('app');
 })->name('login');

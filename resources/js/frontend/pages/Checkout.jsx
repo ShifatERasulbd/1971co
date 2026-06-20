@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -6,6 +8,22 @@ import { useCart } from '../context/CartContext';
 import { featuresFontClass } from '../utils/typography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
+
+const cardElementOptions = {
+    hidePostalCode: true,
+    style: {
+        base: {
+            color: '#18181b',
+            fontSize: '15px',
+            '::placeholder': {
+                color: '#a1a1aa',
+            },
+        },
+        invalid: {
+            color: '#dc2626',
+        },
+    },
+};
 
 function toImageUrl(value) {
     if (typeof value !== 'string' || !value.trim()) {
@@ -19,11 +37,12 @@ function toImageUrl(value) {
     return `/${value.replace(/^\/+/, '')}`;
 }
 
-export default function CheckoutPage() {
+function CheckoutForm() {
     const navigate = useNavigate();
+    const stripe = useStripe();
+    const elements = useElements();
     const { items, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [orderNumber, setOrderNumber] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const [form, setForm] = useState({
         first_name: '',
@@ -142,6 +161,11 @@ export default function CheckoutPage() {
             return;
         }
 
+        if (!stripe || !elements) {
+            toast.error('Secure payment is still loading. Please wait a moment and try again.');
+            return;
+        }
+
         const nextFieldErrors = validateFormValues(form);
         if (Object.keys(nextFieldErrors).length > 0) {
             setFieldErrors(nextFieldErrors);
@@ -153,6 +177,59 @@ export default function CheckoutPage() {
 
         setIsSubmitting(true);
         try {
+            const paymentIntentResponse = await fetch('/api/create-payment-intent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: total,
+                    currency: 'usd',
+                }),
+            });
+
+            const paymentIntentPayload = await paymentIntentResponse.json().catch(() => ({}));
+
+            if (!paymentIntentResponse.ok || !paymentIntentPayload?.clientSecret) {
+                toast.error(paymentIntentPayload?.message || 'Unable to initialize payment.');
+                return;
+            }
+
+            const cardElement = elements.getElement(CardElement);
+            if (!cardElement) {
+                toast.error('Payment form is not ready yet. Please try again.');
+                return;
+            }
+
+            const paymentResult = await stripe.confirmCardPayment(paymentIntentPayload.clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                    billing_details: {
+                        name: `${form.first_name} ${form.last_name}`.trim(),
+                        email: form.email,
+                        phone: form.phone,
+                        address: {
+                            line1: form.address_line_1,
+                            line2: form.address_line_2 || undefined,
+                            city: form.city,
+                            state: form.state,
+                            country: 'US',
+                        },
+                    },
+                },
+            });
+
+            if (paymentResult.error) {
+                toast.error(paymentResult.error.message || 'Payment failed. Please check your card details.');
+                return;
+            }
+
+            if (paymentResult.paymentIntent?.status !== 'succeeded') {
+                toast.error('Payment was not completed. Please try again.');
+                return;
+            }
+
             const response = await fetch('/api/public/orders', {
                 method: 'POST',
                 headers: {
@@ -165,6 +242,7 @@ export default function CheckoutPage() {
                     subtotal,
                     shipping,
                     total,
+                    payment_intent_id: paymentResult.paymentIntent.id,
                 }),
             });
 
@@ -182,9 +260,8 @@ export default function CheckoutPage() {
                 return;
             }
 
-            setOrderNumber(String(payload?.order_number || ''));
             clearCart();
-            toast.success('Order placed successfully');
+            toast.success('Payment successful and order placed');
             navigate(`/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}`);
         } catch {
             toast.error('Unable to place order right now. Please try again.');
@@ -430,16 +507,106 @@ export default function CheckoutPage() {
                         </div>
                     </div>
 
+                    <div className="mt-6">
+                        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Payment Details</h2>
+                        <div className="mt-3">
+                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                Card Information <span className="text-red-500">*</span>
+                            </label>
+                            <div className="min-h-11 border border-zinc-200 bg-white px-3 py-3 transition-colors hover:border-zinc-400 focus-within:border-zinc-900">
+                                <CardElement options={cardElementOptions} />
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !stripe || !elements}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {isSubmitting ? 'Placing Order...' : 'Place Order'}
+                        {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}
                     </button>
                 </aside>
             </div>
         </section>
+    );
+}
+
+export default function CheckoutPage() {
+    const [stripePromise, setStripePromise] = useState(null);
+    const [isStripeLoading, setIsStripeLoading] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function initializeStripe() {
+            try {
+                const envKey = String(import.meta.env.VITE_STRIPE_KEY || '').trim();
+                if (envKey) {
+                    if (isMounted) {
+                        setStripePromise(loadStripe(envKey));
+                    }
+                    return;
+                }
+
+                const response = await fetch('/api/public/stripe-config', {
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                const runtimeKey = String(payload?.publishableKey || '').trim();
+
+                if (isMounted && runtimeKey) {
+                    setStripePromise(loadStripe(runtimeKey));
+                }
+            } finally {
+                if (isMounted) {
+                    setIsStripeLoading(false);
+                }
+            }
+        }
+
+        initializeStripe();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    if (isStripeLoading) {
+        return (
+            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
+                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        Checkout
+                    </h1>
+                    <p className="mt-4 text-zinc-600">Loading secure payment...</p>
+                </div>
+            </section>
+        );
+    }
+
+    if (!stripePromise) {
+        return (
+            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
+                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        Checkout
+                    </h1>
+                    <p className="mt-4 text-zinc-600">
+                        Stripe is not configured. Please set STRIPE_KEY in the server environment.
+                    </p>
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <Elements stripe={stripePromise}>
+            <CheckoutForm />
+        </Elements>
     );
 }

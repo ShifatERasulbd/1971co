@@ -29,6 +29,9 @@ class CheckoutOrder extends Model
         'shipping',
         'total',
         'items',
+        'payment_provider',
+        'payment_status',
+        'payment_intent_id',
         'status',
     ];
 

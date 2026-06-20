@@ -17,9 +17,13 @@
     "dependencies": {
         "@radix-ui/react-label": "^2.1.8",
         "@radix-ui/react-slot": "^1.2.4",
+        "@react-oauth/google": "^0.13.5",
+        "@stripe/react-stripe-js": "^6.6.0",
+        "@stripe/stripe-js": "^9.8.0",
         "@tiptap/pm": "^3.22.5",
         "@tiptap/react": "^3.22.5",
         "@tiptap/starter-kit": "^3.22.5",
+        "axios": "^1.18.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "fabric": "^7.3.1",

@@ -16,6 +16,7 @@ const SingleProductPage = lazy(() => import('./frontend/pages/singleProduct.jsx'
 const AboutPage = lazy(() => import('./frontend/pages/about.jsx'));
 const ContactPage = lazy(() => import('./frontend/pages/contact.jsx'));
 const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
+const ResetPasswordPage = lazy(() => import('./frontend/pages/ResetPassword.jsx'));
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
 
@@ -61,6 +62,7 @@ function AppRouter() {
                         <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />
                         <Route path="register" element={withPageFallback(AuthPage)} />
+                        <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />
                     </Route>
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

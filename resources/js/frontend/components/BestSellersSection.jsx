@@ -617,7 +617,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
 
     return (
         <section
-            className={`${timelessFontClass} bg-[#f8f8f7] py-10 sm:py-14`}
+            className={`${timelessFontClass} bg-white py-10 sm:py-14`}
             onClick={() => notifyBuilderSelection(null)}
         >
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">

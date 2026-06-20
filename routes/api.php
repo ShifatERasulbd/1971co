@@ -19,11 +19,15 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SubCategoryController;
+use App\Http\Controllers\Payment\StripeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\GoogleAuthController;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['web', 'throttle:6,1']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['web', 'throttle:6,1']);
 Route::get('/public/hero', [HeroController::class, 'publicHero']);
 Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
 Route::get('/public/about-hero', [AboutHeroController::class, 'publicIndex']);
@@ -42,8 +46,10 @@ Route::get('/public/sub-categories', [SubCategoryController::class, 'index']);
 Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
 Route::get('/public/settings', [SettingsController::class, 'publicLatest']);
 Route::get('/public/best-sellers-section', [SettingsController::class, 'publicBestSellersSection']);
+Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
 Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
-
+Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
+Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/user', function (Request $request) {
 		return response()->json($request->user());

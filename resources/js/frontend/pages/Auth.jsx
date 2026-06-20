@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useLocation } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
@@ -8,20 +9,23 @@ const AuthRegisterForm = lazy(() => import('../components/AuthRegisterForm.jsx')
 
 const authShowcaseImage = '/uploads/heroes/images/hero1.webp';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
 export default function AuthPage() {
     const location = useLocation();
     const isRegister = location.pathname.toLowerCase() === '/register';
     const swapSides = false;
 
     return (
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <section className="bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
             <div className="mx-auto grid w-full max-w-[1500px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
                 <div
-                    className={`mx-auto w-full max-w-[620px] transition-all duration-500 ease-out lg:will-change-transform ${
+                    className={`mx-auto w-full max-w-[560px] transition-all duration-500 ease-out lg:will-change-transform ${
                         swapSides ? 'lg:order-2 lg:translate-x-8' : 'lg:order-1 lg:translate-x-0'
                     }`}
                 >
-                    <h1 className="font-serif text-[2.3rem] uppercase tracking-[0.02em] text-zinc-900 sm:text-[2.8rem]">
+                    <h1 className="font-serif text-[2rem] uppercase tracking-[0.02em] text-zinc-900 sm:text-[2.4rem]">
                         {isRegister ? 'Create Account' : 'Login'}
                     </h1>
 
@@ -43,5 +47,6 @@ export default function AuthPage() {
                 </div>
             </div>
         </section>
+        </GoogleOAuthProvider>
     );
 }

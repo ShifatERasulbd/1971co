@@ -264,7 +264,8 @@ export default function Header() {
                                 >
                                     <Link
                                         to={item.href}
-                                        className="site-header-nav-link text-[0.85rem] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        style={{ fontFamily: 'Montserrat, sans-serif' }}
                                         aria-expanded={isShopMegaMenuOpen}
                                         aria-haspopup="menu"
                                     >
@@ -349,7 +350,8 @@ export default function Header() {
                                 <Link
                                     key={item.label}
                                     to={item.href}
-                                    className="site-header-nav-link text-[0.85rem] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
                                 </Link>
@@ -357,7 +359,8 @@ export default function Header() {
                                 <Link
                                     key={item.label}
                                     href={item.href}
-                                    className="site-header-nav-link text-[0.85rem] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
                                 </Link>

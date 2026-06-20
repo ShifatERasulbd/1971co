@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CheckoutOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Stripe\StripeClient;
 
 class CheckoutOrderController extends Controller
 {
@@ -192,7 +193,38 @@ class CheckoutOrderController extends Controller
             'subtotal' => 'required|numeric|min:0',
             'shipping' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
+            'payment_intent_id' => 'required|string|max:255',
         ]);
+
+        $secretKey = (string) config('services.stripe.secret');
+        if ($secretKey === '') {
+            return response()->json([
+                'message' => 'Stripe secret key is not configured.',
+            ], 500);
+        }
+
+        $expectedAmount = (int) round(((float) $validated['total']) * 100);
+
+        try {
+            $stripe = new StripeClient($secretKey);
+            $paymentIntent = $stripe->paymentIntents->retrieve($validated['payment_intent_id'], []);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => 'Unable to verify payment intent.',
+            ], 422);
+        }
+
+        if (($paymentIntent->status ?? null) !== 'succeeded') {
+            return response()->json([
+                'message' => 'Payment has not been completed.',
+            ], 422);
+        }
+
+        if ((int) ($paymentIntent->amount ?? 0) !== $expectedAmount) {
+            return response()->json([
+                'message' => 'Payment amount does not match order total.',
+            ], 422);
+        }
 
         $orderNumber = sprintf('ORD-%s-%04d', now()->format('YmdHis'), random_int(0, 9999));
 
@@ -215,7 +247,10 @@ class CheckoutOrderController extends Controller
             'shipping' => $validated['shipping'],
             'total' => $validated['total'],
             'items' => $validated['items'],
-            'status' => 'pending',
+            'status' => 'processing',
+            'payment_provider' => 'stripe',
+            'payment_status' => 'paid',
+            'payment_intent_id' => $validated['payment_intent_id'],
         ]);
 
         return response()->json([

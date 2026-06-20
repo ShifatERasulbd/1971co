@@ -7,9 +7,9 @@ export const titleFontClass = 'frontend-title-font';
 export const textFontClass = 'frontend-text-font';
 
 const STYLE_TAG_ID = 'frontend-unified-typography-style';
-const DEFAULT_FONT_FAMILY = '"Instrument Sans", ui-sans-serif, system-ui, sans-serif';
-const DEFAULT_TITLE_FONT_FAMILY = '"Bebas Neue", ui-sans-serif, system-ui, sans-serif';
-const DEFAULT_TEXT_FONT_FAMILY = '"Montserrat", ui-sans-serif, system-ui, sans-serif';
+const DEFAULT_FONT_FAMILY = '"Bebas Neue"';
+const DEFAULT_TITLE_FONT_FAMILY = '"Bebas Neue"';
+const DEFAULT_TEXT_FONT_FAMILY = '"Montserrat"';
 
 function ensureTypographyStyleTag() {
     if (typeof document === 'undefined') {

@@ -15,9 +15,9 @@ const initialForm = {
     frontend_utils: {
         timeless_font_family: '',
         features_font_family: '',
-        hero_default_font_family: 'instrument-sans',
+        hero_default_font_family: 'Bebas Neue',
         hero_font_family_options_json:
-            '[{"label":"Instrument Sans","value":"instrument-sans"},{"label":"Georgia","value":"georgia"},{"label":"Times New Roman","value":"times-new-roman"},{"label":"Verdana","value":"verdana"},{"label":"Trebuchet MS","value":"trebuchet-ms"},{"label":"Courier New","value":"courier-new"}]',
+            '[{"label":"Bebas Neue","value":"Bebas Neue"},{"label":"Bebas Neue","value":"Bebas Neue"},{"label":"Times New Roman","value":"times-new-roman"},{"label":"Verdana","value":"verdana"},{"label":"Trebuchet MS","value":"trebuchet-ms"},{"label":"Courier New","value":"courier-new"}]',
         hero_font_family_css_map_json:
             '{"instrument-sans":"\\"Instrument Sans\\", ui-sans-serif, system-ui, sans-serif","georgia":"Georgia, \\"Times New Roman\\", serif","times-new-roman":"\\"Times New Roman\\", Times, serif","verdana":"Verdana, Geneva, sans-serif","trebuchet-ms":"\\"Trebuchet MS\\", Tahoma, sans-serif","courier-new":"\\"Courier New\\", Courier, monospace"}',
     },

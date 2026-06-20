@@ -1,24 +1,16 @@
 import { getFrontendUtilsConfig } from './siteSettings';
 
 export const heroFontFamilyOptions = [
-    { label: 'Instrument Sans', value: 'instrument-sans' },
-    { label: 'Georgia', value: 'georgia' },
-    { label: 'Times New Roman', value: 'times-new-roman' },
-    { label: 'Verdana', value: 'verdana' },
-    { label: 'Trebuchet MS', value: 'trebuchet-ms' },
-    { label: 'Courier New', value: 'courier-new' },
+    { label: 'Montserrat', value: 'montserrat' },
+   
 ];
 
 const heroFontFamilyCssMap = {
-    'instrument-sans': '"Instrument Sans", ui-sans-serif, system-ui, sans-serif',
-    georgia: 'Georgia, "Times New Roman", serif',
-    'times-new-roman': '"Times New Roman", Times, serif',
-    verdana: 'Verdana, Geneva, sans-serif',
-    'trebuchet-ms': '"Trebuchet MS", Tahoma, sans-serif',
-    'courier-new': '"Courier New", Courier, monospace',
+    montserrat: '"Montserrat", ui-sans-serif, system-ui, sans-serif',
+    
 };
 
-export function resolveHeroFontFamily(value, fallback = 'instrument-sans') {
+export function resolveHeroFontFamily(value, fallback = 'montserrat') {
     const config = getFrontendUtilsConfig();
     const runtimeCssMap =
         config.hero_font_family_css_map && typeof config.hero_font_family_css_map === 'object'
