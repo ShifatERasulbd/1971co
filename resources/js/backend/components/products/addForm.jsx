@@ -34,12 +34,14 @@ export default function AddForm({
     onSizeSelectChange,
     onAddColor,
     onRemoveColor,
+    onReorderColors,
     onAddSize,
     onRemoveSize,
     onVariantRowChange,
     onColorVariantImagesChange,
     onGalleryFilesChange,
     onRemoveGalleryImage,
+    onReorderGalleryImages,
     onSizeChartImageChange,
     onRemoveSizeChartImage,
     sizeChartPreviewUrl = '',
@@ -52,6 +54,8 @@ export default function AddForm({
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [activeColorForImages, setActiveColorForImages] = useState('');
     const [draftImageValues, setDraftImageValues] = useState([]);
+    const [draggingColor, setDraggingColor] = useState('');
+    const [draggingGalleryIndex, setDraggingGalleryIndex] = useState(-1);
 
     const firstColorRowKeys = useMemo(() => {
         const seenColors = new Set();
@@ -94,6 +98,62 @@ export default function AddForm({
         setIsImageModalOpen(false);
         setActiveColorForImages('');
         setDraftImageValues([]);
+    };
+
+    const handleColorDragStart = (event, color) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', color);
+        setDraggingColor(color);
+    };
+
+    const handleColorDragOver = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleColorDrop = (event, color) => {
+        event.preventDefault();
+        const draggedColor = event.dataTransfer.getData('text/plain') || draggingColor;
+        if (!draggedColor || draggedColor === color) {
+            setDraggingColor('');
+            return;
+        }
+
+        onReorderColors?.(draggedColor, color);
+        setDraggingColor('');
+    };
+
+    const handleColorDragEnd = () => {
+        setDraggingColor('');
+    };
+
+    const handleGalleryDragStart = (event, index) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+        setDraggingGalleryIndex(index);
+    };
+
+    const handleGalleryDragOver = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleGalleryDrop = (event, index) => {
+        event.preventDefault();
+        const rawIndex = event.dataTransfer.getData('text/plain');
+        const fromIndex = rawIndex !== '' ? Number(rawIndex) : draggingGalleryIndex;
+
+        if (Number.isNaN(fromIndex) || fromIndex < 0 || fromIndex === index) {
+            setDraggingGalleryIndex(-1);
+            return;
+        }
+
+        onReorderGalleryImages?.(fromIndex, index);
+        setDraggingGalleryIndex(-1);
+    };
+
+    const handleGalleryDragEnd = () => {
+        setDraggingGalleryIndex(-1);
     };
 
     const slugify = (text = '') =>
@@ -271,14 +331,25 @@ export default function AddForm({
                             </div>
                             <div className="rounded-md border bg-muted/20 p-3">
                                 <p className="mb-3 text-sm font-medium text-muted-foreground">Gallery Preview</p>
+                                <p className="mb-2 text-xs text-muted-foreground">Drag and drop images to reorder them.</p>
                                 {galleryPreviewUrls.length > 0 ? (
                                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                                         {galleryPreviewUrls.map((item, index) => (
-                                            <div key={`${item.name}-${index}`} className="space-y-2">
+                                            <div
+                                                key={`${item.name}-${index}`}
+                                                className={`space-y-2 ${isSubmitting ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'} ${draggingGalleryIndex === index ? 'opacity-60' : ''}`}
+                                                draggable={!isSubmitting}
+                                                onDragStart={(event) => handleGalleryDragStart(event, index)}
+                                                onDragOver={handleGalleryDragOver}
+                                                onDrop={(event) => handleGalleryDrop(event, index)}
+                                                onDragEnd={handleGalleryDragEnd}
+                                                title="Drag to reorder"
+                                            >
                                                 <img
                                                     src={item.url}
                                                     alt={`Gallery preview ${index + 1}`}
                                                     className="h-32 w-full rounded bg-muted/30 object-contain"
+                                                    draggable={false}
                                                 />
                                                 <Button
                                                     type="button"
@@ -411,16 +482,29 @@ export default function AddForm({
                                         {selectedColors.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pt-1">
                                                 {selectedColors.map((color) => (
-                                                    <Button
+                                                    <div
                                                         key={color}
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => onRemoveColor?.(color)}
-                                                        disabled={isSubmitting}
+                                                        draggable={!isSubmitting}
+                                                        onDragStart={(event) => handleColorDragStart(event, color)}
+                                                        onDragOver={handleColorDragOver}
+                                                        onDrop={(event) => handleColorDrop(event, color)}
+                                                        onDragEnd={handleColorDragEnd}
+                                                        className={`inline-flex items-center gap-2 rounded-md border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground ${
+                                                            draggingColor === color ? 'opacity-60' : ''
+                                                        } ${isSubmitting ? 'cursor-not-allowed' : 'cursor-move'}`}
+                                                        title="Drag to reorder"
                                                     >
-                                                        {color} x
-                                                    </Button>
+                                                        <span>{color}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onRemoveColor?.(color)}
+                                                            disabled={isSubmitting}
+                                                            className="text-[11px] leading-none opacity-70 transition-opacity hover:opacity-100"
+                                                            aria-label={`Remove ${color}`}
+                                                        >
+                                                            x
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}

@@ -47,6 +47,24 @@ function buildVariantKey(color, size) {
     return `${String(color || '').trim()}__${String(size || '').trim()}`;
 }
 
+function reorderItems(items, fromIndex, toIndex) {
+    if (
+        !Array.isArray(items)
+        || fromIndex < 0
+        || toIndex < 0
+        || fromIndex >= items.length
+        || toIndex >= items.length
+        || fromIndex === toIndex
+    ) {
+        return items;
+    }
+
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+}
+
 export default function EditProduct() {
     const { id } = useParams();
     const location = useLocation();
@@ -426,6 +444,18 @@ export default function EditProduct() {
         });
     };
 
+    const handleReorderColors = (fromColor, toColor) => {
+        if (!fromColor || !toColor || fromColor === toColor) {
+            return;
+        }
+
+        setSelectedColors((previous) => {
+            const fromIndex = previous.indexOf(fromColor);
+            const toIndex = previous.indexOf(toColor);
+            return reorderItems(previous, fromIndex, toIndex);
+        });
+    };
+
     const handleAddSize = () => {
         if (!sizeSelectValue) {
             return;
@@ -450,6 +480,31 @@ export default function EditProduct() {
 
     const handleRemoveNewGalleryImage = (indexToRemove) => {
         setNewGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
+    const handleReorderGalleryItems = (fromItem, toItem) => {
+        const fromIndex = Number(fromItem?.index);
+        const toIndex = Number(toItem?.index);
+
+        if (
+            !fromItem
+            || !toItem
+            || fromItem.source !== toItem.source
+            || Number.isNaN(fromIndex)
+            || Number.isNaN(toIndex)
+            || fromIndex === toIndex
+        ) {
+            return;
+        }
+
+        if (fromItem.source === 'existing') {
+            setExistingGalleryUrls((previous) => reorderItems(previous, fromIndex, toIndex));
+            return;
+        }
+
+        if (fromItem.source === 'new') {
+            setNewGalleryImageFiles((previous) => reorderItems(previous, fromIndex, toIndex));
+        }
     };
 
     const handleSizeChartImageChange = (event) => {
@@ -595,6 +650,7 @@ export default function EditProduct() {
                     onSizeSelectChange={setSizeSelectValue}
                     onAddColor={handleAddColor}
                     onRemoveColor={handleRemoveColor}
+                    onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
@@ -602,6 +658,7 @@ export default function EditProduct() {
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveExistingGalleryImage={handleRemoveExistingGalleryImage}
                     onRemoveNewGalleryImage={handleRemoveNewGalleryImage}
+                    onReorderGalleryItems={handleReorderGalleryItems}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
                     sizeChartPreviewUrl={sizeChartPreviewUrl}

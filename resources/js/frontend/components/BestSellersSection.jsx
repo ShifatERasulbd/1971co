@@ -418,24 +418,6 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
                             >
                                 <ChevronRight className="size-4" />
                             </button>
-
-                            {/* <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
-                                {galleryImages.map((_, index) => (
-                                    <button
-                                        key={`image-dot-${index}`}
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            setCurrentImageIndex(index);
-                                        }}
-                                        className={`size-1.5 rounded-full ${
-                                            currentImageIndex === index ? 'bg-white' : 'bg-white/50'
-                                        }`}
-                                        aria-label={`Go to image ${index + 1}`}
-                                    />
-                                ))}
-                            </div> */}
                         </>
                     ) : null}
                 </div>
@@ -618,6 +600,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
     return (
         <section
             className={`${timelessFontClass} bg-white py-10 sm:py-14`}
+            style={{ backgroundColor: '#ffffff' }}
             onClick={() => notifyBuilderSelection(null)}
         >
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">

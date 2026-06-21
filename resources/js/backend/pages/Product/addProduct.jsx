@@ -65,6 +65,24 @@ function pickVariantNumberValue(existingValue, fallbackValue) {
     return existingValue;
 }
 
+function reorderItems(items, fromIndex, toIndex) {
+    if (
+        !Array.isArray(items)
+        || fromIndex < 0
+        || toIndex < 0
+        || fromIndex >= items.length
+        || toIndex >= items.length
+        || fromIndex === toIndex
+    ) {
+        return items;
+    }
+
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+}
+
 export default function AddProduct() {
     const navigate = useNavigate();
     const { setPageTitle } = useAppContext();
@@ -288,6 +306,10 @@ export default function AddProduct() {
         setGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
     };
 
+    const handleReorderGalleryImages = (fromIndex, toIndex) => {
+        setGalleryImageFiles((previous) => reorderItems(previous, fromIndex, toIndex));
+    };
+
     const handleSizeChartImageChange = (event) => {
         const [file] = Array.from(event.target.files || []);
         setSizeChartImageFile(file instanceof File ? file : null);
@@ -322,6 +344,18 @@ export default function AddProduct() {
             const next = { ...previous };
             delete next[colorToRemove];
             return next;
+        });
+    };
+
+    const handleReorderColors = (fromColor, toColor) => {
+        if (!fromColor || !toColor || fromColor === toColor) {
+            return;
+        }
+
+        setSelectedColors((previous) => {
+            const fromIndex = previous.indexOf(fromColor);
+            const toIndex = previous.indexOf(toColor);
+            return reorderItems(previous, fromIndex, toIndex);
         });
     };
 
@@ -427,12 +461,14 @@ export default function AddProduct() {
                     onSizeSelectChange={setSizeSelectValue}
                     onAddColor={handleAddColor}
                     onRemoveColor={handleRemoveColor}
+                    onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveGalleryImage={handleRemoveGalleryImage}
+                    onReorderGalleryImages={handleReorderGalleryImages}
                     galleryPreviewUrls={galleryPreviewUrls}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
