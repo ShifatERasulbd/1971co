@@ -27,6 +27,7 @@ export default function EditForm({
     selectedSizes = [],
     variantRows = [],
     colorVariantImageMap = {},
+    colorVariantVideoMap = {},
     galleryPreviewItems = [],
     variantGroupName = '',
     errors = {},
@@ -41,13 +42,18 @@ export default function EditForm({
     onRemoveSize,
     onVariantRowChange,
     onColorVariantImagesChange,
+    onColorVariantVideosChange,
     onGalleryFilesChange,
     onRemoveExistingGalleryImage,
     onRemoveNewGalleryImage,
     onReorderGalleryItems,
+    onProductVideosChange,
+    onRemoveExistingProductVideo,
+    onRemoveNewProductVideo,
     onSizeChartImageChange,
     onRemoveSizeChartImage,
     sizeChartPreviewUrl = '',
+    productVideoPreviewItems = [],
     onSubmit,
     onCancel,
     submitLabel = 'Update Product',
@@ -56,6 +62,9 @@ export default function EditForm({
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [activeColorForImages, setActiveColorForImages] = useState('');
     const [draftImageValues, setDraftImageValues] = useState([]);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [activeColorForVideos, setActiveColorForVideos] = useState('');
+    const [draftVideoValues, setDraftVideoValues] = useState([]);
     const [draggingColor, setDraggingColor] = useState('');
     const [draggingGalleryItem, setDraggingGalleryItem] = useState(null);
 
@@ -98,6 +107,33 @@ export default function EditForm({
             onColorVariantImagesChange?.(activeColorForImages, draftImageValues);
         }
         closeColorImagesModal();
+    };
+
+    const openColorVideosModal = (color) => {
+        setActiveColorForVideos(color);
+        setDraftVideoValues(colorVariantVideoMap[color] || []);
+        setIsVideoModalOpen(true);
+    };
+
+    const closeColorVideosModal = () => {
+        setIsVideoModalOpen(false);
+        setActiveColorForVideos('');
+        setDraftVideoValues([]);
+    };
+
+    const toggleDraftVideo = (value) => {
+        setDraftVideoValues((previous) =>
+            previous.includes(value)
+                ? previous.filter((item) => item !== value)
+                : [...previous, value],
+        );
+    };
+
+    const saveColorVideosSelection = () => {
+        if (activeColorForVideos) {
+            onColorVariantVideosChange?.(activeColorForVideos, draftVideoValues);
+        }
+        closeColorVideosModal();
     };
 
     const handleColorDragStart = (event, color) => {
@@ -405,6 +441,66 @@ export default function EditForm({
                                 )}
                             </div>
 
+                            <div className="space-y-2">
+                                <Label htmlFor="product-videos-upload">Product Videos</Label>
+                                <Input
+                                    id="product-videos-upload"
+                                    name="product_videos"
+                                    type="file"
+                                    accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                                    multiple
+                                    onChange={onProductVideosChange}
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">Upload additional videos for this product (MP4, WEBM, OGG, MOV, max 50MB each).</p>
+                                {errors.product_videos && <p className="text-xs text-destructive">{errors.product_videos[0]}</p>}
+
+                                <div className="rounded-md border bg-muted/20 p-3">
+                                    <p className="mb-3 text-sm font-medium text-muted-foreground">Video Preview</p>
+                                    {productVideoPreviewItems.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                            {productVideoPreviewItems.map((item, index) => (
+                                                <div key={item.id || `${item.name}-${index}`} className="space-y-2">
+                                                    <video
+                                                        src={item.url}
+                                                        controls
+                                                        className="h-36 w-full rounded bg-muted/30 object-cover"
+                                                        preload="metadata"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full"
+                                                        onClick={() => {
+                                                            if (item.source === 'existing') {
+                                                                const existingIndex = productVideoPreviewItems
+                                                                    .slice(0, index)
+                                                                    .filter((entry) => entry.source === 'existing').length;
+                                                                onRemoveExistingProductVideo?.(existingIndex);
+                                                                return;
+                                                            }
+
+                                                            const newIndex = productVideoPreviewItems
+                                                                .slice(0, index)
+                                                                .filter((entry) => entry.source === 'new').length;
+                                                            onRemoveNewProductVideo?.(newIndex);
+                                                        }}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Remove Video
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-24 items-center justify-center rounded border border-dashed text-sm text-muted-foreground">
+                                            No product videos available
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="space-y-3">
                                 <h3 className="text-sm font-semibold text-foreground">Category</h3>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -643,6 +739,7 @@ export default function EditForm({
                                                     <th className="py-2 pr-2">Stock</th>
                                                     <th className="py-2 pr-2">Price</th>
                                                     <th className="py-2">Color Images</th>
+                                                    <th className="py-2">Color Videos</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -695,6 +792,27 @@ export default function EditForm({
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-xs text-muted-foreground">Uses {row.color} images</p>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-2">
+                                                            {firstColorRowKeys[row.key] ? (
+                                                                <div className="space-y-1">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="w-full"
+                                                                        onClick={() => openColorVideosModal(row.color)}
+                                                                        disabled={isSubmitting || productVideoPreviewItems.length === 0}
+                                                                    >
+                                                                        Attach Videos
+                                                                    </Button>
+                                                                    <p className="text-[11px] text-muted-foreground">
+                                                                        {(colorVariantVideoMap[row.color] || []).length} selected for {row.color}
+                                                                    </p>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground">Uses {row.color} videos</p>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -777,6 +895,70 @@ export default function EditForm({
                             </Button>
                             <Button type="button" onClick={saveColorImagesSelection}>
                                 Save Selection ({draftImageValues.length})
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isVideoModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-4xl rounded-lg border bg-background shadow-lg">
+                        <div className="flex items-center justify-between border-b px-4 py-3">
+                            <h3 className="text-base font-semibold">Attach Videos to {activeColorForVideos}</h3>
+                            <Button type="button" variant="ghost" size="sm" onClick={closeColorVideosModal}>
+                                Close
+                            </Button>
+                        </div>
+
+                        <div className="max-h-[70vh] overflow-y-auto p-4">
+                            {productVideoPreviewItems.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                    {productVideoPreviewItems.map((video) => {
+                                        const isSelected = draftVideoValues.includes(video.value);
+
+                                        return (
+                                            <button
+                                                key={video.id}
+                                                type="button"
+                                                onClick={() => toggleDraftVideo(video.value)}
+                                                className={`overflow-hidden rounded-md border p-2 text-left transition ${
+                                                    isSelected
+                                                        ? 'border-primary ring-2 ring-primary/30'
+                                                        : 'border-input hover:border-primary/60'
+                                                }`}
+                                            >
+                                                <video
+                                                    src={video.url}
+                                                    className="h-36 w-full rounded bg-muted/30 object-cover"
+                                                    preload="metadata"
+                                                    muted
+                                                />
+                                                <div className="space-y-1 p-1">
+                                                    <p className="truncate text-xs font-medium" title={video.name}>
+                                                        {video.name}
+                                                    </p>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {isSelected ? 'Selected' : 'Click to select'}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                    Upload product videos first to attach them to this color variant.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                            <Button type="button" variant="outline" onClick={closeColorVideosModal}>
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={saveColorVideosSelection}>
+                                Save Selection ({draftVideoValues.length})
                             </Button>
                         </div>
                     </div>

@@ -27,8 +27,14 @@ function buildProductPayload(data = {}) {
             data.color_variant_images && typeof data.color_variant_images === 'object'
                 ? data.color_variant_images
                 : {},
+        color_variant_videos:
+            data.color_variant_videos && typeof data.color_variant_videos === 'object'
+                ? data.color_variant_videos
+                : {},
         image_gallery_existing: Array.isArray(data.image_gallery_existing) ? data.image_gallery_existing : [],
         clear_gallery: Boolean(data.clear_gallery),
+        product_videos_existing: Array.isArray(data.product_videos_existing) ? data.product_videos_existing : [],
+        clear_videos: Boolean(data.clear_videos),
     };
 }
 
@@ -67,6 +73,14 @@ function buildProductFormData(data = {}) {
         });
     }
 
+    if (Array.isArray(data.productVideoFiles)) {
+        data.productVideoFiles.forEach((file) => {
+            if (file instanceof File) {
+                formData.append('product_videos[]', file);
+            }
+        });
+    }
+
     return formData;
 }
 
@@ -74,7 +88,8 @@ function hasUploadFiles(data = {}) {
     const hasThumbnail = data.thumbnailImageFile instanceof File;
     const hasSizeChart = data.sizeChartImageFile instanceof File;
     const hasGallery = Array.isArray(data.galleryImageFiles) && data.galleryImageFiles.some((file) => file instanceof File);
-    return hasThumbnail || hasSizeChart || hasGallery;
+    const hasVideos = Array.isArray(data.productVideoFiles) && data.productVideoFiles.some((file) => file instanceof File);
+    return hasThumbnail || hasSizeChart || hasGallery || hasVideos;
 }
 
 export async function fetchProducts() {

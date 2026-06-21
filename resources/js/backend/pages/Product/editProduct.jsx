@@ -74,8 +74,11 @@ export default function EditProduct() {
     const [form, setForm] = useState(initialForm);
     const [existingGalleryUrls, setExistingGalleryUrls] = useState([]);
     const [newGalleryImageFiles, setNewGalleryImageFiles] = useState([]);
+    const [existingProductVideos, setExistingProductVideos] = useState([]);
+    const [newProductVideoFiles, setNewProductVideoFiles] = useState([]);
     const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
+    const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
     const [categoryOptions, setCategoryOptions] = useState([]);
@@ -125,6 +128,31 @@ export default function EditProduct() {
 
         return form.size_chart_image || '';
     }, [sizeChartImageFile, form.size_chart_image]);
+
+    const productVideoPreviewItems = useMemo(() => {
+        const existing = existingProductVideos.map((url, index) => {
+            const chunks = String(url).split('/');
+            const filename = chunks[chunks.length - 1] || `video-${index + 1}`;
+
+            return {
+                id: `existing-video-${index}-${url}`,
+                name: filename,
+                value: url,
+                url,
+                source: 'existing',
+            };
+        });
+
+        const fresh = newProductVideoFiles.map((file) => ({
+            id: `new-video-${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            value: file.name,
+            url: URL.createObjectURL(file),
+            source: 'new',
+        }));
+
+        return [...existing, ...fresh];
+    }, [existingProductVideos, newProductVideoFiles]);
 
     useEffect(() => {
         setPageTitle('Edit Product');
@@ -192,6 +220,16 @@ export default function EditProduct() {
     }, [sizeChartImageFile, sizeChartPreviewUrl]);
 
     useEffect(() => {
+        return () => {
+            productVideoPreviewItems.forEach((item) => {
+                if (item.source === 'new') {
+                    URL.revokeObjectURL(item.url);
+                }
+            });
+        };
+    }, [productVideoPreviewItems]);
+
+    useEffect(() => {
         let ignore = false;
 
         async function loadProduct() {
@@ -238,9 +276,15 @@ export default function EditProduct() {
                     });
 
                     setExistingGalleryUrls(Array.isArray(data?.image_gallery) ? data.image_gallery : []);
+                    setExistingProductVideos(Array.isArray(data?.product_videos) ? data.product_videos : []);
                     setColorVariantImageMap(
                         data?.color_variant_images && typeof data.color_variant_images === 'object'
                             ? data.color_variant_images
+                            : {},
+                    );
+                    setColorVariantVideoMap(
+                        data?.color_variant_videos && typeof data.color_variant_videos === 'object'
+                            ? data.color_variant_videos
                             : {},
                     );
 
@@ -365,6 +409,27 @@ export default function EditProduct() {
         });
     }, [galleryPreviewItems]);
 
+    useEffect(() => {
+        const validValues = new Set(productVideoPreviewItems.map((item) => item.value));
+
+        setColorVariantVideoMap((previous) => {
+            let changed = false;
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([color, values]) => {
+                const filtered = (Array.isArray(values) ? values : []).filter((value) => validValues.has(value));
+                if (filtered.length > 0) {
+                    next[color] = filtered;
+                }
+                if (filtered.length !== (Array.isArray(values) ? values.length : 0)) {
+                    changed = true;
+                }
+            });
+
+            return changed ? next : previous;
+        });
+    }, [productVideoPreviewItems]);
+
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
         const nextValue = type === 'checkbox' ? checked : value;
@@ -442,6 +507,15 @@ export default function EditProduct() {
             delete next[colorToRemove];
             return next;
         });
+        setColorVariantVideoMap((previous) => {
+            if (!previous[colorToRemove]) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
     };
 
     const handleReorderColors = (fromColor, toColor) => {
@@ -480,6 +554,25 @@ export default function EditProduct() {
 
     const handleRemoveNewGalleryImage = (indexToRemove) => {
         setNewGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
+    const handleProductVideosChange = (event) => {
+        const files = Array.from(event.target.files || []);
+        setNewProductVideoFiles(files.filter((file) => file instanceof File));
+        setErrors((previous) => {
+            if (!previous.product_videos) return previous;
+            const next = { ...previous };
+            delete next.product_videos;
+            return next;
+        });
+    };
+
+    const handleRemoveExistingProductVideo = (indexToRemove) => {
+        setExistingProductVideos((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
+    const handleRemoveNewProductVideo = (indexToRemove) => {
+        setNewProductVideoFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
     };
 
     const handleReorderGalleryItems = (fromItem, toItem) => {
@@ -528,6 +621,18 @@ export default function EditProduct() {
 
     const handleColorVariantImagesChange = (color, selectedValues) => {
         setColorVariantImageMap((previous) => {
+            const next = { ...(previous || {}) };
+            if (!Array.isArray(selectedValues) || selectedValues.length === 0) {
+                delete next[color];
+                return next;
+            }
+            next[color] = selectedValues;
+            return next;
+        });
+    };
+
+    const handleColorVariantVideosChange = (color, selectedValues) => {
+        setColorVariantVideoMap((previous) => {
             const next = { ...(previous || {}) };
             if (!Array.isArray(selectedValues) || selectedValues.length === 0) {
                 delete next[color];
@@ -594,9 +699,13 @@ export default function EditProduct() {
                         : form.size,
                 variant_rows: variantRows,
                 color_variant_images: colorVariantImageMap,
+                color_variant_videos: colorVariantVideoMap,
                 galleryImageFiles: newGalleryImageFiles,
                 image_gallery_existing: existingGalleryUrls,
                 clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
+                productVideoFiles: newProductVideoFiles,
+                product_videos_existing: existingProductVideos,
+                clear_videos: existingProductVideos.length === 0 && newProductVideoFiles.length === 0,
                 sizeChartImageFile,
             });
 
@@ -644,6 +753,7 @@ export default function EditProduct() {
                     selectedSizes={selectedSizes}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
+                    colorVariantVideoMap={colorVariantVideoMap}
                     galleryPreviewItems={galleryPreviewItems}
                     variantGroupName={location.state?.productGroup?.groupName || form.name || ''}
                     onColorSelectChange={setColorSelectValue}
@@ -655,10 +765,15 @@ export default function EditProduct() {
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
+                    onColorVariantVideosChange={handleColorVariantVideosChange}
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveExistingGalleryImage={handleRemoveExistingGalleryImage}
                     onRemoveNewGalleryImage={handleRemoveNewGalleryImage}
                     onReorderGalleryItems={handleReorderGalleryItems}
+                    onProductVideosChange={handleProductVideosChange}
+                    onRemoveExistingProductVideo={handleRemoveExistingProductVideo}
+                    onRemoveNewProductVideo={handleRemoveNewProductVideo}
+                    productVideoPreviewItems={productVideoPreviewItems}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
                     sizeChartPreviewUrl={sizeChartPreviewUrl}

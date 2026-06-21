@@ -85,6 +85,11 @@ export default function SingleProductPage() {
         return products[0] || null;
     }, [products, searchParams]);
 
+    const initialColor = useMemo(() => {
+        const colorParam = String(searchParams.get('color') || '').trim();
+        return colorParam;
+    }, [searchParams]);
+
     const relatedProducts = useMemo(() => {
         if (!currentProduct) {
             return [];
@@ -123,7 +128,7 @@ export default function SingleProductPage() {
     return (
         <div className="bg-white">
             <LazySection heightClass="h-[760px]" variant="product">
-                <SingleProductMainSection product={currentProduct} />
+                <SingleProductMainSection product={currentProduct} initialColor={initialColor} />
             </LazySection>
             <LazySection heightClass="h-[320px]" variant="generic">
                 {/* <SingleProductInfoTabs product={currentProduct} /> */}

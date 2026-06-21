@@ -1,5 +1,6 @@
 export default function SingleProductMediaGallery({
     images,
+    primaryVideo,
     selectedImage,
     onSelectImage,
 }) {
@@ -8,11 +9,26 @@ export default function SingleProductMediaGallery({
 
     const activeImage = selectedImage || safeImages[0];
 
-    if (!activeImage) return null;
+    if (!primaryVideo && !activeImage) return null;
 
     return (
         <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-3">
+                {primaryVideo ? (
+                    <div className="overflow-hidden border border-zinc-900">
+                        <video
+                            src={primaryVideo}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            controls
+                            className="aspect-[4/5] w-full object-cover object-center"
+                            preload="metadata"
+                        />
+                    </div>
+                ) : null}
+
                 {safeImages.slice(0, 6).map((image, index) => (
                     <button
                         key={`${image}-${index}`}

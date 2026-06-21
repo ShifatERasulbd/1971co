@@ -20,6 +20,18 @@ function toAbsoluteImageUrl(path) {
     return `/${path.replace(/^\/+/, '')}`;
 }
 
+function toAbsoluteVideoUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+
+    if (path.startsWith('http')) {
+        return path;
+    }
+
+    return `/${path.replace(/^\/+/, '')}`;
+}
+
 function normalizeImageKey(path) {
     if (!path || typeof path !== 'string') {
         return '';
@@ -61,7 +73,70 @@ function normalizeColorVariantImages(mapping) {
     return mapping;
 }
 
-export default function SingleProductMainSection({ product }) {
+function normalizeColorVariantVideos(mapping) {
+    if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+        return {};
+    }
+
+    return mapping;
+}
+
+function resolveColorVariantItems(mapping, selectedColor, colorRecords) {
+    if (!selectedColor || !mapping || typeof mapping !== 'object') {
+        return [];
+    }
+
+    const rawSelected = String(selectedColor).trim();
+    const matchedById = colorRecords.find((record) => String(record?.id) === rawSelected);
+    const matchedByName = colorRecords.find(
+        (record) => String(record?.name || '').trim().toLowerCase() === rawSelected.toLowerCase(),
+    );
+    const matchedColor = matchedById || matchedByName;
+
+    const candidateKeys = [
+        rawSelected,
+        rawSelected.toLowerCase(),
+        String(matchedColor?.name || '').trim(),
+        String(matchedColor?.name || '').trim().toLowerCase(),
+        String(matchedColor?.id || '').trim(),
+    ].filter(Boolean);
+
+    for (const key of candidateKeys) {
+        const directMatch = mapping?.[key];
+        if (Array.isArray(directMatch) && directMatch.length > 0) {
+            return directMatch;
+        }
+
+        const ciKey = Object.keys(mapping).find(
+            (existingKey) => existingKey.toLowerCase() === key.toLowerCase(),
+        );
+        if (ciKey && Array.isArray(mapping[ciKey]) && mapping[ciKey].length > 0) {
+            return mapping[ciKey];
+        }
+    }
+
+    return [];
+}
+
+function resolveInitialColor(preferredColor, availableColors) {
+    const requested = String(preferredColor || '').trim();
+    if (!requested) {
+        return availableColors[0] || '';
+    }
+
+    const exactMatch = availableColors.find((item) => String(item || '').trim() === requested);
+    if (exactMatch) {
+        return exactMatch;
+    }
+
+    const caseInsensitiveMatch = availableColors.find(
+        (item) => String(item || '').trim().toLowerCase() === requested.toLowerCase(),
+    );
+
+    return caseInsensitiveMatch || availableColors[0] || '';
+}
+
+export default function SingleProductMainSection({ product, initialColor = '' }) {
     const { addToCart, openCartDrawer } = useCart();
     const [colorLookup, setColorLookup] = useState({});
     const [colorRecords, setColorRecords] = useState([]);
@@ -92,9 +167,13 @@ export default function SingleProductMainSection({ product }) {
         () => normalizeColorVariantImages(product?.color_variant_images),
         [product?.color_variant_images],
     );
+    const colorVariantVideos = useMemo(
+        () => normalizeColorVariantVideos(product?.color_variant_videos),
+        [product?.color_variant_videos],
+    );
     const sizes = useMemo(() => normalizeSizes(product), [product]);
     const [selectedImage, setSelectedImage] = useState(imageList[0]);
-    const [selectedColor, setSelectedColor] = useState(colors[0] || '');
+    const [selectedColor, setSelectedColor] = useState(() => resolveInitialColor(initialColor, colors));
     const [selectedSize, setSelectedSize] = useState(sizes[0] || '');
     const [quantity, setQuantity] = useState(1);
 
@@ -103,8 +182,8 @@ export default function SingleProductMainSection({ product }) {
     }, [imageList]);
 
     useEffect(() => {
-        setSelectedColor(colors[0] || '');
-    }, [colors]);
+        setSelectedColor(resolveInitialColor(initialColor, colors));
+    }, [colors, initialColor]);
 
     useEffect(() => {
         setSelectedSize(sizes[0] || '');
@@ -216,37 +295,7 @@ export default function SingleProductMainSection({ product }) {
             return imageList;
         }
 
-        const rawSelected = String(selectedColor).trim();
-        const matchedById = colorRecords.find((record) => String(record?.id) === rawSelected);
-        const matchedByName = colorRecords.find(
-            (record) => String(record?.name || '').trim().toLowerCase() === rawSelected.toLowerCase(),
-        );
-        const matchedColor = matchedById || matchedByName;
-
-        const candidateKeys = [
-            rawSelected,
-            rawSelected.toLowerCase(),
-            String(matchedColor?.name || '').trim(),
-            String(matchedColor?.name || '').trim().toLowerCase(),
-            String(matchedColor?.id || '').trim(),
-        ].filter(Boolean);
-
-        let mappedImages = [];
-        for (const key of candidateKeys) {
-            const directMatch = colorVariantImages?.[key];
-            if (Array.isArray(directMatch) && directMatch.length > 0) {
-                mappedImages = directMatch;
-                break;
-            }
-
-            const ciKey = Object.keys(colorVariantImages).find(
-                (existingKey) => existingKey.toLowerCase() === key.toLowerCase(),
-            );
-            if (ciKey && Array.isArray(colorVariantImages[ciKey]) && colorVariantImages[ciKey].length > 0) {
-                mappedImages = colorVariantImages[ciKey];
-                break;
-            }
-        }
+        const mappedImages = resolveColorVariantItems(colorVariantImages, selectedColor, colorRecords);
 
         if (mappedImages.length === 0) {
             return imageList;
@@ -260,11 +309,28 @@ export default function SingleProductMainSection({ product }) {
         return filtered.length > 0 ? filtered : imageList;
     }, [selectedColor, colorRecords, colorVariantImages, imageList]);
 
+    const filteredVideos = useMemo(() => {
+        if (!selectedColor) {
+            return [];
+        }
+
+        const mappedVideos = resolveColorVariantItems(colorVariantVideos, selectedColor, colorRecords);
+        if (mappedVideos.length === 0) {
+            return [];
+        }
+
+        return mappedVideos
+            .map((item) => toAbsoluteVideoUrl(item))
+            .filter(Boolean);
+    }, [selectedColor, colorRecords, colorVariantVideos]);
+
     useEffect(() => {
         if (!filteredImages.includes(selectedImage)) {
             setSelectedImage(filteredImages[0] || imageList[0]);
         }
     }, [filteredImages, selectedImage, imageList]);
+
+    const primaryVideo = filteredVideos[0] || '';
 
     return (
         <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
@@ -285,6 +351,7 @@ export default function SingleProductMainSection({ product }) {
                     <div className="self-start">
                         <SingleProductMediaGallery
                             images={filteredImages}
+                            primaryVideo={primaryVideo}
                             selectedImage={selectedImage}
                             onSelectImage={setSelectedImage}
                         />

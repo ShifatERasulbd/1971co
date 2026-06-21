@@ -438,6 +438,27 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
         setSelectedColor(initialSeedColor);
     }, [product.id, product.color, initialImageIndex, initialSeedColor]);
 
+    useEffect(() => {
+        const currentImage = galleryImages[currentImageIndex];
+        if (!currentImage) {
+            return;
+        }
+
+        const currentImageKey = normalizeImageKey(currentImage);
+        if (!currentImageKey) {
+            return;
+        }
+
+        const matchedColor = colors.find((color) => {
+            const mappedImages = Array.isArray(colorVariantImages[color]) ? colorVariantImages[color] : [];
+            return mappedImages.some((image) => normalizeImageKey(image) === currentImageKey);
+        });
+
+        if (matchedColor && matchedColor !== selectedColor) {
+            setSelectedColor(matchedColor);
+        }
+    }, [currentImageIndex, galleryImages, colors, colorVariantImages, selectedColor]);
+
     const imageSrc = galleryImages[currentImageIndex] || productImage;
 
     function handlePrevImage(event) {
@@ -478,9 +499,18 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
 
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
-    const productLink = productSlug
-        ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
-        : `/singleProduct?name=${encodeURIComponent(productName)}`;
+    const productLink = useMemo(() => {
+        const base = productSlug
+            ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
+            : `/singleProduct?name=${encodeURIComponent(productName)}`;
+
+        const colorValue = String(selectedColor || '').trim();
+        if (!colorValue) {
+            return base;
+        }
+
+        return `${base}&color=${encodeURIComponent(colorValue)}`;
+    }, [productSlug, productName, selectedColor]);
 
     function handleAddToCart(event) {
         event.preventDefault();

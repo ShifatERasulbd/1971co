@@ -89,6 +89,7 @@ export default function AddProduct() {
 
     const [form, setForm] = useState(initialForm);
     const [galleryImageFiles, setGalleryImageFiles] = useState([]);
+    const [productVideoFiles, setProductVideoFiles] = useState([]);
     const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
     const [colorSelectValue, setColorSelectValue] = useState('');
     const [sizeSelectValue, setSizeSelectValue] = useState('');
@@ -96,6 +97,7 @@ export default function AddProduct() {
     const [selectedSizes, setSelectedSizes] = useState([]);
     const [variantRows, setVariantRows] = useState([]);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
+    const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
     const [categoryOptions, setCategoryOptions] = useState([]);
@@ -123,6 +125,16 @@ export default function AddProduct() {
 
         return URL.createObjectURL(sizeChartImageFile);
     }, [sizeChartImageFile]);
+
+    const productVideoPreviewItems = useMemo(
+        () => productVideoFiles.map((file) => ({
+            id: `${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            value: file.name,
+            url: URL.createObjectURL(file),
+        })),
+        [productVideoFiles],
+    );
 
     useEffect(() => {
         setPageTitle('Add Product');
@@ -188,6 +200,14 @@ export default function AddProduct() {
     }, [sizeChartPreviewUrl]);
 
     useEffect(() => {
+        return () => {
+            productVideoPreviewItems.forEach((item) => {
+                URL.revokeObjectURL(item.url);
+            });
+        };
+    }, [productVideoPreviewItems]);
+
+    useEffect(() => {
         const validImageValues = new Set(galleryPreviewUrls.map((item) => item.value));
 
         setColorVariantImageMap((previous) => {
@@ -208,6 +228,28 @@ export default function AddProduct() {
             return changed ? next : previous;
         });
     }, [galleryPreviewUrls]);
+
+    useEffect(() => {
+        const validVideoValues = new Set(productVideoPreviewItems.map((item) => item.value));
+
+        setColorVariantVideoMap((previous) => {
+            let changed = false;
+            const next = {};
+
+            Object.entries(previous).forEach(([color, videoValues]) => {
+                const filtered = (Array.isArray(videoValues) ? videoValues : []).filter((value) => validVideoValues.has(value));
+                if (filtered.length > 0) {
+                    next[color] = filtered;
+                }
+
+                if (filtered.length !== (Array.isArray(videoValues) ? videoValues.length : 0)) {
+                    changed = true;
+                }
+            });
+
+            return changed ? next : previous;
+        });
+    }, [productVideoPreviewItems]);
 
     useEffect(() => {
         if (selectedColors.length === 0 || selectedSizes.length === 0) {
@@ -310,6 +352,21 @@ export default function AddProduct() {
         setGalleryImageFiles((previous) => reorderItems(previous, fromIndex, toIndex));
     };
 
+    const handleProductVideosChange = (event) => {
+        const files = Array.from(event.target.files || []);
+        setProductVideoFiles(files.filter((file) => file instanceof File));
+        setErrors((previous) => {
+            if (!previous.product_videos) return previous;
+            const next = { ...previous };
+            delete next.product_videos;
+            return next;
+        });
+    };
+
+    const handleRemoveProductVideo = (indexToRemove) => {
+        setProductVideoFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
     const handleSizeChartImageChange = (event) => {
         const [file] = Array.from(event.target.files || []);
         setSizeChartImageFile(file instanceof File ? file : null);
@@ -337,6 +394,15 @@ export default function AddProduct() {
     const handleRemoveColor = (colorToRemove) => {
         setSelectedColors((previous) => previous.filter((color) => color !== colorToRemove));
         setColorVariantImageMap((previous) => {
+            if (!previous[colorToRemove]) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
+        setColorVariantVideoMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
             }
@@ -390,6 +456,18 @@ export default function AddProduct() {
         });
     };
 
+    const handleColorVariantVideosChange = (color, selectedVideoIds) => {
+        setColorVariantVideoMap((previous) => {
+            const next = { ...previous };
+            if (!Array.isArray(selectedVideoIds) || selectedVideoIds.length === 0) {
+                delete next[color];
+                return next;
+            }
+            next[color] = selectedVideoIds;
+            return next;
+        });
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -413,7 +491,9 @@ export default function AddProduct() {
                 size: selectedSizes.length > 0 ? selectedSizes.join(', ') : form.size,
                 variant_rows: variantRows,
                 color_variant_images: colorVariantImageMap,
+                color_variant_videos: colorVariantVideoMap,
                 galleryImageFiles,
+                productVideoFiles,
                 sizeChartImageFile,
             });
             toast.success('Product created successfully', {
@@ -457,6 +537,7 @@ export default function AddProduct() {
                     selectedSizes={selectedSizes}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
+                    colorVariantVideoMap={colorVariantVideoMap}
                     onColorSelectChange={setColorSelectValue}
                     onSizeSelectChange={setSizeSelectValue}
                     onAddColor={handleAddColor}
@@ -466,10 +547,14 @@ export default function AddProduct() {
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
+                    onColorVariantVideosChange={handleColorVariantVideosChange}
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveGalleryImage={handleRemoveGalleryImage}
                     onReorderGalleryImages={handleReorderGalleryImages}
                     galleryPreviewUrls={galleryPreviewUrls}
+                    onProductVideosChange={handleProductVideosChange}
+                    onRemoveProductVideo={handleRemoveProductVideo}
+                    productVideoPreviewItems={productVideoPreviewItems}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
                     sizeChartPreviewUrl={sizeChartPreviewUrl}

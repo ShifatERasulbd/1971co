@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Menu, Search, ShoppingCart, UserRound } from 'lucide-react';
+import { Menu, Search, ShoppingCart, UserRound, X, Plus, UserCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
@@ -22,7 +22,18 @@ export default function Header() {
     const [isNavigationLoading, setIsNavigationLoading] = useState(true);
     const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
     const [isShopMegaMenuOpen, setIsShopMegaMenuOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    
+    
     const closeMenuTimerRef = useRef(null);
+
+    function openMobileMenu() {
+        setIsMobileMenuOpen(true);
+    }
+
+    function closeMobileMenu() {
+        setIsMobileMenuOpen(false);
+    }
 
     function cancelShopMenuClose() {
         if (closeMenuTimerRef.current) {
@@ -46,6 +57,16 @@ export default function Header() {
     function closeShopMenuImmediately() {
         cancelShopMenuClose();
         setIsShopMegaMenuOpen(false);
+    }
+
+    function handleOpenCart() {
+        // Close menu layers first so cart drawer is always topmost and accessible.
+        closeShopMenuImmediately();
+        closeMobileMenu();
+
+        if (typeof openCartDrawer === 'function') {
+            openCartDrawer();
+        }
     }
 
     useEffect(() => {
@@ -122,6 +143,19 @@ export default function Header() {
             window.clearTimeout(closeMenuTimerRef.current);
         }
     }, []);
+
+    useEffect(() => {
+        if (!isMobileMenuOpen) {
+            document.body.style.removeProperty('overflow');
+            return;
+        }
+
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.removeProperty('overflow');
+        };
+    }, [isMobileMenuOpen]);
 
     const visibleCategories = useMemo(() => {
         if (!Array.isArray(categories) || categories.length === 0) {
@@ -204,15 +238,14 @@ export default function Header() {
             const children =
                 grandChildsBySubCategory
                     .get(Number(subCategory?.id))
-                    ?.slice(0, 6)
                     ?.map((grandChild) => ({
-                        label: grandChild?.name || 'Item',
+                        label: String(grandChild?.name || '').trim() || 'Item',
                         href: `/shop?category=${encodeURIComponent(
                             shopNavItem?.slug || String(shopNavItem?.id || '')
                         )}&sub_category=${encodeURIComponent(
                             subCategory?.slug || String(subCategory?.id || '')
                         )}&grand_child=${encodeURIComponent(
-                            grandChild?.slug || String(grandChild?.id || '')
+                            String(grandChild?.slug || '').trim() || String(grandChild?.id || '')
                         )}`,
                     })) || [];
 
@@ -233,12 +266,34 @@ export default function Header() {
         return `/${raw.replace(/^\/+/, '')}`;
     }, [siteSettings]);
 
+    const supportPhone = useMemo(() => {
+        return String(
+            siteSettings?.phone
+            || siteSettings?.phone_number
+            || siteSettings?.contact_phone
+            || '+1 000-000-0000'
+        ).trim();
+    }, [siteSettings]);
+
     return (
-        <header className={`${timelessFontClass} site-header sticky top-0 z-50 border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
-            <div className="site-header-inner mx-auto grid h-[90px] w-full max-w-[1920px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 lg:px-10">
+        <>
+        <header className={`${timelessFontClass} site-header sticky top-0 z-[300] border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
+           <div className="site-header-inner mx-auto flex h-[90px] w-full max-w-[1920px] items-center justify-between px-4 sm:px-6 lg:px-10 xl:grid xl:grid-cols-[1fr_auto_1fr]">
+                <div className="flex items-center justify-start xl:col-start-1 xl:hidden">
+                    <button
+                        type="button"
+                        className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70"
+                        aria-label="Open menu"
+                        aria-expanded={isMobileMenuOpen}
+                        aria-controls="mobile-menu-drawer"
+                        onClick={openMobileMenu}
+                    >
+                        <Menu className="size-5" strokeWidth={1.75} />
+                    </button>
+                </div>
                 
                 {/* Main Navigation Row */}
-                <nav className="site-header-nav col-start-1 hidden items-center justify-start gap-8 xl:flex" aria-label="Primary">
+                <nav className="site-header-nav col-start-1 hidden items-center justify-start gap-5 xl:flex" aria-label="Primary">
                     {isNavigationLoading ? (
                         /* Main Header Links Skeleton state while fetching data */
                         <>
@@ -264,7 +319,7 @@ export default function Header() {
                                 >
                                     <Link
                                         to={item.href}
-                                        className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
                                         style={{ fontFamily: 'Montserrat, sans-serif' }}
                                         aria-expanded={isShopMegaMenuOpen}
                                         aria-haspopup="menu"
@@ -350,7 +405,7 @@ export default function Header() {
                                 <Link
                                     key={item.label}
                                     to={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
@@ -359,7 +414,7 @@ export default function Header() {
                                 <Link
                                     key={item.label}
                                     href={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.22em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
@@ -372,7 +427,7 @@ export default function Header() {
                 {/* Logo Area */}
                 <Link
                     to="/"
-                    className="site-header-brand col-start-2 justify-self-center flex min-w-0 items-center transition-opacity hover:opacity-80"
+                    className="site-header-brand absolute left-1/2 -translate-x-1/2 flex min-w-0 items-center transition-opacity hover:opacity-80 xl:relative xl:left-auto xl:translate-x-0 xl:col-start-2 xl:justify-self-center"
                     aria-label="Home"
                 >
                     {headerLogo ? (
@@ -387,15 +442,15 @@ export default function Header() {
                 </Link>
 
                 {/* Utilities / Right Side Tools */}
-                <div className="site-header-tools col-start-3 justify-self-end flex items-center justify-end gap-2 sm:gap-3 xl:gap-8">
-                    <div className="hidden items-center gap-1 md:flex">
+                <div className="site-header-tools flex items-center justify-end gap-1 sm:gap-2 xl:col-start-3 xl:justify-self-end xl:gap-8">
+                    <div className="hidden items-center gap-1 xl:flex">
                         {utilityIcons.map(({ label, icon: Icon, href }) => (
                             label === 'Cart' ? (
                                 <button
                                     key={label}
                                     type="button"
                                     aria-label={label}
-                                    onClick={openCartDrawer}
+                                    onClick={handleOpenCart}
                                     className="relative inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
@@ -427,15 +482,127 @@ export default function Header() {
                         ))}
                     </div>
 
-                    <button
-                        type="button"
-                        className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 md:hidden"
-                        aria-label="Open menu"
-                    >
-                        <Menu className="size-5" strokeWidth={1.75} />
-                    </button>
+                    <div className="flex items-center gap-1 xl:hidden">
+                        <a
+                            href="#search"
+                            aria-label="Search"
+                            className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                        >
+                            <Search className="size-5" strokeWidth={1.75} />
+                        </a>
+
+                        <button
+                            type="button"
+                            aria-label="Cart"
+                            onClick={handleOpenCart}
+                            className="relative inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                        >
+                            <ShoppingCart className="size-5" strokeWidth={1.75} />
+                            {itemCount > 0 ? (
+                                <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-semibold leading-4 text-white">
+                                    {itemCount > 99 ? '99+' : itemCount}
+                                </span>
+                            ) : null}
+                        </button>
+                    </div>
                 </div>
             </div>
+
         </header>
+
+            <div
+                className={`fixed inset-0 z-[1200] bg-black/35 transition-opacity duration-200 xl:hidden ${
+                    isMobileMenuOpen ? 'visible opacity-100 pointer-events-auto' : 'invisible opacity-0 pointer-events-none'
+                }`}
+                onClick={closeMobileMenu}
+                aria-hidden="true"
+            />
+
+            <aside
+                id="mobile-menu-drawer"
+                className={`fixed inset-y-0 left-0 z-[1210] h-screen w-[88vw] max-w-[380px] bg-[#f4f4f4] shadow-[18px_0_48px_rgba(0,0,0,0.15)] transition-transform duration-300 xl:hidden ${
+                    isMobileMenuOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
+                }`}
+                aria-label="Mobile menu"
+            >
+                <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-zinc-200/80 px-4 py-4">
+                        <div className="flex items-center gap-3">
+                            {headerLogo ? (
+                                <img
+                                    src={headerLogo}
+                                    alt="Logo"
+                                    className="h-9 w-auto max-w-[170px] object-contain"
+                                />
+                            ) : (
+                                <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-zinc-700">Menu</p>
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={closeMobileMenu}
+                            aria-label="Close menu"
+                            className="inline-flex size-9 items-center justify-center rounded-full bg-[#E4B037] text-zinc-900 transition-opacity hover:opacity-90"
+                        >
+                            <X className="size-4" strokeWidth={2} />
+                        </button>
+                    </div>
+
+                    <nav className="flex-1 overflow-y-auto px-4 py-5" aria-label="Mobile primary">
+                        <ul className="space-y-0 border-t border-zinc-200/80">
+                            {navigationItems.map((item) => (
+                                <li key={`mobile-${item.label}`} className="border-b border-zinc-200/80">
+                                    {item.isRoute ? (
+                                        <Link
+                                            to={item.href}
+                                            onClick={closeMobileMenu}
+                                            className="flex items-center justify-between px-1 py-4 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
+                                        >
+                                            <span>{item.label}</span>
+                                            <Plus className="size-4 text-zinc-700" strokeWidth={2.1} />
+                                        </Link>
+                                    ) : (
+                                        <a
+                                            href={item.href}
+                                            onClick={closeMobileMenu}
+                                            className="flex items-center justify-between px-1 py-4 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
+                                        >
+                                            <span>{item.label}</span>
+                                        </a>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="mt-7 border-t border-zinc-200/80 pt-6">
+                            <Link
+                                to="/login"
+                                onClick={closeMobileMenu}
+                                className="inline-flex items-center gap-2 text-[0.88rem] font-medium uppercase tracking-[0.03em] text-zinc-800"
+                            >
+                                <UserCircle2 className="size-4" strokeWidth={1.8} />
+                                Register/ Login
+                            </Link>
+
+                            <button
+                                type="button"
+                                onClick={handleOpenCart}
+                                className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-md bg-[#E4B037] px-4 text-[0.86rem] font-semibold uppercase tracking-[0.04em] text-zinc-950"
+                            >
+                                View Cart {itemCount > 0 ? `(${itemCount})` : ''}
+                            </button>
+                        </div>
+
+                        <div className="mt-7 border-t border-zinc-200/80 pt-6">
+                            <p className="text-[0.84rem] text-zinc-500">To More Inquiry</p>
+                            <a href={`tel:${supportPhone}`} className="mt-1 block text-[1.65rem] font-semibold leading-tight text-zinc-900">
+                                {supportPhone}
+                            </a>
+                        </div>
+                    </nav>
+                </div>
+            </aside>
+        </>
     );
 }

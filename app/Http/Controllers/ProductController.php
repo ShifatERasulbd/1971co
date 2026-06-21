@@ -15,7 +15,7 @@ class ProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        $products = Product::all();
+        $products = Product::orderByDesc('updated_at')->get();
        
         return response()->json($products);
     }
@@ -38,6 +38,7 @@ class ProductController extends Controller
             'image_gallery',
             'color',
             'color_variant_images',
+            'color_variant_videos',
             'size',
             'variant_rows',
             'available_products',
@@ -79,6 +80,7 @@ class ProductController extends Controller
             'image_gallery',
             'color',
             'color_variant_images',
+            'color_variant_videos',
             'size',
             'stock',
             'variant_rows',
@@ -106,7 +108,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -128,6 +130,8 @@ class ProductController extends Controller
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery' => 'nullable|array',
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
+            'product_videos' => 'nullable|array',
+            'product_videos.*' => 'file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime|max:51200',
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
             'grand_child_id' => 'nullable|integer',
@@ -143,6 +147,9 @@ class ProductController extends Controller
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
+            'color_variant_videos' => 'nullable|array',
+            'color_variant_videos.*' => 'nullable|array',
+            'color_variant_videos.*.*' => 'nullable|string|max:2048',
         ]);
 
         if ($request->hasFile('thumbnail_image')) {
@@ -163,6 +170,14 @@ class ProductController extends Controller
             $validated['image_gallery'] = $uploadedGallery;
         }
 
+        $uploadedVideoNameMap = [];
+
+        if ($request->hasFile('product_videos')) {
+            $uploadedVideosResult = $this->uploadProductVideos($request);
+            $validated['product_videos'] = $uploadedVideosResult['paths'];
+            $uploadedVideoNameMap = $uploadedVideosResult['name_map'];
+        }
+
         $finalGallery = is_array($validated['image_gallery'] ?? null) ? $validated['image_gallery'] : [];
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
@@ -174,6 +189,11 @@ class ProductController extends Controller
             $validated['color_variant_images'] ?? [],
             $finalGallery,
             $uploadedNameMap,
+        );
+        $validated['color_variant_videos'] = $this->resolveColorVariantVideos(
+            $validated['color_variant_videos'] ?? [],
+            is_array($validated['product_videos'] ?? null) ? $validated['product_videos'] : [],
+            $uploadedVideoNameMap,
         );
 
         $existingProductWithSku = Product::query()
@@ -201,8 +221,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
-        $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'image_gallery_existing']);
+        $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'image_gallery_existing', 'product_videos_existing']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -227,6 +247,11 @@ class ProductController extends Controller
             'image_gallery_existing' => 'nullable|array',
             'image_gallery_existing.*' => 'nullable|string',
             'clear_gallery' => 'nullable|boolean',
+            'product_videos' => 'nullable|array',
+            'product_videos.*' => 'file|mimetypes:video/mp4,video/webm,video/ogg,video/quicktime|max:51200',
+            'product_videos_existing' => 'nullable|array',
+            'product_videos_existing.*' => 'nullable|string',
+            'clear_videos' => 'nullable|boolean',
             'category_id' => 'nullable|integer',
             'subcategory_id' => 'nullable|integer',
             'grand_child_id' => 'nullable|integer',
@@ -242,6 +267,9 @@ class ProductController extends Controller
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
+            'color_variant_videos' => 'nullable|array',
+            'color_variant_videos.*' => 'nullable|array',
+            'color_variant_videos.*.*' => 'nullable|string|max:2048',
         ]);
 
         if ($request->hasFile('thumbnail_image')) {
@@ -281,6 +309,26 @@ class ProductController extends Controller
             $validated['image_gallery'] = array_values(array_filter(is_array($existingGallery) ? $existingGallery : []));
         }
 
+        $existingVideos = $request->boolean('clear_videos')
+            ? []
+            : (is_array($request->input('product_videos_existing')) ? $request->input('product_videos_existing') : ($product->product_videos ?? []));
+
+        $uploadedVideoNameMap = [];
+
+        if ($request->hasFile('product_videos')) {
+            $uploadedVideosResult = $this->uploadProductVideos($request);
+            $uploadedVideos = $uploadedVideosResult['paths'];
+            $uploadedVideoNameMap = $uploadedVideosResult['name_map'];
+            $validated['product_videos'] = array_values(array_filter(array_merge(
+                is_array($existingVideos) ? $existingVideos : [],
+                $uploadedVideos,
+            )));
+        } elseif ($request->boolean('clear_videos')) {
+            $validated['product_videos'] = [];
+        } elseif ($request->has('product_videos_existing') && is_array($request->input('product_videos_existing'))) {
+            $validated['product_videos'] = array_values(array_filter(is_array($existingVideos) ? $existingVideos : []));
+        }
+
         $finalGallery = is_array($validated['image_gallery'] ?? null)
             ? $validated['image_gallery']
             : (is_array($product->image_gallery ?? null) ? $product->image_gallery : []);
@@ -296,13 +344,38 @@ class ProductController extends Controller
             $finalGallery,
             $uploadedNameMap,
         );
+        $validated['color_variant_videos'] = $this->resolveColorVariantVideos(
+            $validated['color_variant_videos'] ?? ($product->color_variant_videos ?? []),
+            is_array($validated['product_videos'] ?? null)
+                ? $validated['product_videos']
+                : (is_array($product->product_videos ?? null) ? $product->product_videos : []),
+            $uploadedVideoNameMap,
+        );
         $validated['slug'] = $this->resolveProductSlug(
             $validated['slug'] ?? null,
             $validated['name'] ?? '',
             $product->id,
         );
 
+        $oldGallery = is_array($product->image_gallery ?? null) ? $product->image_gallery : [];
+        $oldVideos = is_array($product->product_videos ?? null) ? $product->product_videos : [];
+
         $product->update($validated);
+
+        if (array_key_exists('image_gallery', $validated)) {
+            $this->deleteRemovedUploadedFiles(
+                $oldGallery,
+                is_array($validated['image_gallery']) ? $validated['image_gallery'] : [],
+            );
+        }
+
+        if (array_key_exists('product_videos', $validated)) {
+            $this->deleteRemovedUploadedFiles(
+                $oldVideos,
+                is_array($validated['product_videos']) ? $validated['product_videos'] : [],
+            );
+        }
+
         return response()->json(['message' => 'Product updated successfully', 'product' => $product]);
     }
 
@@ -402,6 +475,36 @@ class ProductController extends Controller
         ];
     }
 
+    private function uploadProductVideos(Request $request): array
+    {
+        if (! $request->hasFile('product_videos')) {
+            return ['paths' => [], 'name_map' => []];
+        }
+
+        $files = $request->file('product_videos');
+        $uploaded = [];
+        $nameMap = [];
+
+        foreach ($files as $file) {
+            if (! $file) {
+                continue;
+            }
+
+            $originalName = (string) $file->getClientOriginalName();
+            $publicPath = $this->storeUploadedFileToPublic($file, 'uploads/products/videos');
+            $uploaded[] = $publicPath;
+
+            if ($originalName !== '') {
+                $nameMap[$originalName] = $publicPath;
+            }
+        }
+
+        return [
+            'paths' => $uploaded,
+            'name_map' => $nameMap,
+        ];
+    }
+
     private function storeUploadedFileToPublic(UploadedFile $file, string $relativeDirectory): string
     {
         $directory = public_path(trim($relativeDirectory, '/'));
@@ -439,6 +542,21 @@ class ProductController extends Controller
             $absolutePath = public_path(ltrim($path, '/'));
             if (File::exists($absolutePath)) {
                 File::delete($absolutePath);
+            }
+        }
+    }
+
+    private function deleteRemovedUploadedFiles(array $previous, array $next): void
+    {
+        $nextSet = array_fill_keys(array_values(array_filter($next, 'is_string')), true);
+
+        foreach ($previous as $path) {
+            if (! is_string($path) || trim($path) === '') {
+                continue;
+            }
+
+            if (! isset($nextSet[$path])) {
+                $this->deleteUploadedFile($path);
             }
         }
     }
@@ -532,6 +650,51 @@ class ProductController extends Controller
                 if (isset($uploadedNameMap[$raw])) {
                     $mappedPath = $uploadedNameMap[$raw];
                     if (isset($finalGallerySet[$mappedPath])) {
+                        $paths[] = $mappedPath;
+                    }
+                }
+            }
+
+            $paths = array_values(array_unique($paths));
+            if ($paths !== []) {
+                $resolved[(string) $color] = $paths;
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function resolveColorVariantVideos($mapping, array $finalVideos, array $uploadedNameMap = []): array
+    {
+        if (! is_array($mapping)) {
+            return [];
+        }
+
+        $finalVideosSet = array_fill_keys($finalVideos, true);
+        $resolved = [];
+
+        foreach ($mapping as $color => $items) {
+            if (! is_array($items) || trim((string) $color) === '') {
+                continue;
+            }
+
+            $paths = [];
+
+            foreach ($items as $item) {
+                if (! is_string($item) || trim($item) === '') {
+                    continue;
+                }
+
+                $raw = trim($item);
+
+                if (isset($finalVideosSet[$raw])) {
+                    $paths[] = $raw;
+                    continue;
+                }
+
+                if (isset($uploadedNameMap[$raw])) {
+                    $mappedPath = $uploadedNameMap[$raw];
+                    if (isset($finalVideosSet[$mappedPath])) {
                         $paths[] = $mappedPath;
                     }
                 }
