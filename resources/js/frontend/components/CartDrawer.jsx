@@ -41,7 +41,7 @@ export default function CartDrawer() {
                     type="button"
                     aria-label="Close cart drawer backdrop"
                     onClick={closeCartDrawer}
-                    className="fixed inset-0 z-[110] bg-black/40"
+                    className="fixed inset-0 z-[1390] bg-black/40"
                 />
             )}
 
@@ -49,7 +49,7 @@ export default function CartDrawer() {
             <aside
                 aria-label="Cart drawer"
                 className={`
-                    fixed top-0 right-0 z-[120]
+                    fixed top-0 right-0 z-[1400]
                     flex h-screen w-full max-w-[420px]
                     flex-col bg-white border-l border-zinc-200 shadow-2xl
                     transition-transform duration-300

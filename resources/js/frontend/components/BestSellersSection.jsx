@@ -644,10 +644,10 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                         pauseOnMouseEnter: true,
                     }}
                     loop={displayProducts.length > 1}
-                    spaceBetween={16}
-                    slidesPerView={1.15}
+                    spaceBetween={12}
+                    slidesPerView={2}
                     breakpoints={{
-                        480: { slidesPerView: 1.45 },
+                        480: { slidesPerView: 2 },
                         640: { slidesPerView: 2.1 },
                         860: { slidesPerView: 3.1 },
                         1180: { slidesPerView: 4.1 },

@@ -169,7 +169,7 @@ export default function Footer() {
         <footer className={`${timelessFontClass} bg-[#1a1a1a] text-white`}>
             {/* Main grid */}
             <div className="mx-auto w-full max-w-[1700px] px-6 pb-14 pt-14 sm:px-10 lg:px-16">
-                <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1.5fr]">
+                <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1.5fr]">
 
                     {/* Brand column */}
                     <div className="space-y-5">
@@ -216,37 +216,39 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    <FooterCol heading="Shop" links={shopLinks} />
-                    <FooterCol heading="Support" links={supportLinks} />
-                    <FooterCol heading="Company" links={companyLinks} />
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:contents">
+                        <FooterCol heading="Shop" links={shopLinks} />
+                        <FooterCol heading="Support" links={supportLinks} />
+                        <FooterCol heading="Company" links={companyLinks} />
 
-                    {/* Newsletter column */}
-                    <div>
-                        <h3 className={`${sectionTypography.footerHeading} text-white`}>
-                            Stay Connected
-                        </h3>
-                        <p className={`mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
-                            {contactEmail}
-                        </p>
-                        <form
-                            onSubmit={(e) => e.preventDefault()}
-                            className="flex items-stretch border-b border-zinc-600 focus-within:border-white transition-colors"
-                        >
-                            <label htmlFor="footer-email" className="sr-only">Email address</label>
-                            <input
-                                id="footer-email"
-                                type="email"
-                                placeholder="Email address"
-                                required
-                                className={`flex-1 bg-transparent py-2 ${sectionTypography.footerLink} text-white outline-none placeholder:text-zinc-500`}
-                            />
-                            <button
-                                type="submit"
-                                className="py-2 pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
+                        {/* Newsletter column */}
+                        <div>
+                            <h3 className={`${sectionTypography.footerHeading} text-white`}>
+                                Stay Connected
+                            </h3>
+                            <p className={`mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
+                                {contactEmail}
+                            </p>
+                            <form
+                                onSubmit={(e) => e.preventDefault()}
+                                className="flex items-stretch border-b border-zinc-600 focus-within:border-white transition-colors"
                             >
-                                Join
-                            </button>
-                        </form>
+                                <label htmlFor="footer-email" className="sr-only">Email address</label>
+                                <input
+                                    id="footer-email"
+                                    type="email"
+                                    placeholder="Email address"
+                                    required
+                                    className={`flex-1 bg-transparent py-2 ${sectionTypography.footerLink} text-white outline-none placeholder:text-zinc-500`}
+                                />
+                                <button
+                                    type="submit"
+                                    className="py-2 pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
+                                >
+                                    Join
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
                 </div>

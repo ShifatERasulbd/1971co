@@ -211,7 +211,7 @@ export default function ProductVariantModal({
     const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
 
     return (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/55 p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
             <button
                 type="button"
                 aria-label="Close product options"
@@ -219,12 +219,21 @@ export default function ProductVariantModal({
                 className="absolute inset-0"
             />
 
-            <div className="relative z-[96] grid w-full max-w-[980px] overflow-hidden border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr]">
+            <div className="relative z-[1501] grid h-[min(96svh,900px)] w-full max-w-[980px] overflow-y-auto border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr] lg:overflow-hidden">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close product options"
+                    className="absolute right-2 top-2 z-20 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition-colors hover:text-zinc-900 lg:hidden"
+                >
+                    <X className="size-5" />
+                </button>
+
                 <div className="bg-zinc-100">
                     <img
                         src={mainImage}
                         alt={name}
-                        className="h-[280px] w-full object-cover object-top sm:h-[360px] lg:h-[620px]"
+                        className="h-[240px] w-full object-cover object-top sm:h-[300px] lg:h-[620px]"
                     />
 
                     {galleryImages.length > 1 ? (
@@ -243,18 +252,18 @@ export default function ProductVariantModal({
                     ) : null}
                 </div>
 
-                <div className="flex flex-col p-5 sm:p-7 lg:p-8">
+                <div className="flex flex-col p-4 sm:p-6 lg:p-8">
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close product options"
-                        className="absolute right-3 top-3 inline-flex size-8 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-900"
+                        className="absolute right-3 top-3 hidden size-8 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-900 lg:inline-flex"
                     >
                         <X className="size-5" />
                     </button>
 
-                    <h3 className="pr-8 text-[1.6rem] font-semibold text-zinc-900 sm:text-[1.8rem]">{name}</h3>
-                    <p className="mt-1 text-[1.45rem] text-zinc-700">${price.toFixed(2)}</p>
+                    <h3 className="pr-8 text-[1.25rem] font-semibold leading-tight text-zinc-900 sm:text-[1.45rem] lg:text-[1.8rem]">{name}</h3>
+                    <p className="mt-1 text-[1.2rem] text-zinc-700 sm:text-[1.3rem] lg:text-[1.45rem]">${price.toFixed(2)}</p>
 
                     <div className="mt-7 space-y-5">
                         <div>
@@ -310,7 +319,7 @@ export default function ProductVariantModal({
                         </div>
                     </div>
 
-                    <div className="mt-auto pt-8">
+                    <div className="mt-6 pt-2 lg:mt-auto lg:pt-8">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                             <div className="inline-flex h-12 items-center border border-zinc-300">
                                 <button
@@ -345,7 +354,7 @@ export default function ProductVariantModal({
                                         image: mainImage,
                                     });
                                 }}
-                                className="inline-flex h-12 flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400"
+                                className="inline-flex h-12 w-full flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400 sm:text-[0.8rem] sm:tracking-[0.14em]"
                             >
                                 Add to cart
                             </button>
