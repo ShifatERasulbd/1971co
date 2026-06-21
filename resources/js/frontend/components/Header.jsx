@@ -23,6 +23,8 @@ export default function Header() {
     const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
     const [isShopMegaMenuOpen, setIsShopMegaMenuOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [expandedMobileItems, setExpandedMobileItems] = useState({});
+    const [expandedMobileSubItems, setExpandedMobileSubItems] = useState({});
     
     
     const closeMenuTimerRef = useRef(null);
@@ -33,6 +35,30 @@ export default function Header() {
 
     function closeMobileMenu() {
         setIsMobileMenuOpen(false);
+    }
+
+    function toggleMobileItem(itemKey) {
+        if (!itemKey) {
+            return;
+        }
+
+        setExpandedMobileItems((previous) => ({
+            ...previous,
+            [itemKey]: !previous[itemKey],
+        }));
+    }
+
+    function toggleMobileSubItem(itemKey, subItemKey) {
+        if (!itemKey || !subItemKey) {
+            return;
+        }
+
+        const nestedKey = `${itemKey}:${subItemKey}`;
+
+        setExpandedMobileSubItems((previous) => ({
+            ...previous,
+            [nestedKey]: !previous[nestedKey],
+        }));
     }
 
     function cancelShopMenuClose() {
@@ -147,6 +173,8 @@ export default function Header() {
     useEffect(() => {
         if (!isMobileMenuOpen) {
             document.body.style.removeProperty('overflow');
+            setExpandedMobileItems({});
+            setExpandedMobileSubItems({});
             return;
         }
 
@@ -256,6 +284,74 @@ export default function Header() {
             };
         });
     }, [shopNavItem, subCategories, grandChilds]);
+
+    const mobileSubCategoriesByItem = useMemo(() => {
+        if (!Array.isArray(subCategories) || subCategories.length === 0) {
+            return new Map();
+        }
+
+        const grandChildsBySubCategory = Array.isArray(grandChilds)
+            ? grandChilds.reduce((grouped, grandChild) => {
+                const subCategoryId = Number(grandChild?.sub_category_id ?? grandChild?.child_id);
+                if (!subCategoryId) {
+                    return grouped;
+                }
+
+                const existing = grouped.get(subCategoryId) || [];
+                existing.push(grandChild);
+                grouped.set(subCategoryId, existing);
+                return grouped;
+            }, new Map())
+            : new Map();
+
+        const grouped = new Map();
+
+        navigationItems.forEach((item) => {
+            const itemId = Number(item?.id);
+            const itemSlug = String(item?.slug || '').trim();
+            const itemKey = itemSlug || (itemId ? String(itemId) : '');
+
+            if (!itemKey) {
+                return;
+            }
+
+            const childItems = subCategories
+                .filter((subCategory) => Number(subCategory?.category_id) === itemId)
+                .map((subCategory) => {
+                    const categoryKey = itemSlug || String(itemId);
+                    const subCategoryKey = String(subCategory?.slug || '').trim() || String(subCategory?.id || '');
+                    const grandChildItems = (grandChildsBySubCategory.get(Number(subCategory?.id)) || []).map((grandChild) => ({
+                        id: grandChild?.id,
+                        label: String(grandChild?.name || '').trim() || 'Item',
+                        href: `/shop?category=${encodeURIComponent(
+                            categoryKey
+                        )}&sub_category=${encodeURIComponent(
+                            subCategoryKey
+                        )}&grand_child=${encodeURIComponent(
+                            String(grandChild?.slug || '').trim() || String(grandChild?.id || '')
+                        )}`,
+                    }));
+
+                    return {
+                        id: subCategory?.id,
+                        key: subCategoryKey,
+                        label: String(subCategory?.name || '').trim() || 'Subcategory',
+                        href: `/shop?category=${encodeURIComponent(
+                            categoryKey
+                        )}&sub_category=${encodeURIComponent(
+                            subCategoryKey
+                        )}`,
+                        grandChildItems,
+                    };
+                });
+
+            if (childItems.length > 0) {
+                grouped.set(itemKey, childItems);
+            }
+        });
+
+        return grouped;
+    }, [navigationItems, subCategories, grandChilds]);
 
     const headerLogo = useMemo(() => {
         const raw = typeof siteSettings?.header_logo === 'string' ? siteSettings.header_logo.trim() : '';
@@ -551,28 +647,112 @@ export default function Header() {
 
                     <nav className="flex-1 overflow-y-auto px-4 py-5" aria-label="Mobile primary">
                         <ul className="space-y-0 border-t border-zinc-200/80">
-                            {navigationItems.map((item) => (
-                                <li key={`mobile-${item.label}`} className="border-b border-zinc-200/80">
-                                    {item.isRoute ? (
-                                        <Link
-                                            to={item.href}
-                                            onClick={closeMobileMenu}
-                                            className="flex items-center justify-between px-1 py-4 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
-                                        >
-                                            <span>{item.label}</span>
-                                            <Plus className="size-4 text-zinc-700" strokeWidth={2.1} />
-                                        </Link>
-                                    ) : (
-                                        <a
-                                            href={item.href}
-                                            onClick={closeMobileMenu}
-                                            className="flex items-center justify-between px-1 py-4 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
-                                        >
-                                            <span>{item.label}</span>
-                                        </a>
-                                    )}
-                                </li>
-                            ))}
+                            {navigationItems.map((item) => {
+                                const itemId = Number(item?.id);
+                                const itemSlug = String(item?.slug || '').trim();
+                                const itemKey = itemSlug || (itemId ? String(itemId) : '');
+                                const childItems = itemKey ? mobileSubCategoriesByItem.get(itemKey) || [] : [];
+                                const hasChildren = childItems.length > 0;
+                                const isExpanded = Boolean(itemKey && expandedMobileItems[itemKey]);
+
+                                return (
+                                    <li key={`mobile-${item.label}`} className="border-b border-zinc-200/80">
+                                        <div className="flex items-center justify-between gap-2 px-1 py-4">
+                                            {item.isRoute ? (
+                                                <Link
+                                                    to={item.href}
+                                                    onClick={closeMobileMenu}
+                                                    className="min-w-0 flex-1 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
+                                                >
+                                                    <span>{item.label}</span>
+                                                </Link>
+                                            ) : (
+                                                <a
+                                                    href={item.href}
+                                                    onClick={closeMobileMenu}
+                                                    className="min-w-0 flex-1 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
+                                                >
+                                                    <span>{item.label}</span>
+                                                </a>
+                                            )}
+
+                                            {hasChildren ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleMobileItem(itemKey)}
+                                                    aria-label={`Toggle ${item.label} subcategories`}
+                                                    aria-expanded={isExpanded}
+                                                    aria-controls={`mobile-submenu-${itemKey}`}
+                                                    className="inline-flex size-8 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-zinc-200/70"
+                                                >
+                                                    <Plus
+                                                        className={`size-4 transition-transform duration-200 ${isExpanded ? 'rotate-45' : 'rotate-0'}`}
+                                                        strokeWidth={2.1}
+                                                    />
+                                                </button>
+                                            ) : null}
+                                        </div>
+
+                                        {hasChildren && isExpanded ? (
+                                            <ul id={`mobile-submenu-${itemKey}`} className="pb-3 pl-3 pr-1">
+                                                {childItems.map((child) => {
+                                                    const subItemKey = String(child?.key || child?.id || '');
+                                                    const grandChildItems = Array.isArray(child?.grandChildItems) ? child.grandChildItems : [];
+                                                    const hasGrandChilds = grandChildItems.length > 0;
+                                                    const nestedKey = `${itemKey}:${subItemKey}`;
+                                                    const isSubExpanded = Boolean(subItemKey && expandedMobileSubItems[nestedKey]);
+
+                                                    return (
+                                                        <li key={`mobile-submenu-${itemKey}-${child.id}`}>
+                                                            <div className="flex items-center justify-between gap-2 py-2 pr-1">
+                                                                <Link
+                                                                    to={child.href}
+                                                                    onClick={closeMobileMenu}
+                                                                    className="min-w-0 flex-1 text-[0.8rem] font-medium uppercase tracking-[0.03em] text-zinc-700"
+                                                                >
+                                                                    {child.label}
+                                                                </Link>
+
+                                                                {hasGrandChilds ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleMobileSubItem(itemKey, subItemKey)}
+                                                                        aria-label={`Toggle ${child.label} items`}
+                                                                        aria-expanded={isSubExpanded}
+                                                                        aria-controls={`mobile-submenu-${itemKey}-${subItemKey}`}
+                                                                        className="inline-flex size-7 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-zinc-200/70"
+                                                                    >
+                                                                        <Plus
+                                                                            className={`size-3.5 transition-transform duration-200 ${isSubExpanded ? 'rotate-45' : 'rotate-0'}`}
+                                                                            strokeWidth={2.1}
+                                                                        />
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+
+                                                            {hasGrandChilds && isSubExpanded ? (
+                                                                <ul id={`mobile-submenu-${itemKey}-${subItemKey}`} className="pb-1 pl-3">
+                                                                    {grandChildItems.map((grandChild) => (
+                                                                        <li key={`mobile-grand-child-${itemKey}-${subItemKey}-${grandChild.id}`}>
+                                                                            <Link
+                                                                                to={grandChild.href}
+                                                                                onClick={closeMobileMenu}
+                                                                                className="block py-1.5 text-[0.74rem] font-medium uppercase tracking-[0.03em] text-zinc-600"
+                                                                            >
+                                                                                {grandChild.label}
+                                                                            </Link>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : null}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : null}
+                                    </li>
+                                );
+                            })}
                         </ul>
 
                         <div className="mt-7 border-t border-zinc-200/80 pt-6">

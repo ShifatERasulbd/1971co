@@ -35,6 +35,12 @@ export default function Hero() {
       return false;
     }
   });
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.innerWidth <= 640;
+  });
 
   const dragStateRef = useRef(null);
   const partOffsetFields = {
@@ -94,6 +100,17 @@ export default function Hero() {
       return previous;
     });
   }, [heroSlides]);
+
+  useEffect(() => {
+    function handleViewportResize() {
+      setIsMobileViewport(window.innerWidth <= 640);
+    }
+
+    window.addEventListener('resize', handleViewportResize);
+    return () => {
+      window.removeEventListener('resize', handleViewportResize);
+    };
+  }, []);
 
   useEffect(() => {
     function handleBuilderPreviewMessage(event) {
@@ -234,6 +251,16 @@ export default function Hero() {
 
   const buttonOffsetX = Number(displayHeroData?.button_offset_x) || 0;
   const buttonOffsetY = Number(displayHeroData?.button_offset_y) || 0;
+  const mobileOffsetFactor = isMobileViewport ? 0.45 : 1;
+
+  const responsiveTextOffsetX = textOffsetX * mobileOffsetFactor;
+  const responsiveTextOffsetY = textOffsetY * mobileOffsetFactor;
+  const responsiveTitleOffsetX = titleOffsetX * mobileOffsetFactor;
+  const responsiveTitleOffsetY = titleOffsetY * mobileOffsetFactor;
+  const responsiveDescriptionOffsetX = descriptionOffsetX * mobileOffsetFactor;
+  const responsiveDescriptionOffsetY = descriptionOffsetY * mobileOffsetFactor;
+  const responsiveButtonOffsetX = buttonOffsetX * mobileOffsetFactor;
+  const responsiveButtonOffsetY = buttonOffsetY * mobileOffsetFactor;
 
   useEffect(() => {
     setIsVideoFallback(false);
@@ -332,7 +359,7 @@ export default function Hero() {
         <video
           key={heroVideo}
           poster={heroImage}
-          className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
+          className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
           autoPlay
           muted
           loop
@@ -348,7 +375,7 @@ export default function Hero() {
       <img
         src={heroImage}
         alt="Timeless custom apparel hero"
-        className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
+        className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
       />
     );
   }, [heroVideo, isVideoFallback, heroImage, isLoading]);
@@ -417,7 +444,7 @@ export default function Hero() {
           className={`hero-content relative mx-auto flex w-full max-w-[760px] flex-col items-center space-y-3 text-center ${
             isBuilderPreview && !isLoading ? 'rounded-md border border-dashed border-white/55 p-3' : ''
           }`}
-          style={{ transform: `translate(${textOffsetX}%, ${textOffsetY}%)` }}
+          style={{ transform: `translate(${responsiveTextOffsetX}%, ${responsiveTextOffsetY}%)` }}
         >
           {isLoading ? (
             <>
@@ -445,8 +472,8 @@ export default function Hero() {
                 }`}
                 style={{
                   fontFamily: titleFamily,
-                  fontSize: `clamp(2.4rem, 7.1vw, ${displayTitleSize}px)`,
-                  transform: `translate(${titleOffsetX}%, ${titleOffsetY}%)`,
+                  fontSize: `clamp(1.6rem, 6vw, ${displayTitleSize}px)`,
+                  transform: `translate(${responsiveTitleOffsetX}%, ${responsiveTitleOffsetY}%)`,
                 }}
                 onMouseDown={(event) => beginPartDrag('title', event)}
               >
@@ -476,7 +503,7 @@ export default function Hero() {
                 style={{
                   fontFamily: descriptionFamily,
                   fontSize: `clamp(0.95rem, 1.35vw, ${displayDescriptionSize}px)`,
-                  transform: `translate(${descriptionOffsetX}%, ${descriptionOffsetY}%)`,
+                  transform: `translate(${responsiveDescriptionOffsetX}%, ${responsiveDescriptionOffsetY}%)`,
                 }}
                 onMouseDown={(event) => beginPartDrag('description', event)}
               >
@@ -487,7 +514,7 @@ export default function Hero() {
               {Boolean(displayHeroData?.button_enabled ?? true) ? (
                 <div
                   className="hero-actions flex flex-col items-center gap-3 sm:flex-row"
-                  style={{ transform: `translate(${buttonOffsetX}%, ${buttonOffsetY}%)` }}
+                  style={{ transform: `translate(${responsiveButtonOffsetX}%, ${responsiveButtonOffsetY}%)` }}
                   onMouseDown={(event) => beginPartDrag('button', event)}
                 >
                   <a
