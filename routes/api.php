@@ -11,6 +11,7 @@ use App\Http\Controllers\AboutHeroController;
 use App\Http\Controllers\AboutGivingBackController;
 use App\Http\Controllers\AboutMissionController;
 use App\Http\Controllers\AboutStoryController;
+use App\Http\Controllers\CommunityPageSectionController;
 use App\Http\Controllers\FeaturesController;
 use App\Http\Controllers\GrandChildController;
 use App\Http\Controllers\HeroController;
@@ -77,6 +78,12 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/about-giving-back', [AboutGivingBackController::class, 'index']);
 	Route::post('/about-giving-back', [AboutGivingBackController::class, 'update']);
 	Route::apiResource('/features', FeaturesController::class);
+
+	// Community Page Sections
+	Route::get('/community-page-sections', [CommunityPageSectionController::class, 'index']);
+	Route::post('/community-page-sections', [CommunityPageSectionController::class, 'store']);
+	Route::get('/community-page-sections/{key}', [CommunityPageSectionController::class, 'show']);
+	Route::delete('/community-page-sections/{key}', [CommunityPageSectionController::class, 'destroy']);
 
 	Route::get('/collections', [CollectionController::class, 'index']);
 	Route::put('/collections', [CollectionController::class, 'update']);

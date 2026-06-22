@@ -61,7 +61,7 @@ function formatDate(isoDate) {
     }
 }
 
-export default function TogetherWeGrowGallerySection() {
+export default function TogetherWeGrowGallerySection({ sectionData }) {
     const [activeIndex, setActiveIndex] = useState(0);
 
     const activeItem = useMemo(() => {

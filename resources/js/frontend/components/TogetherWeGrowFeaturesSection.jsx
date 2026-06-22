@@ -23,7 +23,7 @@ const featureItems = [
     },
 ];
 
-export default function TogetherWeGrowFeaturesSection() {
+export default function TogetherWeGrowFeaturesSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-[#eadccf]`}>
             <div className="mx-auto w-full max-w-[1920px]">

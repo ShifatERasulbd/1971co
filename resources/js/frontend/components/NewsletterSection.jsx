@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
-export default function NewsletterSection() {
+export default function NewsletterSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-[#f0ede8] py-16 sm:py-20 lg:py-24`}>
             <div className="mx-auto w-full max-w-[640px] px-6 text-center sm:px-8">

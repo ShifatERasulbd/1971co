@@ -66,6 +66,7 @@ export default function AppLayout() {
     const warehouseName = user?.warehouse?.name || 'No Warehouse Assigned';
     const isHomePageBuilder = location.pathname.startsWith('/admin/website/home-page');
     const isAboutPageBuilder = location.pathname.startsWith('/admin/website/about-page');
+    const isCommunityPageBuilder = location.pathname.startsWith('/admin/website/community-page');
     const isCustomer = user?.user_type === 'customer';
     const isCustomerAllowedPath = location.pathname === '/admin/dashboard' || location.pathname === '/admin/orders';
 
@@ -103,7 +104,7 @@ export default function AppLayout() {
         return <Navigate to="/admin/dashboard" replace />;
     }
 
-    if (isHomePageBuilder || isAboutPageBuilder) {
+    if (isHomePageBuilder || isAboutPageBuilder || isCommunityPageBuilder) {
         return renderBuilderShell();
     }
 
