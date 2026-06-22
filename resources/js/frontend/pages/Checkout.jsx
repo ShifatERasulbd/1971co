@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Link, useNavigate } from 'react-router-dom';
@@ -35,6 +35,55 @@ function toImageUrl(value) {
     }
 
     return `/${value.replace(/^\/+/, '')}`;
+}
+
+function LazyCheckoutImage({ src, alt, className }) {
+    const [isVisible, setIsVisible] = useState(false);
+    const [hasError, setHasError] = useState(false);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) {
+            return undefined;
+        }
+
+        if (typeof IntersectionObserver === 'undefined') {
+            setIsVisible(true);
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (entry?.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '180px 0px' },
+        );
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    const resolvedSrc = hasError ? fallbackImage : toImageUrl(src);
+
+    return (
+        <div ref={containerRef} className={`${className} overflow-hidden bg-zinc-100`}>
+            {isVisible ? (
+                <img
+                    src={resolvedSrc}
+                    alt={alt}
+                    className="h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => setHasError(true)}
+                />
+            ) : null}
+        </div>
+    );
 }
 
 function CheckoutForm() {
@@ -441,10 +490,10 @@ function CheckoutForm() {
                     <div className="mt-6 space-y-4">
                         {items.map((item) => (
                             <article key={item.lineId} className="flex gap-3 border border-zinc-200 p-3 sm:p-4">
-                                <img
-                                    src={toImageUrl(item.image)}
+                                <LazyCheckoutImage
+                                    src={item.image}
                                     alt={item.name}
-                                    className="h-24 w-20 object-cover object-center"
+                                    className="h-24 w-20"
                                 />
 
                                 <div className="min-w-0 flex-1">

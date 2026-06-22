@@ -51,7 +51,7 @@ export default function CartDrawer() {
                 className={`
                     fixed top-0 right-0 z-[1400]
                     flex h-screen w-full max-w-[420px]
-                    flex-col bg-white border-l border-zinc-200 shadow-2xl
+                    flex-col font-monstrate bg-white border-l border-zinc-200 shadow-2xl
                     transition-transform duration-300
                     ${isDrawerOpen ? 'translate-x-0' : 'translate-x-full'}
                 `}
@@ -59,10 +59,10 @@ export default function CartDrawer() {
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
                     <div>
-                        <p className="text-[0.75rem] uppercase tracking-[0.16em] text-zinc-500">
+                        <p className="text-[0.84rem] uppercase tracking-[0.16em] text-zinc-500">
                             Your Cart
                         </p>
-                        <h2 className="text-[1.2rem] font-semibold text-zinc-900">
+                        <h2 className="text-[1.55rem] font-semibold text-zinc-900">
                             {itemCount} Items
                         </h2>
                     </div>
@@ -98,11 +98,11 @@ export default function CartDrawer() {
                                 />
 
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-[0.82rem] font-semibold uppercase">
+                                    <h3 className="text-[0.98rem] font-semibold uppercase leading-tight">
                                         {item.name}
                                     </h3>
 
-                                    <p className="text-[0.78rem] text-zinc-500">
+                                    <p className="text-[0.92rem] text-zinc-500">
                                         {item.priceLabel}
                                     </p>
 

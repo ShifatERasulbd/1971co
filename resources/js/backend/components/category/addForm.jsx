@@ -59,6 +59,7 @@ export default function AddForm({
 						/>
 						{errors.slug && <p className="text-xs text-destructive">{errors.slug[0]}</p>}
 					</div>
+
 					<div className="flex items-center space-x-2">
 						<Checkbox
 							id="show-homepage"

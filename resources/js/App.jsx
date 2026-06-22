@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import CartDrawer from './frontend/components/CartDrawer.jsx';
@@ -8,7 +8,7 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
-import { bootstrapPublicSettings } from './utils/siteSettings';
+import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
@@ -19,6 +19,87 @@ const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
 const ResetPasswordPage = lazy(() => import('./frontend/pages/ResetPassword.jsx'));
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
+const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.jsx'));
+
+const BRAND_NAME = '1971Co';
+
+function normalizeAssetPath(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    const raw = value.trim();
+    if (!raw) {
+        return '';
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+        return raw;
+    }
+
+    return `/${raw.replace(/^\/+/, '')}`;
+}
+
+function resolvePageLabel(pathname) {
+    const path = String(pathname || '/').toLowerCase();
+
+    if (path === '/') return 'Home';
+    if (path === '/shop') return 'Shop';
+    if (path.startsWith('/collection/')) return 'Collection';
+    if (path === '/best-sellers') return 'Best Sellers';
+    if (path === '/singleproduct') return 'Product Details';
+    if (path === '/about') return 'About';
+    if (path === '/contact') return 'Contact';
+    if (path === '/together-we-grow') return 'Together We Grow';
+    if (path === '/checkout') return 'Checkout';
+    if (path === '/order-confirmation') return 'Order Confirmation';
+    if (path === '/login') return 'Login';
+    if (path === '/register') return 'Register';
+    if (path.startsWith('/reset-password')) return 'Reset Password';
+
+    return 'Home';
+}
+
+function ensureFaviconLink() {
+    const existing = document.getElementById('app-favicon');
+    if (existing) {
+        return existing;
+    }
+
+    const link = document.createElement('link');
+    link.id = 'app-favicon';
+    link.rel = 'icon';
+    link.type = 'image/png';
+    document.head.appendChild(link);
+    return link;
+}
+
+function DocumentBrandingManager() {
+    const { pathname } = useLocation();
+    const [settings, setSettings] = React.useState(() => getSettingsPayload() || {});
+
+    useEffect(() => {
+        const unsubscribe = onSettingsUpdated((payload) => {
+            setSettings(payload || {});
+        });
+
+        setSettings(getSettingsPayload() || {});
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
+        const pageLabel = resolvePageLabel(pathname);
+        document.title = `${pageLabel} | ${BRAND_NAME}`;
+
+        const favicon = normalizeAssetPath(settings?.header_logo || '');
+        if (favicon) {
+            const faviconLink = ensureFaviconLink();
+            faviconLink.href = favicon;
+        }
+    }, [pathname, settings]);
+
+    return null;
+}
 
 function withPageFallback(Component) {
     return (
@@ -50,14 +131,17 @@ function AppRouter() {
     return (
         <CartProvider>
             <BrowserRouter>
+                <DocumentBrandingManager />
                 <Routes>
                     <Route path="/" element={<FrontendLayout />}>
                         <Route index element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
+                        <Route path="collection/:slug" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />
                         <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />
                         <Route path="about" element={withPageFallback(AboutPage)} />
                         <Route path="contact" element={withPageFallback(ContactPage)} />
+                        <Route path="together-we-grow" element={withPageFallback(TogetherWeGrowPage)} />
                         <Route path="checkout" element={withPageFallback(CheckoutPage)} />
                         <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />

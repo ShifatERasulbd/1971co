@@ -53,24 +53,28 @@ class CollectionController extends Controller
                     'name' => 'New Arrivals',
                     'slug' => 'new-arrivals',
                     'image' => '/uploads/heroes/images/hero1.webp',
+                           'product_ids' => [],
                     'sort_order' => 0,
                 ],
                 [
                     'name' => 'Essentials',
                     'slug' => 'essentials',
                     'image' => '/uploads/heroes/images/hero1.webp',
+                           'product_ids' => [],
                     'sort_order' => 1,
                 ],
                 [
                     'name' => 'Tees',
                     'slug' => 'tees',
                     'image' => '/uploads/heroes/images/hero1.webp',
+                           'product_ids' => [],
                     'sort_order' => 2,
                 ],
                 [
                     'name' => 'Bottoms',
                     'slug' => 'bottoms',
                     'image' => '/uploads/heroes/images/hero1.webp',
+                           'product_ids' => [],
                     'sort_order' => 3,
                 ],
             ]);
@@ -96,6 +100,10 @@ class CollectionController extends Controller
                     'name' => $item->name,
                     'slug' => $item->slug,
                     'image' => $this->resolveImageUrl($item->image),
+                       'productIds' => array_values(array_filter(
+                           array_map('intval', is_array($item->product_ids) ? $item->product_ids : []),
+                           fn ($value) => $value > 0,
+                       )),
                     'sort_order' => $item->sort_order,
                 ]),
         ];
@@ -124,6 +132,8 @@ class CollectionController extends Controller
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.slug' => ['required', 'string', 'max:255'],
             'items.*.image' => ['nullable', 'string'],
+               'items.*.productIds' => ['nullable', 'array'],
+               'items.*.productIds.*' => ['integer', 'exists:products,id'],
         ]);
 
         $section = $this->ensureSection();
@@ -147,6 +157,10 @@ class CollectionController extends Controller
                         'name' => $item['name'],
                         'slug' => $item['slug'],
                         'image' => $item['image'] ?? null,
+                           'product_ids' => array_values(array_unique(array_map(
+                               'intval',
+                               is_array($item['productIds'] ?? null) ? $item['productIds'] : [],
+                           ))),
                         'sort_order' => $index,
                     ]);
                     $usedIds[] = $collectionItem->id;
@@ -158,6 +172,10 @@ class CollectionController extends Controller
                 'name' => $item['name'],
                 'slug' => $item['slug'],
                 'image' => $item['image'] ?? null,
+                   'product_ids' => array_values(array_unique(array_map(
+                       'intval',
+                       is_array($item['productIds'] ?? null) ? $item['productIds'] : [],
+                   ))),
                 'sort_order' => $index,
             ]);
             $usedIds[] = $created->id;

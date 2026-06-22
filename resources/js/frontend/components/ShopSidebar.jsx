@@ -80,6 +80,7 @@ export default function ShopSidebar({
     onToggleCategory,
     onMinPriceChange,
     onMaxPriceChange,
+    hideTitle = false,
 }) {
     const [openSections, setOpenSections] = useState({
         availability: true,
@@ -105,9 +106,11 @@ export default function ShopSidebar({
     }
 
     return (
-        <aside className="px-6 py-7 sm:px-7 sm:py-8">
+        <aside className="font-monstrate px-6 py-7 sm:px-7 sm:py-8">
             <div className="space-y-6">
-                <h2 className="text-[1.5rem] font-semibold uppercase tracking-[0.03em] text-zinc-800">Filters</h2>
+                {!hideTitle ? (
+                    <h2 className="text-[1.5rem] font-semibold uppercase tracking-[0.03em] text-zinc-800">Filters</h2>
+                ) : null}
 
                 <SidebarFilterRow
                     title="Availability"

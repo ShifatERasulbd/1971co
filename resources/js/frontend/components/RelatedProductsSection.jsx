@@ -1,5 +1,5 @@
 import { Eye, Heart } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -22,22 +22,68 @@ function normalizeProductColors(value) {
     return [];
 }
 
-function getSwatchColor(value) {
+function normalizeColorLookupEntry(record) {
+    if (!record || typeof record !== 'object') {
+        return null;
+    }
+
+    const name = String(record.name || '').trim();
+    const colorCode = String(record.color_code || '').trim();
+
+    if (!name || !/^#[0-9a-f]{3,8}$/i.test(colorCode)) {
+        return null;
+    }
+
+    return [name.toLowerCase(), colorCode];
+}
+
+function toPrice(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const cleaned = value.replace(/[^0-9.-]+/g, '');
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+}
+
+function getSwatchColor(value, colorLookup = {}) {
     const raw = String(value || '').trim();
+
+    if (!raw) {
+        return '#d4d4d8';
+    }
+
+    if (/gradient\s*\(/i.test(raw)) {
+        return raw;
+    }
 
     if (/^#[0-9a-f]{3,8}$/i.test(raw)) {
         return raw;
     }
 
-    if (/^[a-z]+$/i.test(raw)) {
-        return raw.toLowerCase();
+    if (/^(rgb|rgba|hsl|hsla|oklch|lab|lch)\(/i.test(raw)) {
+        return raw;
+    }
+
+    const mapped = colorLookup[raw.toLowerCase()];
+    if (mapped) {
+        return mapped;
+    }
+
+    if (/^[a-z\s-]+$/i.test(raw)) {
+        return raw.toLowerCase().replace(/[\s-]+/g, '');
     }
 
     return '#d4d4d8';
 }
 
-function getSwatchBorderColor(value) {
-    const color = getSwatchColor(value);
+function getSwatchBorderColor(value, colorLookup = {}) {
+    const color = getSwatchColor(value, colorLookup);
 
     if (/^#(?:fff|ffffff|fefefe|fdfdfd|f8f8f8)$/i.test(color)) {
         return 'border-zinc-300';
@@ -50,9 +96,10 @@ function getSwatchBorderColor(value) {
     return 'border-zinc-200';
 }
 
-function ColorSwatch({ color, active, onClick }) {
-    const swatchColor = getSwatchColor(color);
-    const borderColor = getSwatchBorderColor(color);
+function ColorSwatch({ color, active, onClick, colorLookup = {} }) {
+    const swatchColor = getSwatchColor(color, colorLookup);
+    const borderColor = getSwatchBorderColor(color, colorLookup);
+    const usesGradient = /gradient\s*\(/i.test(swatchColor);
 
     return (
         <button
@@ -62,7 +109,7 @@ function ColorSwatch({ color, active, onClick }) {
             className={`inline-flex size-5 items-center justify-center rounded-full ${borderColor} bg-white p-0.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
                 active ? 'ring-1 ring-zinc-900/30' : ''
             }`}
-            style={{ backgroundColor: swatchColor }}
+            style={usesGradient ? { background: swatchColor } : { backgroundColor: swatchColor }}
         />
     );
 }
@@ -79,10 +126,14 @@ function toAbsoluteImageUrl(path) {
     return `/${path.replace(/^\/+/, '')}`;
 }
 
-function RelatedProductCard({ product, onAddToCart }) {
+function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
     const navigate = useNavigate();
     const imageSource = toAbsoluteImageUrl(product?.cover_image || product?.image_gallery?.[0] || fallbackImage);
     const colors = normalizeProductColors(product?.color);
+    const displayPrice = useMemo(
+        () => toPrice(product?.priceValue ?? product?.price),
+        [product?.priceValue, product?.price],
+    );
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
     const productLink = productSlug
@@ -157,6 +208,7 @@ function RelatedProductCard({ product, onAddToCart }) {
                                 key={`${color}-${index}`}
                                 color={color}
                                 active={index === 0}
+                                colorLookup={colorLookup}
                                 onClick={(event) => {
                                     event.preventDefault();
                                     event.stopPropagation();
@@ -173,7 +225,7 @@ function RelatedProductCard({ product, onAddToCart }) {
                 </Link>
 
                 <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
-                    ${Number(product.priceValue).toFixed(2)}
+                    ${displayPrice.toFixed(2)}
                 </p>
             </div>
         </article>
@@ -183,6 +235,44 @@ function RelatedProductCard({ product, onAddToCart }) {
 export default function RelatedProductsSection({ products = [] }) {
     const { addToCart, openCartDrawer } = useCart();
     const [variantModalState, setVariantModalState] = useState(null);
+    const [colorLookup, setColorLookup] = useState({});
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadColors() {
+            try {
+                const response = await fetch('/api/public/colors', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                if (!Array.isArray(payload)) {
+                    return;
+                }
+
+                const normalized = payload
+                    .map((item) => normalizeColorLookupEntry(item))
+                    .filter(Boolean);
+
+                if (!ignore) {
+                    setColorLookup(Object.fromEntries(normalized));
+                }
+            } catch {
+                // Keep default fallback colors when color map fetch fails.
+            }
+        }
+
+        loadColors();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     function handleAddToCart(product, options = {}) {
         setVariantModalState({
@@ -227,7 +317,12 @@ export default function RelatedProductsSection({ products = [] }) {
                 <div className="relative">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
                         {products.map((product) => (
-                            <RelatedProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
+                            <RelatedProductCard
+                                key={product.id}
+                                product={product}
+                                onAddToCart={handleAddToCart}
+                                colorLookup={colorLookup}
+                            />
                         ))}
                     </div>
                 </div>

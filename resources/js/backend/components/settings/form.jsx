@@ -29,10 +29,12 @@ export default function SettingsForm({
     isSubmitting = false,
     headerLogoPreview = '',
     footerLogoPreview = '',
+    shopMenuImagePreview = '',
     socialIconPreviews = {},
     onChange,
     onHeaderLogoChange,
     onFooterLogoChange,
+    onShopMenuImageChange,
     onSocialChange,
     onSocialIconChange,
     onAddSocial,
@@ -75,7 +77,7 @@ export default function SettingsForm({
                     </div>
 
                     {activeTab === 'logos' && (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                             <div className="space-y-2">
                                 <Label htmlFor="header-logo">Header Logo</Label>
                                 <Input
@@ -112,6 +114,25 @@ export default function SettingsForm({
                                     />
                                 )}
                                 {errors.footer_logo && <p className="text-xs text-destructive">{errors.footer_logo[0]}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="shop-menu-image">Shop Mega Menu Image</Label>
+                                <Input
+                                    id="shop-menu-image"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp,image/avif"
+                                    onChange={onShopMenuImageChange}
+                                    disabled={isSubmitting}
+                                />
+                                {(shopMenuImagePreview || form.shop_menu_image) && (
+                                    <img
+                                        src={shopMenuImagePreview || form.shop_menu_image}
+                                        alt="Shop mega menu image"
+                                        className="h-24 w-full rounded border bg-muted object-cover"
+                                    />
+                                )}
+                                {errors.shop_menu_image && <p className="text-xs text-destructive">{errors.shop_menu_image[0]}</p>}
                             </div>
                         </div>
                     )}

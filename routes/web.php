@@ -24,6 +24,10 @@ Route::get('/contact', function () {
     return view('home');
 });
 
+Route::get('/together-we-grow', function () {
+    return view('home');
+});
+
 Route::get('/checkout', function () {
     return view('home');
 });
@@ -45,8 +49,8 @@ Route::get('/admin', function () {
 })->name('login');
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/{path}', function () {
+    Route::get('/admin/{path?}', function () {
         return view('app');
-    })->where('path', '^(?!api).*$');
+    })->where('path', '.*');
 });
 

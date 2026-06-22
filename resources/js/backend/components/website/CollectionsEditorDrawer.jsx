@@ -19,6 +19,7 @@ const ITEM_TYPE = 'COLLECTION_ITEM';
 function CollectionItemRow({
     item,
     index,
+    productOptions,
     onChangeItem,
     onUploadImage,
     onRemoveItem,
@@ -70,6 +71,18 @@ function CollectionItemRow({
     );
 
     drag(drop(ref));
+
+    const selectedProductIds = Array.isArray(item.productIds)
+        ? item.productIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
+        : [];
+
+    function toggleProductId(productId) {
+        const next = selectedProductIds.includes(productId)
+            ? selectedProductIds.filter((id) => id !== productId)
+            : [...selectedProductIds, productId];
+
+        onChangeItem(index, 'productIds', next);
+    }
 
     return (
         <div
@@ -127,6 +140,35 @@ function CollectionItemRow({
                 />
             </div>
 
+            <div className="space-y-1">
+                <Label>Tagged products</Label>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input bg-background p-2">
+                    {productOptions.length > 0 ? (
+                        productOptions.map((product) => {
+                            const productId = Number(product.id);
+                            const checked = selectedProductIds.includes(productId);
+
+                            return (
+                                <label
+                                    key={`collection-product-${index}-${productId}`}
+                                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-muted/40"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleProductId(productId)}
+                                        className="size-3.5 rounded border-zinc-300 text-zinc-900"
+                                    />
+                                    <span className="line-clamp-1">{product.name}</span>
+                                </label>
+                            );
+                        })
+                    ) : (
+                        <p className="text-xs text-muted-foreground">No products found.</p>
+                    )}
+                </div>
+            </div>
+
             <Button
                 type="button"
                 variant="outline"
@@ -152,6 +194,7 @@ export default function CollectionsEditorDrawer({
     onAddItem,
     onRemoveItem,
     onReorderItem,
+    productOptions = [],
     onSave,
     isSaving,
 }) {
@@ -226,6 +269,7 @@ export default function CollectionsEditorDrawer({
                                     key={`collection-item-${index}`}
                                     item={item}
                                     index={index}
+                                    productOptions={productOptions}
                                     onChangeItem={onChangeItem}
                                     onUploadImage={onUploadImage}
                                     onRemoveItem={onRemoveItem}

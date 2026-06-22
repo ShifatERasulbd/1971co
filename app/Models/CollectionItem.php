@@ -15,10 +15,12 @@ class CollectionItem extends Model
         'name',
         'slug',
         'image',
+        'product_ids',
         'sort_order',
     ];
 
     protected $casts = [
+        'product_ids' => 'array',
         'sort_order' => 'integer',
     ];
 

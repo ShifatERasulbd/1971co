@@ -232,10 +232,7 @@ export default function Hero() {
   const descriptionSize = resolveHeroFontSize(displayHeroData?.description_font_size, 24);
 
   const titleFamily = resolveHeroFontFamily(displayHeroData?.title_font_family, 'montserrat');
-  const descriptionFamily = resolveHeroFontFamily(
-    displayHeroData?.description_font_family,
-    'instrument-sans'
-  );
+  const descriptionFamily = 'Montserrat, sans-serif';
 
   const displayTitleSize = Math.max(50, Math.round(titleSize * 0.58));
   const displayDescriptionSize = Math.max(16, Math.round(descriptionSize * 0.72));
@@ -400,11 +397,21 @@ export default function Hero() {
           animation: scaleInText 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         .hero-title-accent {
-          color: #B5AD7E;
+          color: #FFB88C;
         }
         .hero-title-shade {
           border-radius: 12px;
           padding: 0.04em 0.2em;
+          background: linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.2) 0%,
+            rgba(0, 0, 0, 0.52) 100%
+          );
+          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+        }
+        .hero-copy-shade {
+          border-radius: 12px;
+          padding: 0.45rem 0.7rem;
           background: linear-gradient(
             180deg,
             rgba(0, 0, 0, 0.2) 0%,
@@ -466,50 +473,52 @@ export default function Hero() {
             </>
           ) : (
             <>
-              <h1
-                className={`hero-title hero-title-shade ${sectionTypography.heroTitle} text-white drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
-                  isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
-                }`}
-                style={{
-                  fontFamily: titleFamily,
-                  fontSize: `clamp(1.6rem, 6vw, ${displayTitleSize}px)`,
-                  transform: `translate(${responsiveTitleOffsetX}%, ${responsiveTitleOffsetY}%)`,
-                }}
-                onMouseDown={(event) => beginPartDrag('title', event)}
-              >
-                {titleLines.map((line, index) => (
-                  <span
-                    key={`${line}-${index}`}
-                    className={`block ${index === 1 ? 'hero-title-accent' : ''}`}
-                  >
-                    {Array.from(line).map((char, charIndex) => (
-                      <span
-                        key={`${titleAnimationCycle}-${line}-${index}-${charIndex}`}
-                        className="hero-scale-in-char"
-                        style={{ animationDelay: `${(index * 12 + charIndex) * 0.08}s` }}
-                      >
-                        {char === ' ' ? '\u00A0' : char}
-                      </span>
-                    ))}
-                  </span>
-                ))}
-              </h1>
-              
-              <p
-                className={`hero-description ${sectionTypography.heroDescription} ${
-                  isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
-                }`}
-                aria-label={fullDescription}
-                style={{
-                  fontFamily: descriptionFamily,
-                  fontSize: `clamp(0.95rem, 1.35vw, ${displayDescriptionSize}px)`,
-                  transform: `translate(${responsiveDescriptionOffsetX}%, ${responsiveDescriptionOffsetY}%)`,
-                }}
-                onMouseDown={(event) => beginPartDrag('description', event)}
-              >
-                {fullDescription ? typedDescription : ''}
-                {fullDescription ? <span className="hero-typewriter-caret" aria-hidden="true">|</span> : null}
-              </p>
+              <div className="hero-copy-shade">
+                <h1
+                  className={`hero-title ${sectionTypography.heroTitle} !font-semibold text-[#FFB88C] drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
+                    isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
+                  }`}
+                  style={{
+                    fontFamily: titleFamily,
+                    fontSize: `clamp(1.6rem, 6vw, ${displayTitleSize}px)`,
+                    transform: `translate(${responsiveTitleOffsetX}%, ${responsiveTitleOffsetY}%)`,
+                  }}
+                  onMouseDown={(event) => beginPartDrag('title', event)}
+                >
+                  {titleLines.map((line, index) => (
+                    <span
+                      key={`${line}-${index}`}
+                      className={`block ${index === 0 ? 'font-bold text-white' : index === 1 ? 'hero-title-accent' : ''}`}
+                    >
+                      {Array.from(line).map((char, charIndex) => (
+                        <span
+                          key={`${titleAnimationCycle}-${line}-${index}-${charIndex}`}
+                          className="hero-scale-in-char"
+                          style={{ animationDelay: `${(index * 12 + charIndex) * 0.08}s` }}
+                        >
+                          {char === ' ' ? '\u00A0' : char}
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                </h1>
+
+                <p
+                  className={`hero-description ${sectionTypography.heroDescription} font-semibold text-[#FFB88C] ${
+                    isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
+                  }`}
+                  aria-label={fullDescription}
+                  style={{
+                    fontFamily: descriptionFamily,
+                    fontSize: `clamp(0.95rem, 1.35vw, ${displayDescriptionSize}px)`,
+                    transform: `translate(${responsiveDescriptionOffsetX}%, ${responsiveDescriptionOffsetY}%)`,
+                  }}
+                  onMouseDown={(event) => beginPartDrag('description', event)}
+                >
+                  {fullDescription ? typedDescription : ''}
+                  {fullDescription ? <span className="hero-typewriter-caret" aria-hidden="true">|</span> : null}
+                </p>
+              </div>
 
               {Boolean(displayHeroData?.button_enabled ?? true) ? (
                 <div

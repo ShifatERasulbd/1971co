@@ -20,6 +20,7 @@ import {
 } from '@/pages/Features/api';
 import { createHero, fetchHeroes, updateHero } from '@/pages/Hero/api';
 import { fetchCollections, updateCollections } from '@/pages/Website/collectionsApi';
+import { fetchProducts } from '@/pages/Product/api';
 import { fetchOurStory, updateOurStory } from '@/pages/Website/ourStoryApi';
 import {
     fetchBestSellersSectionSettings,
@@ -87,21 +88,25 @@ const defaultCollectionsDraft = {
             name: 'New Arrivals',
             slug: 'new-arrivals',
             image: '/uploads/heroes/images/hero1.webp',
+            productIds: [],
         },
         {
             name: 'Essentials',
             slug: 'essentials',
             image: '/uploads/heroes/images/hero1.webp',
+            productIds: [],
         },
         {
             name: 'Tees',
             slug: 'tees',
             image: '/uploads/heroes/images/hero1.webp',
+            productIds: [],
         },
         {
             name: 'Bottoms',
             slug: 'bottoms',
             image: '/uploads/heroes/images/hero1.webp',
+            productIds: [],
         },
     ],
 };
@@ -149,6 +154,7 @@ export default function HomePageBuilder() {
     const [heroDraft, setHeroDraft] = useState(defaultHeroDraft);
     const [featuresDraft, setFeaturesDraft] = useState(defaultFeaturesDraft);
     const [collectionsDraft, setCollectionsDraft] = useState(defaultCollectionsDraft);
+    const [collectionProductOptions, setCollectionProductOptions] = useState([]);
     const [ourStoryDraft, setOurStoryDraft] = useState(defaultOurStoryDraft);
     const [heroUploadFiles, setHeroUploadFiles] = useState({ image: null, video: null });
     const [ourStoryUploadFiles, setOurStoryUploadFiles] = useState({
@@ -337,6 +343,11 @@ export default function HomePageBuilder() {
                                   name: item.name || previous.items[index]?.name || '',
                                   slug: item.slug || previous.items[index]?.slug || '',
                                   image: item.image || previous.items[index]?.image || '',
+                                  productIds: Array.isArray(item.productIds)
+                                      ? item.productIds
+                                            .map((value) => Number(value))
+                                            .filter((value) => Number.isInteger(value) && value > 0)
+                                      : previous.items[index]?.productIds || [],
                               }))
                             : previous.items,
                 }));
@@ -346,6 +357,38 @@ export default function HomePageBuilder() {
         }
 
         loadCollectionsDraft();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadCollectionProductOptions() {
+            try {
+                const products = await fetchProducts();
+
+                if (!ignore) {
+                    setCollectionProductOptions(
+                        (Array.isArray(products) ? products : [])
+                            .map((item) => ({
+                                id: Number(item?.id),
+                                name: String(item?.name || '').trim(),
+                            }))
+                            .filter((item) => Number.isInteger(item.id) && item.id > 0 && item.name)
+                            .sort((a, b) => a.name.localeCompare(b.name)),
+                    );
+                }
+            } catch {
+                if (!ignore) {
+                    setCollectionProductOptions([]);
+                }
+            }
+        }
+
+        loadCollectionProductOptions();
 
         return () => {
             ignore = true;
@@ -975,6 +1018,7 @@ export default function HomePageBuilder() {
                     name: `Collection ${previous.items.length + 1}`,
                     slug: `collection-${previous.items.length + 1}`,
                     image: '/uploads/heroes/images/hero1.webp',
+                    productIds: [],
                 },
             ],
         }));
@@ -1052,6 +1096,11 @@ export default function HomePageBuilder() {
                     name: item.name || '',
                     slug: item.slug || '',
                     image: item.image || null,
+                    productIds: Array.isArray(item.productIds)
+                        ? item.productIds
+                              .map((value) => Number(value))
+                              .filter((value) => Number.isInteger(value) && value > 0)
+                        : [],
                 })),
             };
 
@@ -1070,6 +1119,11 @@ export default function HomePageBuilder() {
                         name: item.name || previous.items[index]?.name || '',
                         slug: item.slug || previous.items[index]?.slug || '',
                         image: item.image || previous.items[index]?.image || '',
+                        productIds: Array.isArray(item.productIds)
+                            ? item.productIds
+                                  .map((value) => Number(value))
+                                  .filter((value) => Number.isInteger(value) && value > 0)
+                            : previous.items[index]?.productIds || [],
                     })),
                 }));
             }
@@ -1345,6 +1399,7 @@ export default function HomePageBuilder() {
                 onAddItem={handleAddCollectionItem}
                 onRemoveItem={handleRemoveCollectionItem}
                 onReorderItem={handleCollectionReorder}
+                productOptions={collectionProductOptions}
                 onSave={handleSaveCollectionsToDatabase}
                 isSaving={isSavingCollections}
             />

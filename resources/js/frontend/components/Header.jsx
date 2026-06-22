@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Menu, Search, ShoppingCart, UserRound, X, Plus, UserCircle2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { useCart } from '../context/CartContext';
 import { timelessFontClass } from '../utils/typography';
 
-const shopMegaMenuImage = '/uploads/heroes/images/hero1.webp';
+function normalizeMediaUrl(value = '') {
+    const raw = String(value || '').trim();
+
+    if (!raw) {
+        return '';
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+        return raw;
+    }
+
+    return `/${raw.replace(/^\/+/, '')}`;
+}
 
 const utilityIcons = [
     { label: 'Account', icon: UserRound, href: '/login' },
@@ -15,6 +27,7 @@ const utilityIcons = [
 ];
 
 export default function Header() {
+    const navigate = useNavigate();
     const { itemCount, openCartDrawer } = useCart();
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
@@ -25,9 +38,12 @@ export default function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [expandedMobileItems, setExpandedMobileItems] = useState({});
     const [expandedMobileSubItems, setExpandedMobileSubItems] = useState({});
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     
     
     const closeMenuTimerRef = useRef(null);
+    const searchInputRef = useRef(null);
 
     function openMobileMenu() {
         setIsMobileMenuOpen(true);
@@ -35,6 +51,30 @@ export default function Header() {
 
     function closeMobileMenu() {
         setIsMobileMenuOpen(false);
+    }
+
+    function openSearch() {
+        closeShopMenuImmediately();
+        closeMobileMenu();
+        setIsSearchOpen(true);
+    }
+
+    function closeSearch() {
+        setIsSearchOpen(false);
+    }
+
+    function handleSearchSubmit(event) {
+        event.preventDefault();
+
+        const normalized = String(searchQuery || '').trim();
+        closeSearch();
+
+        if (!normalized) {
+            navigate('/shop');
+            return;
+        }
+
+        navigate(`/shop?search=${encodeURIComponent(normalized)}`);
     }
 
     function toggleMobileItem(itemKey) {
@@ -171,10 +211,8 @@ export default function Header() {
     }, []);
 
     useEffect(() => {
-        if (!isMobileMenuOpen) {
+        if (!isMobileMenuOpen && !isSearchOpen) {
             document.body.style.removeProperty('overflow');
-            setExpandedMobileItems({});
-            setExpandedMobileSubItems({});
             return;
         }
 
@@ -183,7 +221,28 @@ export default function Header() {
         return () => {
             document.body.style.removeProperty('overflow');
         };
+    }, [isMobileMenuOpen, isSearchOpen]);
+
+    useEffect(() => {
+        if (!isMobileMenuOpen) {
+            setExpandedMobileItems({});
+            setExpandedMobileSubItems({});
+        }
     }, [isMobileMenuOpen]);
+
+    useEffect(() => {
+        if (!isSearchOpen) {
+            return;
+        }
+
+        const timerId = window.setTimeout(() => {
+            searchInputRef.current?.focus();
+        }, 20);
+
+        return () => {
+            window.clearTimeout(timerId);
+        };
+    }, [isSearchOpen]);
 
     const visibleCategories = useMemo(() => {
         if (!Array.isArray(categories) || categories.length === 0) {
@@ -224,7 +283,7 @@ export default function Header() {
         return [
             ...categoryItems,
             { label: 'About', href: '/about', isRoute: true },
-            { label: 'Together We Grow', href: '#together-we-grow', isRoute: false },
+            { label: 'Together We Grow', href: '/together-we-grow', isRoute: true },
         ];
     }, [visibleCategories]);
 
@@ -236,6 +295,15 @@ export default function Header() {
             ) || null,
         [navigationItems]
     );
+
+    const shopMegaMenuImage = useMemo(
+        () => normalizeMediaUrl(siteSettings?.shop_menu_image || ''),
+        [siteSettings],
+    );
+
+    const shopMegaMenuCaption = 'Shop New Arrivals';
+
+    const shopMegaMenuHref = shopNavItem?.href || '/shop';
 
     const shopChildColumns = useMemo(() => {
         if (!shopNavItem) {
@@ -399,10 +467,13 @@ export default function Header() {
                             <div className="h-4 w-32 animate-pulse rounded bg-zinc-200" />
                         </>
                     ) : (
-                        navigationItems.map((item) =>
+                        navigationItems.map((item) => {
+                            const navKey = `${String(item?.id ?? '')}-${String(item?.label ?? '')}-${String(item?.href ?? '')}`;
+
+                            return (
                             item.isShop ? (
                                 <div
-                                    key={item.label}
+                                    key={navKey}
                                     className="relative flex items-center py-4"
                                     onMouseEnter={openShopMenu}
                                     onMouseLeave={closeShopMenuWithDelay}
@@ -474,32 +545,34 @@ export default function Header() {
                                                     </div>
                                                 </div>
 
-                                                {/* Mega Menu Spotlight Image */}
+                                                {/* Mega Menu Spotlight Image — only rendered when an image is configured in Settings */}
+                                                {shopMegaMenuImage ? (
                                                 <div className="flex justify-center">
                                                     <figure className="w-full max-w-[260px] text-center">
                                                         <Link
-                                                            to="/shop"
+                                                            to={shopMegaMenuHref}
                                                             className="block overflow-hidden bg-zinc-100 p-3"
                                                             onClick={closeShopMenuImmediately}
                                                         >
                                                             <img
                                                                 src={shopMegaMenuImage}
-                                                                alt="Future Classics New Arrivals"
+                                                                alt={shopMegaMenuCaption}
                                                                 className="h-[256px] w-full object-cover object-center"
                                                             />
                                                         </Link>
                                                         <figcaption className="mt-3 text-[0.7rem] uppercase tracking-[0.08em] text-zinc-500">
-                                                            Future Classics New Arrivals
+                                                            {shopMegaMenuCaption}
                                                         </figcaption>
                                                     </figure>
                                                 </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             ) : item.isRoute ? (
                                 <Link
-                                    key={item.label}
+                                    key={navKey}
                                     to={item.href}
                                     className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
@@ -508,7 +581,7 @@ export default function Header() {
                                 </Link>
                             ) : (
                                 <Link
-                                    key={item.label}
+                                    key={navKey}
                                     href={item.href}
                                     className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
@@ -516,7 +589,8 @@ export default function Header() {
                                     {item.label}
                                 </Link>
                             )
-                        )
+                            );
+                        })
                     )}
                 </nav>
 
@@ -556,6 +630,16 @@ export default function Header() {
                                         </span>
                                     ) : null}
                                 </button>
+                            ) : label === 'Search' ? (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    aria-label={label}
+                                    onClick={openSearch}
+                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                >
+                                    <Icon className="size-5" strokeWidth={1.75} />
+                                </button>
                             ) : href.startsWith('/') ? (
                                 <Link
                                     key={label}
@@ -579,13 +663,14 @@ export default function Header() {
                     </div>
 
                     <div className="flex items-center gap-1 xl:hidden">
-                        <a
-                            href="#search"
+                        <button
+                            type="button"
                             aria-label="Search"
+                            onClick={openSearch}
                             className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
                         >
                             <Search className="size-5" strokeWidth={1.75} />
-                        </a>
+                        </button>
 
                         <button
                             type="button"
@@ -616,7 +701,7 @@ export default function Header() {
 
             <aside
                 id="mobile-menu-drawer"
-                className={`fixed inset-y-0 left-0 z-[1210] h-screen w-[88vw] max-w-[380px] bg-[#f4f4f4] shadow-[18px_0_48px_rgba(0,0,0,0.15)] transition-transform duration-300 xl:hidden ${
+                className={`font-monstrate fixed inset-y-0 left-0 z-[1210] h-screen w-[88vw] max-w-[380px] bg-[#f4f4f4] shadow-[18px_0_48px_rgba(0,0,0,0.15)] transition-transform duration-300 xl:hidden ${
                     isMobileMenuOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
                 }`}
                 aria-label="Mobile menu"
@@ -783,6 +868,55 @@ export default function Header() {
                     </nav>
                 </div>
             </aside>
+
+            <div
+                className={`fixed inset-0 z-[1400] bg-black/40 transition-opacity duration-200 ${
+                    isSearchOpen ? 'visible opacity-100 pointer-events-auto' : 'invisible opacity-0 pointer-events-none'
+                }`}
+                onClick={closeSearch}
+                aria-hidden="true"
+            />
+
+            <div
+                className={`fixed left-1/2 top-[96px] z-[1410] w-[calc(100vw-2rem)] max-w-[720px] -translate-x-1/2 rounded-xl border border-zinc-200 bg-white p-4 shadow-[0_28px_80px_rgba(0,0,0,0.25)] transition-all duration-200 ${
+                    isSearchOpen
+                        ? 'visible translate-y-0 opacity-100 pointer-events-auto'
+                        : 'invisible -translate-y-2 opacity-0 pointer-events-none'
+                }`}
+                role="dialog"
+                aria-label="Search products"
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                        closeSearch();
+                    }
+                }}
+            >
+                <form className="flex items-center gap-2" onSubmit={handleSearchSubmit}>
+                    <Search className="size-5 text-zinc-500" strokeWidth={1.75} />
+                    <input
+                        ref={searchInputRef}
+                        type="search"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Search products by name, category, or keyword"
+                        className="h-11 min-w-0 flex-1 rounded-md border border-zinc-300 px-3 text-[0.95rem] text-zinc-900 outline-none ring-0 placeholder:text-zinc-400 focus:border-zinc-500"
+                    />
+                    <button
+                        type="submit"
+                        className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-4 text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-white"
+                    >
+                        Search
+                    </button>
+                    <button
+                        type="button"
+                        onClick={closeSearch}
+                        aria-label="Close search"
+                        className="inline-flex size-11 items-center justify-center rounded-md border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-100"
+                    >
+                        <X className="size-4" strokeWidth={2} />
+                    </button>
+                </form>
+            </div>
         </>
     );
 }

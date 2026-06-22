@@ -5,9 +5,9 @@ export const sectionTypography = {
 
     cardLabel: 'text-[0.72rem] font-bold uppercase tracking-[0.14em]',
 
-    productName: 'frontend-title-font text-[0.72rem] font-normal uppercase tracking-[0.08em] leading-snug',
+    productName: 'font-monstrate text-[0.72rem] font-normal uppercase tracking-[0.08em] leading-snug',
 
-    productPrice: 'frontend-text-font text-[0.82rem] font-semibold',
+    productPrice: 'font-monstrate text-[0.82rem] font-semibold',
 
     title: 'frontend-title-font text-[0.8rem] font-normal uppercase tracking-[0.12em]',
 

@@ -229,6 +229,7 @@ export default function Footer() {
                             <p className={`mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
                                 {contactEmail}
                             </p>
+                            
                             <form
                                 onSubmit={(e) => e.preventDefault()}
                                 className="flex items-stretch border-b border-zinc-600 focus-within:border-white transition-colors"
@@ -248,7 +249,15 @@ export default function Footer() {
                                     Join
                                 </button>
                             </form>
+                            <div className="mb-5 overflow-hidden">
+                                <img
+                                    src="/cardImage.png"
+                                    alt="Payment and card information"
+                                    className="h-20 w-full object-contain object-center p-3 sm:h-24"
+                                />
+                            </div>
                         </div>
+                        
                     </div>
 
                 </div>

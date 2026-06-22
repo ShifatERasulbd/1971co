@@ -24,7 +24,8 @@ function CollectionCardSkeleton() {
 }
 
 function CollectionCard({ name, slug, image, isBuilderPreview, index }) {
-    const href = `/shop?collection=${slug || ''}`;
+    const routeSegment = String(slug || name || '').trim();
+    const href = `/collection/${encodeURIComponent(routeSegment)}`;
 
     function handleSelectInBuilder(event) {
         if (!isBuilderPreview) {

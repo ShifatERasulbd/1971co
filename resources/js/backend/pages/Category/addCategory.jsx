@@ -57,6 +57,7 @@ export default function AddCategory() {
 
     const handleChange = (event) => {
         const { name, type, value, checked } = event.target;
+
         const fieldValue = type === 'checkbox' ? checked : value;
 
         if (name === 'name') {

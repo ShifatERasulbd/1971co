@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Eye, Heart, PackageSearch, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Heart, PackageSearch, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -655,6 +655,7 @@ function ShopProductsGrid({
     totalResults = 0,
     onPageChange,
     onAddToCart,
+    onOpenFilters,
 }) {
     const visibleProducts = Array.isArray(products) ? products : [];
     const start = visibleProducts.length > 0 ? (currentPage - 1) * PRODUCTS_PER_PAGE + 1 : 0;
@@ -669,10 +670,11 @@ function ShopProductsGrid({
 
                 <button
                     type="button"
-                    className="inline-flex items-center gap-2 bg-zinc-950 px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.14em] text-white"
+                    onClick={() => onOpenFilters?.()}
+                    className="inline-flex items-center gap-2 bg-zinc-950 px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.14em] text-white lg:hidden"
                 >
                     <SlidersHorizontal className="size-4" strokeWidth={1.7} />
-                    Sort by
+                    Filters
                 </button>
             </div>
 
@@ -732,6 +734,23 @@ export default function ShopCatalogSection() {
     const [highestDbPrice, setHighestDbPrice] = useState('0.00');
     const [currentPage, setCurrentPage] = useState(1);
     const [variantModalState, setVariantModalState] = useState(null);
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+    const [collectionItems, setCollectionItems] = useState([]);
+
+    const collectionSlug = useMemo(() => {
+        const segments = String(location.pathname || '').split('/').filter(Boolean);
+        if (segments.length < 2 || String(segments[0]).toLowerCase() !== 'collection') {
+            return '';
+        }
+
+        try {
+            return decodeURIComponent(String(segments[1] || '')).trim();
+        } catch {
+            return String(segments[1] || '').trim();
+        }
+    }, [location.pathname]);
+
+    const isCollectionView = Boolean(collectionSlug);
 
     const isBestSellersView = useMemo(() => {
         const pathName = String(location.pathname || '').toLowerCase();
@@ -752,20 +771,22 @@ export default function ShopCatalogSection() {
                     setIsLoading(true);
                 }
 
-                const [sizesRes, categoriesRes, subCategoriesRes, grandChildsRes, productsRes] = await Promise.all([
+                const [sizesRes, categoriesRes, subCategoriesRes, grandChildsRes, productsRes, collectionsRes] = await Promise.all([
                     fetch('/api/public/sizes', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/categories', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/sub-categories', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/grand-childs', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/shop-products', { headers: { Accept: 'application/json' } }),
+                    fetch('/api/public/collections', { headers: { Accept: 'application/json' } }),
                 ]);
 
-                const [sizesPayload, categoriesPayload, subCategoriesPayload, grandChildsPayload, productsPayload] = await Promise.all([
+                const [sizesPayload, categoriesPayload, subCategoriesPayload, grandChildsPayload, productsPayload, collectionsPayload] = await Promise.all([
                     sizesRes.ok ? sizesRes.json() : [],
                     categoriesRes.ok ? categoriesRes.json() : [],
                     subCategoriesRes.ok ? subCategoriesRes.json() : [],
                     grandChildsRes.ok ? grandChildsRes.json() : [],
                     productsRes.ok ? productsRes.json() : [],
+                    collectionsRes.ok ? collectionsRes.json() : [],
                 ]);
 
                 if (ignore) {
@@ -780,6 +801,19 @@ export default function ShopCatalogSection() {
                 setAllGrandChilds(Array.isArray(grandChildsPayload) ? grandChildsPayload : []);
                 setCategoryOptions(normalizeGrandChildOptions(grandChildsPayload));
                 setProducts(normalizedProducts);
+                setCollectionItems(
+                    Array.isArray(collectionsPayload?.items)
+                        ? collectionsPayload.items.map((item) => ({
+                            slug: String(item?.slug || '').trim(),
+                            name: String(item?.name || '').trim(),
+                            productIds: Array.isArray(item?.productIds)
+                                ? item.productIds
+                                    .map((value) => Number(value))
+                                    .filter((value) => Number.isInteger(value) && value > 0)
+                                : [],
+                        }))
+                        : [],
+                );
 
                 const prices = normalizedProducts
                     .map((item) => Number(item.priceValue))
@@ -828,6 +862,7 @@ export default function ShopCatalogSection() {
                 setAllGrandChilds([]);
                 setCategoryOptions([]);
                 setProducts([]);
+                setCollectionItems([]);
                 setColorLookup({});
                 setMinPrice('0.00');
                 setMaxPrice('0.00');
@@ -845,6 +880,35 @@ export default function ShopCatalogSection() {
             ignore = true;
         };
     }, []);
+
+    const activeCollection = useMemo(() => {
+        if (!isCollectionView) {
+            return null;
+        }
+
+        const needle = normalizeQueryValue(collectionSlug);
+        if (!needle) {
+            return null;
+        }
+
+        return (
+            collectionItems.find((item) => normalizeQueryValue(item.slug) === needle)
+            || collectionItems.find((item) => normalizeQueryValue(item.name) === needle)
+            || null
+        );
+    }, [isCollectionView, collectionSlug, collectionItems]);
+
+    const activeCollectionProductIdSet = useMemo(() => {
+        if (!activeCollection) {
+            return new Set();
+        }
+
+        return new Set(
+            (Array.isArray(activeCollection.productIds) ? activeCollection.productIds : [])
+                .map((value) => Number(value))
+                .filter((value) => Number.isInteger(value) && value > 0),
+        );
+    }, [activeCollection]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -916,6 +980,17 @@ export default function ShopCatalogSection() {
         const hasMax = Number.isFinite(max);
 
         return products.filter((product) => {
+            if (isCollectionView) {
+                if (!activeCollection || activeCollectionProductIdSet.size === 0) {
+                    return false;
+                }
+
+                const sourceProductId = Number(product.base_product_id ?? product.id);
+                if (!activeCollectionProductIdSet.has(sourceProductId)) {
+                    return false;
+                }
+            }
+
             if (isBestSellersView && !isBestSellerProduct(product)) {
                 return false;
             }
@@ -969,6 +1044,9 @@ export default function ShopCatalogSection() {
         minPrice,
         maxPrice,
         searchTerm,
+        isCollectionView,
+        activeCollection,
+        activeCollectionProductIdSet,
         isBestSellersView,
     ]);
 
@@ -1003,6 +1081,19 @@ export default function ShopCatalogSection() {
         toast.success(`${nextItem.name} added to cart`);
         openCartDrawer();
     }
+
+    useEffect(() => {
+        if (!isMobileFiltersOpen) {
+            document.body.style.removeProperty('overflow');
+            return;
+        }
+
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.removeProperty('overflow');
+        };
+    }, [isMobileFiltersOpen]);
 
     if (isLoading) {
         return (
@@ -1043,6 +1134,76 @@ export default function ShopCatalogSection() {
     return (
         <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1709px] gap-8 lg:grid-cols-[360px_1fr] lg:gap-10">
+                <div className="hidden lg:block">
+                    <ShopSidebar
+                        sizeOptions={sizeOptions}
+                        categoryOptions={categoryOptions}
+                        selectedAvailability={selectedAvailability}
+                        selectedSizes={selectedSizes}
+                        selectedCategories={selectedCategories}
+                        minPrice={minPrice}
+                        maxPrice={maxPrice}
+                        highestPrice={highestDbPrice}
+                        onToggleAvailability={(value) => toggleSelected(setSelectedAvailability, value)}
+                        onToggleSize={(value) => toggleSelected(setSelectedSizes, value)}
+                        onToggleCategory={(value) => toggleSelected(setSelectedCategories, value)}
+                        onMinPriceChange={(value) => {
+                            setMinPrice(value);
+                            setCurrentPage(1);
+                        }}
+                        onMaxPriceChange={(value) => {
+                            setMaxPrice(value);
+                            setCurrentPage(1);
+                        }}
+                    />
+                </div>
+                <ShopProductsGrid
+                    products={paginatedProducts}
+                    colorLookup={colorLookup}
+                    currentPage={safeCurrentPage}
+                    totalPages={totalPages}
+                    totalResults={filteredProducts.length}
+                    onPageChange={setCurrentPage}
+                    onAddToCart={handleAddToCart}
+                    onOpenFilters={() => setIsMobileFiltersOpen(true)}
+                />
+
+                <ProductVariantModal
+                    isOpen={Boolean(variantModalState?.product)}
+                    product={variantModalState?.product || null}
+                    colorLookup={colorLookup}
+                    defaults={variantModalState?.defaults || {}}
+                    onClose={() => setVariantModalState(null)}
+                    onConfirm={handleConfirmVariant}
+                />
+            </div>
+
+            <div
+                className={`fixed inset-0 z-[1300] bg-black/35 transition-opacity duration-200 lg:hidden ${
+                    isMobileFiltersOpen ? 'visible opacity-100 pointer-events-auto' : 'invisible opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setIsMobileFiltersOpen(false)}
+                aria-hidden="true"
+            />
+
+            <aside
+                aria-label="Mobile filters"
+                className={`fixed inset-y-0 left-0 z-[1310] h-screen w-[88vw] max-w-[380px] overflow-y-auto bg-[#f4f4f4] shadow-[18px_0_48px_rgba(0,0,0,0.15)] transition-transform duration-300 lg:hidden ${
+                    isMobileFiltersOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
+                }`}
+            >
+                <div className="flex items-center justify-between border-b border-zinc-200/80 px-4 py-4">
+                    <h3 className="text-[0.95rem] font-semibold uppercase tracking-[0.08em] text-zinc-800">Filters</h3>
+                    <button
+                        type="button"
+                        aria-label="Close filters"
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                        className="inline-flex size-9 items-center justify-center rounded-full bg-[#E4B037] text-zinc-900 transition-opacity hover:opacity-90"
+                    >
+                        <X className="size-4" strokeWidth={2} />
+                    </button>
+                </div>
+
                 <ShopSidebar
                     sizeOptions={sizeOptions}
                     categoryOptions={categoryOptions}
@@ -1052,6 +1213,7 @@ export default function ShopCatalogSection() {
                     minPrice={minPrice}
                     maxPrice={maxPrice}
                     highestPrice={highestDbPrice}
+                    hideTitle
                     onToggleAvailability={(value) => toggleSelected(setSelectedAvailability, value)}
                     onToggleSize={(value) => toggleSelected(setSelectedSizes, value)}
                     onToggleCategory={(value) => toggleSelected(setSelectedCategories, value)}
@@ -1064,25 +1226,7 @@ export default function ShopCatalogSection() {
                         setCurrentPage(1);
                     }}
                 />
-                <ShopProductsGrid
-                    products={paginatedProducts}
-                    colorLookup={colorLookup}
-                    currentPage={safeCurrentPage}
-                    totalPages={totalPages}
-                    totalResults={filteredProducts.length}
-                    onPageChange={setCurrentPage}
-                    onAddToCart={handleAddToCart}
-                />
-
-                <ProductVariantModal
-                    isOpen={Boolean(variantModalState?.product)}
-                    product={variantModalState?.product || null}
-                    colorLookup={colorLookup}
-                    defaults={variantModalState?.defaults || {}}
-                    onClose={() => setVariantModalState(null)}
-                    onConfirm={handleConfirmVariant}
-                />
-            </div>
+            </aside>
         </section>
     );
 }

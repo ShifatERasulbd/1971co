@@ -62,14 +62,16 @@ class SettingsController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $this->normalizeJsonFields($request, ['social_media']);
+        $this->normalizeJsonFields($request, ['social_media', 'frontend_utils']);
         $this->normalizeEmptyStringFields($request, ['email']);
 
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
             'footer_logo_existing' => 'nullable|string|max:2048',
+            'shop_menu_image_existing' => 'nullable|string|max:2048',
             'header_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
             'footer_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'shop_menu_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,avif|max:4096',
             'social_media' => 'nullable|array',
             'social_media.*.name' => 'nullable|string|max:255',
             'social_media.*.link' => 'nullable|string|max:2048',
@@ -105,14 +107,16 @@ class SettingsController extends Controller
 
     public function update(Request $request, Settings $setting): JsonResponse
     {
-        $this->normalizeJsonFields($request, ['social_media']);
+        $this->normalizeJsonFields($request, ['social_media', 'frontend_utils']);
         $this->normalizeEmptyStringFields($request, ['email']);
 
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
             'footer_logo_existing' => 'nullable|string|max:2048',
+            'shop_menu_image_existing' => 'nullable|string|max:2048',
             'header_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
             'footer_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'shop_menu_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,avif|max:4096',
             'social_media' => 'nullable|array',
             'social_media.*.name' => 'nullable|string|max:255',
             'social_media.*.link' => 'nullable|string|max:2048',
@@ -148,6 +152,7 @@ class SettingsController extends Controller
         if (is_array($payload)) {
             $this->deleteUploadedFile($payload['header_logo'] ?? null);
             $this->deleteUploadedFile($payload['footer_logo'] ?? null);
+            $this->deleteUploadedFile($payload['shop_menu_image'] ?? null);
 
             $socialMedia = is_array($payload['social_media'] ?? null) ? $payload['social_media'] : [];
             foreach ($socialMedia as $item) {
@@ -180,6 +185,13 @@ class SettingsController extends Controller
             $this->deleteUploadedFile($existingPayload['footer_logo'] ?? null);
         }
 
+        $shopMenuImage = $validated['shop_menu_image_existing']
+            ?? ($existingPayload['shop_menu_image'] ?? '');
+        if ($request->hasFile('shop_menu_image_file')) {
+            $shopMenuImage = $this->storeUploadedFileToPublic($request->file('shop_menu_image_file'), 'uploads/category');
+            $this->deleteUploadedFile($existingPayload['shop_menu_image'] ?? null);
+        }
+
         $socialMedia = is_array($validated['social_media'] ?? null) ? $validated['social_media'] : [];
         $existingSocial = is_array($existingPayload['social_media'] ?? null) ? $existingPayload['social_media'] : [];
 
@@ -204,6 +216,7 @@ class SettingsController extends Controller
         return [
             'header_logo' => $headerLogo,
             'footer_logo' => $footerLogo,
+            'shop_menu_image' => $shopMenuImage,
             'email' => (string) ($validated['email'] ?? ($existingPayload['email'] ?? '')),
             'location' => (string) ($validated['location'] ?? ($existingPayload['location'] ?? '')),
             'currency' => (string) ($validated['currency'] ?? ($existingPayload['currency'] ?? '')),
@@ -338,7 +351,24 @@ class SettingsController extends Controller
 
     private function deleteUploadedFile($path): void
     {
-        if (! is_string($path) || ! str_starts_with($path, '/uploads/settings/')) {
+        if (! is_string($path)) {
+            return;
+        }
+
+        $allowedPrefixes = [
+            '/uploads/settings/',
+            '/uploads/category/',
+        ];
+
+        $isAllowed = false;
+        foreach ($allowedPrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $isAllowed = true;
+                break;
+            }
+        }
+
+        if (! $isAllowed) {
             return;
         }
 
