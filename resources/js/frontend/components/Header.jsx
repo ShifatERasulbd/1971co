@@ -261,7 +261,11 @@ export default function Header() {
             ? visibleCategories.map((category) => {
                 const categoryLabel = category?.name || 'Category';
                 const categorySlug = String(category?.slug || '').trim().toLowerCase();
-                const categoryHref = categorySlug === 'best-sellers'
+                const categoryHref = categorySlug === 'shop'
+                    ? '/shop'
+                    : categorySlug === 'new-arrivals'
+                    ? '/new-arrivals'
+                    : categorySlug === 'best-sellers'
                     ? '/best-sellers'
                     : `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`;
                 return {
@@ -325,22 +329,15 @@ export default function Header() {
         }, new Map());
 
         return shopSubCategories.map((subCategory) => {
-            const childHref = `/shop?category=${encodeURIComponent(
-                shopNavItem?.slug || String(shopNavItem?.id || '')
-            )}&sub_category=${encodeURIComponent(
-                subCategory?.slug || String(subCategory?.id || '')
-            )}`;
+            const subCategorySlug = String(subCategory?.slug || '').trim() || String(subCategory?.id || '');
+            const childHref = `/${encodeURIComponent(subCategorySlug)}`;
 
             const children =
                 grandChildsBySubCategory
                     .get(Number(subCategory?.id))
                     ?.map((grandChild) => ({
                         label: String(grandChild?.name || '').trim() || 'Item',
-                        href: `/shop?category=${encodeURIComponent(
-                            shopNavItem?.slug || String(shopNavItem?.id || '')
-                        )}&sub_category=${encodeURIComponent(
-                            subCategory?.slug || String(subCategory?.id || '')
-                        )}&grand_child=${encodeURIComponent(
+                        href: `/${encodeURIComponent(subCategorySlug)}/${encodeURIComponent(
                             String(grandChild?.slug || '').trim() || String(grandChild?.id || '')
                         )}`,
                     })) || [];
@@ -391,11 +388,7 @@ export default function Header() {
                     const grandChildItems = (grandChildsBySubCategory.get(Number(subCategory?.id)) || []).map((grandChild) => ({
                         id: grandChild?.id,
                         label: String(grandChild?.name || '').trim() || 'Item',
-                        href: `/shop?category=${encodeURIComponent(
-                            categoryKey
-                        )}&sub_category=${encodeURIComponent(
-                            subCategoryKey
-                        )}&grand_child=${encodeURIComponent(
+                        href: `/${encodeURIComponent(subCategoryKey)}/${encodeURIComponent(
                             String(grandChild?.slug || '').trim() || String(grandChild?.id || '')
                         )}`,
                     }));
@@ -404,11 +397,7 @@ export default function Header() {
                         id: subCategory?.id,
                         key: subCategoryKey,
                         label: String(subCategory?.name || '').trim() || 'Subcategory',
-                        href: `/shop?category=${encodeURIComponent(
-                            categoryKey
-                        )}&sub_category=${encodeURIComponent(
-                            subCategoryKey
-                        )}`,
+                        href: `/${encodeURIComponent(subCategoryKey)}`,
                         grandChildItems,
                     };
                 });

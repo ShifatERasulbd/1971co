@@ -16,6 +16,7 @@ const tabs = [
     { key: 'logos', label: 'Logos' },
     { key: 'social', label: 'Social Media' },
     { key: 'contact', label: 'Contact & Currency' },
+    { key: 'analytics', label: 'Analytics' },
     { key: 'frontend-utils', label: 'Frontend Utils' },
 ];
 
@@ -255,6 +256,26 @@ export default function SettingsForm({
                                     disabled={isSubmitting}
                                 />
                                 {errors.location && <p className="text-xs text-destructive">{errors.location[0]}</p>}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'analytics' && (
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="google-analytics-id">Google Analytics Measurement ID</Label>
+                                <Input
+                                    id="google-analytics-id"
+                                    name="google_analytics_id"
+                                    value={form.google_analytics_id || ''}
+                                    onChange={onChange}
+                                    placeholder="G-XXXXXXXXXX"
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Enter your Google Analytics 4 Measurement ID to enable analytics tracking.
+                                </p>
+                                {errors.google_analytics_id && <p className="text-xs text-destructive">{errors.google_analytics_id[0]}</p>}
                             </div>
                         </div>
                     )}

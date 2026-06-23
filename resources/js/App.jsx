@@ -9,6 +9,7 @@ import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
+import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics';
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
@@ -46,8 +47,11 @@ function resolvePageLabel(pathname) {
     if (path === '/') return 'Home';
     if (path === '/shop') return 'Shop';
     if (path.startsWith('/collection/')) return 'Collection';
+    if (path === '/new-arrivals') return 'Collection';
     if (path === '/best-sellers') return 'Best Sellers';
+    if (path.startsWith('/product-details/')) return 'Product Details';
     if (path === '/singleproduct') return 'Product Details';
+    if (path.split('/').filter(Boolean).length <= 2) return 'Shop';
     if (path === '/about') return 'About';
     if (path === '/contact') return 'Contact';
     if (path === '/together-we-grow') return 'Together We Grow';
@@ -100,7 +104,19 @@ function DocumentBrandingManager() {
             const faviconLink = ensureFaviconLink();
             faviconLink.href = favicon;
         }
+
+        // Track page view with Google Analytics
+        trackPageView(pathname);
     }, [pathname, settings]);
+
+    useEffect(() => {
+        // Initialize Google Analytics when GA measurement ID is available
+        const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
+        if (gaId && !window.__gaInitialized) {
+            initializeGoogleAnalytics(gaId);
+            window.__gaInitialized = true;
+        }
+    }, [settings]);
 
     return null;
 }
@@ -141,7 +157,10 @@ function AppRouter() {
                         <Route index element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
                         <Route path="collection/:slug" element={withPageFallback(ShopPage)} />
+                        <Route path="new-arrivals" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />
+                        <Route path=":subCategorySlug/:grandChildSlug?" element={withPageFallback(ShopPage)} />
+                        <Route path="product-details/:slug/:color?" element={withPageFallback(SingleProductPage)} />
                         <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />
                         <Route path="about" element={withPageFallback(AboutPage)} />
                         <Route path="contact" element={withPageFallback(ContactPage)} />

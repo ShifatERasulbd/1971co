@@ -415,9 +415,10 @@ export default function SingleProductMainSection({ product, initialColor = '' })
         () => {
             const slug = String(product?.slug || '').trim();
             const name = String(product?.name || '').trim();
+            const color = String(initialColor || '').trim();
             const detailUrl = slug
-                ? `/singleProduct?slug=${encodeURIComponent(slug)}`
-                : `/singleProduct?name=${encodeURIComponent(name)}`;
+                ? `/product-details/${encodeURIComponent(slug)}${color ? `/${encodeURIComponent(color)}` : ''}`
+                : `/product-details/${encodeURIComponent(name)}${color ? `/${encodeURIComponent(color)}` : ''}`;
 
             return [
                 { label: 'Home', to: '/' },
@@ -538,7 +539,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                                 description: String(product?.description || 'No description available.'),
                                 fit: String(product?.fit || product?.long_description || ''),
                                 fabric_and_care: String(product?.fabric_and_care || product?.additional_information || ''),
-                                product_features: String(product?.product_features || product?.features || ''),
+                                product_features: product?.product_features ?? product?.features ?? [],
                                 product_composition: String(product?.product_composition || product?.composition || ''),
                                 size_chart_image: String(product?.size_chart_image || ''),
                                 size_chart_images: Array.isArray(product?.size_chart_images) ? product.size_chart_images : [],

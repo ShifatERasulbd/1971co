@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import RichTextEditor from './richTextEditor';
+import ProductFeaturesRepeater from './ProductFeaturesRepeater';
 
 export default function EditForm({
     form = {},
@@ -367,12 +368,11 @@ export default function EditForm({
                                 error={errors.fabric_and_care}
                             />
 
-                            <RichTextEditor
-                                label="Product Features"
-                                value={form.product_features || ''}
-                                onChange={(html) => onChange({ target: { name: 'product_features', value: html } })}
-                                placeholder="Highlight key features and selling points"
-                                error={errors.product_features}
+                            <ProductFeaturesRepeater
+                                value={form.product_features}
+                                errors={errors}
+                                onChange={onChange}
+                                disabled={isSubmitting}
                             />
 
                              <RichTextEditor

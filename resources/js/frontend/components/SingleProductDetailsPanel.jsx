@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { resolveProductFeatureIcon } from '../../shared/productFeatureIcons';
+
 function RulerIcon() {
     return (
         <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
@@ -10,7 +12,7 @@ function RulerIcon() {
                 strokeWidth="1.7"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                />
+            />
         </svg>
     );
 }
@@ -48,6 +50,36 @@ function toOptionalImageUrl(path) {
     }
 
     return `/${trimmed.replace(/^\/+/, '')}`;
+}
+
+function normalizeProductFeatures(value) {
+    if (Array.isArray(value)) {
+        return value
+            .filter((item) => item && typeof item === 'object')
+            .map((item) => ({
+                icon: String(item.icon || 'sparkles').trim() || 'sparkles',
+                text: String(item.text || '').trim(),
+            }))
+            .filter((item) => item.text !== '');
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            const decoded = JSON.parse(trimmed);
+            if (Array.isArray(decoded)) {
+                return normalizeProductFeatures(decoded);
+            }
+        } catch {
+            return [];
+        }
+    }
+
+    return [];
 }
 
 export default function SingleProductDetailsPanel({
@@ -119,12 +151,15 @@ export default function SingleProductDetailsPanel({
             { key: 'description', title: 'Product Description', content: product?.description || '' },
             { key: 'fit', title: 'Fit', content: product?.fit || '' },
             { key: 'fabric', title: 'Fabric & Care', content: product?.fabric_and_care || '' },
-            { key: 'features', title: 'Product Features', content: product?.product_features || '' },
             { key: 'composition', title: 'Product Composition', content: product?.product_composition || '' },
         ];
     }, [product]);
 
     const hasMultipleSizeCharts = resolvedSizeChartImages.length > 1;
+    const normalizedProductFeatures = useMemo(
+        () => normalizeProductFeatures(product?.product_features),
+        [product?.product_features],
+    );
 
     function toggleAccordionItem(key) {
         setOpenAccordionKey((previous) => (previous === key ? '' : key));
@@ -159,20 +194,12 @@ export default function SingleProductDetailsPanel({
                      {product.name}
                 </h1>
 
-                {/* <div className="mt-3 flex items-center gap-2.5 text-[0.95rem] text-zinc-600">
-                    <span className="text-[1.05rem] tracking-[0.05em] text-amber-500">★★★★★</span>
-                    <span>(5.0)</span>
-                </div> */}
-
                 <p className="text-[1.15rem] font-medium leading-none text-zinc-900">{product.price}</p>
             </div>
-           
-
             
-
             <div className="mt-5 space-y-4">
                 <div>
-                    <h2 className="text-[0.75rem]  tracking-[0.08em] text-zinc-800">Color Varriations</h2>
+                    <h2 className="text-[0.75rem] tracking-[0.08em] text-zinc-800">Color Variations</h2>
                     <div className="mt-2.5 flex items-center gap-2.5">
                         {displayColors.map((color) => (
                             <button
@@ -196,7 +223,7 @@ export default function SingleProductDetailsPanel({
                 </div>
 
                 <div>
-                    <h2 className="text-[0.75rem]  tracking-[0.08em] text-zinc-800">Size Variations</h2>
+                    <h2 className="text-[0.75rem] tracking-[0.08em] text-zinc-800">Size Variations</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                         {displaySizes.map((size) => (
                             <button
@@ -266,9 +293,31 @@ export default function SingleProductDetailsPanel({
                         className="inline-flex size-[52px] shrink-0 items-center justify-center border border-zinc-300 text-[1.65rem] text-zinc-700 hover:border-zinc-600"
                         aria-label="Add to wishlist"
                     >
-                        ♡
+                        &#9825;
                     </button>
                 </div>
+
+                {/* Clean Product Features Grid without Background Card Wrapper */}
+                {normalizedProductFeatures.length > 0 ? (
+                    <div>
+                        <h3 className="text-[0.75rem] tracking-[0.08em] uppercase text-zinc-800">
+                            Product Features
+                        </h3>
+                        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                            {normalizedProductFeatures.map((feature, index) => {
+                                const Icon = resolveProductFeatureIcon(feature.icon);
+                                return (
+                                    <div key={`${feature.icon}-${index}`} className="flex items-start gap-2.5 text-[0.88rem] leading-5 text-zinc-700">
+                                        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700">
+                                            <Icon className="size-3.5" />
+                                        </span>
+                                        <span>{feature.text}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : null}
 
                 <div className="mt-2 border-y border-zinc-200">
                     {accordionItems.map((item) => {

@@ -10,7 +10,7 @@ function buildProductPayload(data = {}) {
         description: data.description?.trim() || '',
         fit: data.fit || '',
         fabric_and_care: data.fabric_and_care || '',
-        product_features: data.product_features || '',
+        product_features: Array.isArray(data.product_features) ? data.product_features : [],
         product_composition: data.product_composition || '',
         long_description: data.long_description || '',
         additional_information: data.additional_information || '',
@@ -54,6 +54,12 @@ function buildProductFormData(data = {}) {
             return;
         }
         if (Array.isArray(value) || (value && typeof value === 'object')) {
+            if (Array.isArray(value) && value.length === 0) {
+                return;
+            }
+            if (!Array.isArray(value) && Object.keys(value).length === 0) {
+                return;
+            }
             formData.append(key, JSON.stringify(value));
             return;
         }

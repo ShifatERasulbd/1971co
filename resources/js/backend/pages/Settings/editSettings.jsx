@@ -12,6 +12,7 @@ const initialForm = {
     email: '',
     location: '',
     currency: '',
+    google_analytics_id: '',
     social_media: [],
     frontend_utils: {
         timeless_font_family: '',
@@ -76,6 +77,7 @@ export default function EditSettings() {
                     email: setting.payload?.email || '',
                     location: setting.payload?.location || '',
                     currency: setting.payload?.currency || '',
+                    google_analytics_id: setting.payload?.google_analytics_id || '',
                     social_media: Array.isArray(setting.payload?.social_media)
                         ? setting.payload.social_media.map((item) => ({
                               name: item?.name || '',

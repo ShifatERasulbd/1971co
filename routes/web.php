@@ -19,6 +19,14 @@ Route::get('/collection/{slug}', function () {
     return view('home');
 });
 
+Route::get('/new-arrivals', function () {
+    return view('home');
+});
+
+Route::get('/product-details/{slug}/{color?}', function () {
+    return view('home');
+});
+
 Route::get('/singleProduct', function () {
     return view('home');
 });
@@ -55,6 +63,10 @@ Route::get('/register', function () {
 Route::get('/reset-password/{token}', function () {
     return view('home');
 })->name('password.reset');
+
+Route::get('/{subCategorySlug}/{grandChildSlug?}', function () {
+    return view('home');
+});
 
 Route::get('/admin', function () {
     return view('app');

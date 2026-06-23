@@ -46,6 +46,7 @@ class Product extends Model
         return [
             'available_products' => 'array',
             'color' => 'array',
+            'product_features' => 'array',
             'image_gallery' => 'array',
             'size_chart_images' => 'array',
             'product_videos' => 'array',

@@ -21,7 +21,7 @@ const initialForm = {
     description: '',
     fit: '',
     fabric_and_care: '',
-    product_features: '',
+    product_features: [],
     product_composition: '',
     long_description: '',
     additional_information: '',
@@ -58,6 +58,35 @@ function parseSelectionValues(value) {
         .split(',')
         .map((item) => item.trim())
         .filter(Boolean);
+}
+
+function normalizeProductFeatures(value) {
+    if (Array.isArray(value)) {
+        return value
+            .filter((item) => item && typeof item === 'object')
+            .map((item) => ({
+                icon: String(item.icon || 'sparkles').trim() || 'sparkles',
+                text: String(item.text || '').trim(),
+            }));
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            const decoded = JSON.parse(trimmed);
+            if (Array.isArray(decoded)) {
+                return normalizeProductFeatures(decoded);
+            }
+        } catch {
+            return [];
+        }
+    }
+
+    return [];
 }
 
 function reorderItems(items, fromIndex, toIndex) {
@@ -403,7 +432,7 @@ export default function EditProduct() {
                         description: data?.description || '',
                         fit: data?.fit || data?.long_description || '',
                         fabric_and_care: data?.fabric_and_care || data?.additional_information || '',
-                        product_features: data?.product_features || '',
+                        product_features: normalizeProductFeatures(data?.product_features),
                         product_composition: data?.product_composition || '',
                         long_description: data?.long_description || '',
                         additional_information: data?.additional_information || '',

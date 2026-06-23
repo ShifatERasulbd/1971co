@@ -7,7 +7,7 @@ import { sectionTypography } from '../utils/sectionTypography';
 
 const shopLinks = [
     { label: 'Shop All', href: '/shop' },
-    { label: 'New Arrivals', href: '/shop?collection=new-arrivals' },
+    { label: 'New Arrivals', href: '/new-arrivals' },
     { label: 'Essentials', href: '/shop?collection=essentials' },
     { label: 'Tops', href: '/shop?collection=tops' },
     { label: 'Bottoms', href: '/shop?collection=bottoms' },

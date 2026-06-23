@@ -12,6 +12,7 @@ const initialForm = {
     email: '',
     location: '',
     currency: '',
+    google_analytics_id: '',
     social_media: [],
     frontend_utils: {
         timeless_font_family: '',

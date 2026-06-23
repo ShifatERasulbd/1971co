@@ -336,8 +336,8 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
     const productLink = productSlug
-        ? `/singleProduct?slug=${encodeURIComponent(productSlug)}`
-        : `/singleProduct?name=${encodeURIComponent(productName)}`;
+        ? `/product-details/${encodeURIComponent(productSlug)}`
+        : `/product-details/${encodeURIComponent(productName)}`;
 
     function handleAddToCart(event) {
         event.preventDefault();

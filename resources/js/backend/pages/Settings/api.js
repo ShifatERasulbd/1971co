@@ -28,6 +28,7 @@ function normalizeSettingRecord(record) {
             email: payload.email || '',
             location: payload.location || '',
             currency: payload.currency || '',
+            google_analytics_id: payload.google_analytics_id || '',
             social_media: normalizeSocialMedia(payload.social_media),
             frontend_utils:
                 payload.frontend_utils && typeof payload.frontend_utils === 'object'
@@ -65,6 +66,7 @@ function buildSettingsPayload(data = {}) {
         email: data.email || '',
         location: data.location || '',
         currency: data.currency || '',
+        google_analytics_id: data.google_analytics_id || '',
         social_media: normalizeSocialMedia(data.social_media),
         frontend_utils: {
             timeless_font_family: frontendUtils.timeless_font_family || '',
@@ -93,6 +95,7 @@ function buildSettingsFormData(data = {}) {
     formData.append('email', payload.email);
     formData.append('location', payload.location);
     formData.append('currency', payload.currency);
+    formData.append('google_analytics_id', payload.google_analytics_id);
 
     if (data.header_logo_file instanceof File) {
         formData.append('header_logo_file', data.header_logo_file);

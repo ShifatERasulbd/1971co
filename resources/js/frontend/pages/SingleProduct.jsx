@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
 
@@ -42,6 +42,7 @@ function productMatchesColor(product, colorParam) {
 }
 
 export default function SingleProductPage() {
+    const { slug: routeSlug = '', color: routeColor = '' } = useParams();
     const [searchParams] = useSearchParams();
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -89,9 +90,9 @@ export default function SingleProductPage() {
             return null;
         }
 
-        const slugParam = searchParams.get('slug');
+        const slugParam = routeSlug || searchParams.get('slug');
         const nameParam = searchParams.get('name');
-        const colorParam = searchParams.get('color');
+        const colorParam = routeColor || searchParams.get('color');
 
         if (slugParam) {
             const bySlugCandidates = products.filter((item) => String(item?.slug || '') === String(slugParam));
@@ -114,12 +115,12 @@ export default function SingleProductPage() {
         }
 
         return products[0] || null;
-    }, [products, searchParams]);
+    }, [products, routeSlug, routeColor, searchParams]);
 
     const initialColor = useMemo(() => {
-        const colorParam = String(searchParams.get('color') || '').trim();
+        const colorParam = String(routeColor || searchParams.get('color') || '').trim();
         return colorParam;
-    }, [searchParams]);
+    }, [routeColor, searchParams]);
 
     const relatedProducts = useMemo(() => {
         if (!currentProduct) {

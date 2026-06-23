@@ -21,7 +21,7 @@ const initialForm = {
     description: '',
     fit: '',
     fabric_and_care: '',
-    product_features: '',
+    product_features: [],
     product_composition: '',
     long_description: '',
     additional_information: '',

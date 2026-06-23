@@ -114,7 +114,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -125,7 +125,9 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
             'fabric_and_care' => 'nullable|string',
-            'product_features' => 'nullable|string',
+            'product_features' => 'nullable|array',
+            'product_features.*.icon' => 'nullable|string|max:100',
+            'product_features.*.text' => 'required|string|max:255',
             'product_composition' => 'nullable|string',
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
@@ -200,6 +202,7 @@ class ProductController extends Controller
         $validated['color'] = $this->normalizeColorSelectionValue($validated['color'] ?? '');
         $validated['size'] = $this->normalizeSizeSelectionValue($validated['size'] ?? '');
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
+        $validated['product_features'] = $this->normalizeProductFeatures($validated['product_features'] ?? []);
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? '')));
         $validated['fabric_and_care'] = trim((string) ($validated['fabric_and_care'] ?? ($validated['additional_information'] ?? '')));
@@ -247,7 +250,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -258,7 +261,9 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
             'fabric_and_care' => 'nullable|string',
-            'product_features' => 'nullable|string',
+            'product_features' => 'nullable|array',
+            'product_features.*.icon' => 'nullable|string|max:100',
+            'product_features.*.text' => 'required|string|max:255',
             'product_composition' => 'nullable|string',
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
@@ -385,6 +390,7 @@ class ProductController extends Controller
         $validated['color'] = $this->normalizeColorSelectionValue($validated['color'] ?? ($product->color ?? ''));
         $validated['size'] = $this->normalizeSizeSelectionValue($validated['size'] ?? ($product->size ?? ''));
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? ($product->variant_rows ?? []));
+        $validated['product_features'] = $this->normalizeProductFeatures($validated['product_features'] ?? ($product->product_features ?? []));
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? ($product->fit ?? ''))));
         $validated['fabric_and_care'] = trim((string) ($validated['fabric_and_care'] ?? ($validated['additional_information'] ?? ($product->fabric_and_care ?? ''))));
@@ -725,6 +731,35 @@ class ProductController extends Controller
                 'price' => $row['price'] ?? '',
             ];
         }, $variantRows));
+    }
+
+    private function normalizeProductFeatures($features): array
+    {
+        if (! is_array($features)) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach ($features as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $text = trim((string) ($row['text'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+
+            $icon = trim((string) ($row['icon'] ?? 'sparkles'));
+
+            $rows[] = [
+                'icon' => $icon !== '' ? $icon : 'sparkles',
+                'text' => $text,
+            ];
+        }
+
+        return array_values($rows);
     }
 
     private function normalizeColorSelectionValue($value): string
