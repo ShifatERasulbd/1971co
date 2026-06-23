@@ -89,9 +89,11 @@ export default function EditProduct() {
     const [newGalleryImageFiles, setNewGalleryImageFiles] = useState([]);
     const [existingProductVideos, setExistingProductVideos] = useState([]);
     const [newProductVideoFiles, setNewProductVideoFiles] = useState([]);
-    const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
+    const [existingSizeChartImages, setExistingSizeChartImages] = useState([]);
+    const [newSizeChartImageFiles, setNewSizeChartImageFiles] = useState([]);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
+    const [colorVariantSizeChartMap, setColorVariantSizeChartMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
     const [categoryOptions, setCategoryOptions] = useState([]);
@@ -242,13 +244,30 @@ export default function EditProduct() {
         return [...existing, ...fresh];
     }, [existingGalleryUrls, newGalleryImageFiles]);
 
-    const sizeChartPreviewUrl = useMemo(() => {
-        if (sizeChartImageFile instanceof File) {
-            return URL.createObjectURL(sizeChartImageFile);
-        }
+    const sizeChartPreviewItems = useMemo(() => {
+        const existing = existingSizeChartImages.map((url, index) => {
+            const chunks = String(url).split('/');
+            const filename = chunks[chunks.length - 1] || `size-chart-${index + 1}`;
 
-        return form.size_chart_image || '';
-    }, [sizeChartImageFile, form.size_chart_image]);
+            return {
+                id: `existing-size-chart-${index}-${url}`,
+                name: filename,
+                value: url,
+                url,
+                source: 'existing',
+            };
+        });
+
+        const fresh = newSizeChartImageFiles.map((file) => ({
+            id: `new-size-chart-${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            value: file.name,
+            url: URL.createObjectURL(file),
+            source: 'new',
+        }));
+
+        return [...existing, ...fresh];
+    }, [existingSizeChartImages, newSizeChartImageFiles]);
 
     const productVideoPreviewItems = useMemo(() => {
         const existing = existingProductVideos.map((url, index) => {
@@ -334,11 +353,13 @@ export default function EditProduct() {
 
     useEffect(() => {
         return () => {
-            if (sizeChartImageFile instanceof File && sizeChartPreviewUrl) {
-                URL.revokeObjectURL(sizeChartPreviewUrl);
-            }
+            sizeChartPreviewItems.forEach((item) => {
+                if (item.source === 'new') {
+                    URL.revokeObjectURL(item.url);
+                }
+            });
         };
-    }, [sizeChartImageFile, sizeChartPreviewUrl]);
+    }, [sizeChartPreviewItems]);
 
     useEffect(() => {
         return () => {
@@ -398,6 +419,11 @@ export default function EditProduct() {
 
                     setExistingGalleryUrls(Array.isArray(data?.image_gallery) ? data.image_gallery : []);
                     setExistingProductVideos(Array.isArray(data?.product_videos) ? data.product_videos : []);
+                    setExistingSizeChartImages(
+                        Array.isArray(data?.size_chart_images)
+                            ? data.size_chart_images
+                            : (data?.size_chart_image ? [data.size_chart_image] : []),
+                    );
                     setColorVariantImageMap(
                         data?.color_variant_images && typeof data.color_variant_images === 'object'
                             ? data.color_variant_images
@@ -406,6 +432,11 @@ export default function EditProduct() {
                     setColorVariantVideoMap(
                         data?.color_variant_videos && typeof data.color_variant_videos === 'object'
                             ? data.color_variant_videos
+                            : {},
+                    );
+                    setColorVariantSizeChartMap(
+                        data?.color_variant_size_charts && typeof data.color_variant_size_charts === 'object'
+                            ? data.color_variant_size_charts
                             : {},
                     );
 
@@ -523,6 +554,21 @@ export default function EditProduct() {
             return next;
         });
 
+        setColorVariantSizeChartMap((previous) => {
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([colorKey, values]) => {
+                const colorId = resolveColorId(colorKey);
+                if (!colorId) {
+                    return;
+                }
+
+                next[colorId] = Array.isArray(values) ? values : [];
+            });
+
+            return next;
+        });
+
         setForm((previous) => ({
             ...previous,
             color: normalizeIdList(parseSelectionValues(previous.color), resolveColorId).join(', '),
@@ -612,6 +658,27 @@ export default function EditProduct() {
         });
     }, [productVideoPreviewItems]);
 
+    useEffect(() => {
+        const validValues = new Set(sizeChartPreviewItems.map((item) => item.value));
+
+        setColorVariantSizeChartMap((previous) => {
+            let changed = false;
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([color, values]) => {
+                const filtered = (Array.isArray(values) ? values : []).filter((value) => validValues.has(value));
+                if (filtered.length > 0) {
+                    next[color] = filtered;
+                }
+                if (filtered.length !== (Array.isArray(values) ? values.length : 0)) {
+                    changed = true;
+                }
+            });
+
+            return changed ? next : previous;
+        });
+    }, [sizeChartPreviewItems]);
+
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
         const nextValue = type === 'checkbox' ? checked : value;
@@ -690,6 +757,15 @@ export default function EditProduct() {
             return next;
         });
         setColorVariantVideoMap((previous) => {
+            if (!previous[colorToRemove]) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
+        setColorVariantSizeChartMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
             }
@@ -783,18 +859,31 @@ export default function EditProduct() {
     };
 
     const handleSizeChartImageChange = (event) => {
-        const [file] = Array.from(event.target.files || []);
-        setSizeChartImageFile(file instanceof File ? file : null);
+        const files = Array.from(event.target.files || []).filter((file) => file instanceof File);
+        setNewSizeChartImageFiles(files);
         setErrors((previous) => {
-            if (!previous.size_chart_image_file) return previous;
+            if (!previous.size_chart_files) return previous;
             const next = { ...previous };
-            delete next.size_chart_image_file;
+            delete next.size_chart_files;
             return next;
         });
     };
 
-    const handleRemoveSizeChartImage = () => {
-        setSizeChartImageFile(null);
+    const handleRemoveExistingSizeChartImage = (indexToRemove) => {
+        setExistingSizeChartImages((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
+    const handleRemoveNewSizeChartImage = (indexToRemove) => {
+        setNewSizeChartImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
+    const handleRemoveSizeChartImage = (item) => {
+        if (item?.source === 'existing') {
+            handleRemoveExistingSizeChartImage(item.index);
+            return;
+        }
+
+        handleRemoveNewSizeChartImage(item?.index ?? -1);
         setForm((previous) => ({
             ...previous,
             size_chart_image: '',
@@ -815,6 +904,18 @@ export default function EditProduct() {
 
     const handleColorVariantVideosChange = (color, selectedValues) => {
         setColorVariantVideoMap((previous) => {
+            const next = { ...(previous || {}) };
+            if (!Array.isArray(selectedValues) || selectedValues.length === 0) {
+                delete next[color];
+                return next;
+            }
+            next[color] = selectedValues;
+            return next;
+        });
+    };
+
+    const handleColorVariantSizeChartsChange = (color, selectedValues) => {
+        setColorVariantSizeChartMap((previous) => {
             const next = { ...(previous || {}) };
             if (!Array.isArray(selectedValues) || selectedValues.length === 0) {
                 delete next[color];
@@ -882,13 +983,16 @@ export default function EditProduct() {
                 variant_rows: variantRows,
                 color_variant_images: colorVariantImageMap,
                 color_variant_videos: colorVariantVideoMap,
+                color_variant_size_charts: colorVariantSizeChartMap,
                 galleryImageFiles: newGalleryImageFiles,
                 image_gallery_existing: existingGalleryUrls,
                 clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
                 productVideoFiles: newProductVideoFiles,
                 product_videos_existing: existingProductVideos,
                 clear_videos: existingProductVideos.length === 0 && newProductVideoFiles.length === 0,
-                sizeChartImageFile,
+                sizeChartImageFiles: newSizeChartImageFiles,
+                size_chart_images_existing: existingSizeChartImages,
+                clear_size_charts: existingSizeChartImages.length === 0 && newSizeChartImageFiles.length === 0,
             });
 
             toast.success('Product updated successfully', {
@@ -936,6 +1040,7 @@ export default function EditProduct() {
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
                     colorVariantVideoMap={colorVariantVideoMap}
+                    colorVariantSizeChartMap={colorVariantSizeChartMap}
                     galleryPreviewItems={galleryPreviewItems}
                     variantGroupName={location.state?.productGroup?.groupName || form.name || ''}
                     onColorSelectChange={setColorSelectValue}
@@ -948,6 +1053,7 @@ export default function EditProduct() {
                     onVariantRowChange={handleVariantRowChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}
+                    onColorVariantSizeChartsChange={handleColorVariantSizeChartsChange}
                     onGalleryFilesChange={handleGalleryFilesChange}
                     onRemoveExistingGalleryImage={handleRemoveExistingGalleryImage}
                     onRemoveNewGalleryImage={handleRemoveNewGalleryImage}
@@ -958,7 +1064,7 @@ export default function EditProduct() {
                     productVideoPreviewItems={productVideoPreviewItems}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
-                    sizeChartPreviewUrl={sizeChartPreviewUrl}
+                    sizeChartPreviewItems={sizeChartPreviewItems}
                     onChange={handleChange}
                     onSubmit={handleSubmit}
                     onCancel={() => navigate('/admin/products')}

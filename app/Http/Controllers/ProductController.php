@@ -37,10 +37,12 @@ class ProductController extends Controller
             'price',
             'cover_image',
             'size_chart_image',
+            'size_chart_images',
             'image_gallery',
             'color',
             'color_variant_images',
             'color_variant_videos',
+            'color_variant_size_charts',
             'size',
             'variant_rows',
             'available_products',
@@ -79,10 +81,12 @@ class ProductController extends Controller
             'price',
             'cover_image',
             'size_chart_image',
+            'size_chart_images',
             'image_gallery',
             'color',
             'color_variant_images',
             'color_variant_videos',
+            'color_variant_size_charts',
             'size',
             'stock',
             'variant_rows',
@@ -110,7 +114,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -128,8 +132,12 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'cover_image' => 'nullable|string',
             'size_chart_image' => 'nullable|string',
+            'size_chart_images' => 'nullable|array',
+            'size_chart_images.*' => 'nullable|string|max:2048',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'size_chart_files' => 'nullable|array',
+            'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery' => 'nullable|array',
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'product_videos' => 'nullable|array',
@@ -152,15 +160,16 @@ class ProductController extends Controller
             'color_variant_videos' => 'nullable|array',
             'color_variant_videos.*' => 'nullable|array',
             'color_variant_videos.*.*' => 'nullable|string|max:2048',
+            'color_variant_size_charts' => 'nullable|array',
+            'color_variant_size_charts.*' => 'nullable|array',
+            'color_variant_size_charts.*.*' => 'nullable|string|max:2048',
         ]);
 
         if ($request->hasFile('thumbnail_image')) {
             $validated['cover_image'] = $this->uploadThumbnailImage($request);
         }
 
-        if ($request->hasFile('size_chart_image_file')) {
-            $validated['size_chart_image'] = $this->uploadSizeChartImage($request);
-        }
+        $uploadedSizeChartResult = $this->uploadSizeChartImages($request);
 
         $uploadedGallery = [];
         $uploadedNameMap = [];
@@ -181,6 +190,13 @@ class ProductController extends Controller
         }
 
         $finalGallery = is_array($validated['image_gallery'] ?? null) ? $validated['image_gallery'] : [];
+        $manualSizeCharts = array_values(array_filter(
+            is_array($validated['size_chart_images'] ?? null) ? $validated['size_chart_images'] : [],
+            static fn ($path): bool => is_string($path) && trim($path) !== '',
+        ));
+        $finalSizeCharts = array_values(array_unique(array_merge($manualSizeCharts, $uploadedSizeChartResult['paths'])));
+        $validated['size_chart_images'] = $finalSizeCharts;
+        $validated['size_chart_image'] = $finalSizeCharts[0] ?? null;
         $validated['color'] = $this->normalizeColorSelectionValue($validated['color'] ?? '');
         $validated['size'] = $this->normalizeSizeSelectionValue($validated['size'] ?? '');
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
@@ -198,6 +214,11 @@ class ProductController extends Controller
             $validated['color_variant_videos'] ?? [],
             is_array($validated['product_videos'] ?? null) ? $validated['product_videos'] : [],
             $uploadedVideoNameMap,
+        );
+        $validated['color_variant_size_charts'] = $this->resolveColorVariantSizeCharts(
+            $validated['color_variant_size_charts'] ?? [],
+            $finalSizeCharts,
+            $uploadedSizeChartResult['name_map'],
         );
 
         $existingProductWithSku = Product::query()
@@ -225,8 +246,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
-        $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'image_gallery_existing', 'product_videos_existing']);
+        $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -244,8 +265,15 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'cover_image' => 'nullable|string',
             'size_chart_image' => 'nullable|string',
+            'size_chart_images' => 'nullable|array',
+            'size_chart_images.*' => 'nullable|string|max:2048',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'size_chart_files' => 'nullable|array',
+            'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
+            'size_chart_images_existing' => 'nullable|array',
+            'size_chart_images_existing.*' => 'nullable|string',
+            'clear_size_charts' => 'nullable|boolean',
             'image_gallery' => 'nullable|array',
             'image_gallery.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'image_gallery_existing' => 'nullable|array',
@@ -274,6 +302,9 @@ class ProductController extends Controller
             'color_variant_videos' => 'nullable|array',
             'color_variant_videos.*' => 'nullable|array',
             'color_variant_videos.*.*' => 'nullable|string|max:2048',
+            'color_variant_size_charts' => 'nullable|array',
+            'color_variant_size_charts.*' => 'nullable|array',
+            'color_variant_size_charts.*.*' => 'nullable|string|max:2048',
         ]);
 
         if ($request->hasFile('thumbnail_image')) {
@@ -282,14 +313,28 @@ class ProductController extends Controller
             unset($validated['cover_image']);
         }
 
-        if ($request->hasFile('size_chart_image_file')) {
-            $validated['size_chart_image'] = $this->uploadSizeChartImage($request, $product->size_chart_image);
-        } elseif ($request->has('size_chart_image') && trim((string) $request->input('size_chart_image')) === '') {
-            $this->deleteUploadedFile($product->size_chart_image);
-            $validated['size_chart_image'] = null;
-        } elseif (! isset($validated['size_chart_image'])) {
-            unset($validated['size_chart_image']);
-        }
+        $existingSizeCharts = $request->boolean('clear_size_charts')
+            ? []
+            : (is_array($request->input('size_chart_images_existing'))
+                ? $request->input('size_chart_images_existing')
+                : (is_array($product->size_chart_images ?? null)
+                    ? $product->size_chart_images
+                    : array_values(array_filter([$product->size_chart_image]))));
+
+        $uploadedSizeChartResult = $this->uploadSizeChartImages($request);
+        $manualSizeCharts = array_values(array_filter(
+            is_array($validated['size_chart_images'] ?? null) ? $validated['size_chart_images'] : [],
+            static fn ($path): bool => is_string($path) && trim($path) !== '',
+        ));
+
+        $finalSizeCharts = array_values(array_unique(array_merge(
+            is_array($existingSizeCharts) ? $existingSizeCharts : [],
+            $manualSizeCharts,
+            $uploadedSizeChartResult['paths'],
+        )));
+
+        $validated['size_chart_images'] = $finalSizeCharts;
+        $validated['size_chart_image'] = $finalSizeCharts[0] ?? null;
 
         $existingGallery = $request->boolean('clear_gallery')
             ? []
@@ -357,6 +402,11 @@ class ProductController extends Controller
                 : (is_array($product->product_videos ?? null) ? $product->product_videos : []),
             $uploadedVideoNameMap,
         );
+        $validated['color_variant_size_charts'] = $this->resolveColorVariantSizeCharts(
+            $validated['color_variant_size_charts'] ?? ($product->color_variant_size_charts ?? []),
+            $finalSizeCharts,
+            $uploadedSizeChartResult['name_map'],
+        );
         $validated['slug'] = $this->resolveProductSlug(
             $validated['slug'] ?? null,
             $validated['name'] ?? '',
@@ -365,6 +415,9 @@ class ProductController extends Controller
 
         $oldGallery = is_array($product->image_gallery ?? null) ? $product->image_gallery : [];
         $oldVideos = is_array($product->product_videos ?? null) ? $product->product_videos : [];
+        $oldSizeCharts = is_array($product->size_chart_images ?? null)
+            ? $product->size_chart_images
+            : array_values(array_filter([$product->size_chart_image]));
 
         $product->update($validated);
 
@@ -379,6 +432,13 @@ class ProductController extends Controller
             $this->deleteRemovedUploadedFiles(
                 $oldVideos,
                 is_array($validated['product_videos']) ? $validated['product_videos'] : [],
+            );
+        }
+
+        if (array_key_exists('size_chart_images', $validated)) {
+            $this->deleteRemovedUploadedFiles(
+                $oldSizeCharts,
+                is_array($validated['size_chart_images']) ? $validated['size_chart_images'] : [],
             );
         }
 
@@ -450,6 +510,48 @@ class ProductController extends Controller
         $this->deleteUploadedFile($existingPath);
 
         return $storedPath;
+    }
+
+    private function uploadSizeChartImages(Request $request): array
+    {
+        $uploaded = [];
+        $nameMap = [];
+
+        if ($request->hasFile('size_chart_files')) {
+            $files = $request->file('size_chart_files');
+
+            foreach ($files as $file) {
+                if (! $file) {
+                    continue;
+                }
+
+                $originalName = (string) $file->getClientOriginalName();
+                $publicPath = $this->storeUploadedFileToPublic($file, 'uploads/products/size-charts');
+                $uploaded[] = $publicPath;
+
+                if ($originalName !== '') {
+                    $nameMap[$originalName] = $publicPath;
+                }
+            }
+        }
+
+        if ($request->hasFile('size_chart_image_file')) {
+            $file = $request->file('size_chart_image_file');
+            if ($file) {
+                $originalName = (string) $file->getClientOriginalName();
+                $publicPath = $this->storeUploadedFileToPublic($file, 'uploads/products/size-charts');
+                $uploaded[] = $publicPath;
+
+                if ($originalName !== '') {
+                    $nameMap[$originalName] = $publicPath;
+                }
+            }
+        }
+
+        return [
+            'paths' => array_values(array_unique($uploaded)),
+            'name_map' => $nameMap,
+        ];
     }
 
     private function uploadImageGallery(Request $request): array
@@ -800,6 +902,77 @@ class ProductController extends Controller
                     $filename = basename($normalizedCandidate);
                     if ($filename !== '' && isset($finalVideosByBasename[$filename])) {
                         $paths[] = $finalVideosByBasename[$filename];
+                        continue 2;
+                    }
+                }
+            }
+
+            $paths = array_values(array_unique($paths));
+            if ($paths !== []) {
+                $resolved[$targetColorKey] = $paths;
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function resolveColorVariantSizeCharts($mapping, array $finalSizeCharts, array $uploadedNameMap = []): array
+    {
+        if (! is_array($mapping)) {
+            return [];
+        }
+
+        $finalByNormalized = [];
+        $finalByBasename = [];
+
+        foreach ($finalSizeCharts as $path) {
+            if (! is_string($path) || trim($path) === '') {
+                continue;
+            }
+
+            $normalized = $this->normalizePublicMediaPath($path);
+            if ($normalized !== null) {
+                $finalByNormalized[$normalized] = $normalized;
+                $finalByBasename[basename($normalized)] = $normalized;
+            }
+        }
+
+        $resolved = [];
+
+        foreach ($mapping as $color => $items) {
+            if (! is_array($items) || trim((string) $color) === '') {
+                continue;
+            }
+
+            $normalizedColor = $this->normalizeColorSelectionValue((string) $color);
+            $targetColorKey = $normalizedColor !== '' ? $normalizedColor : trim((string) $color);
+            $paths = [];
+
+            foreach ($items as $item) {
+                if (! is_string($item) || trim($item) === '') {
+                    continue;
+                }
+
+                $raw = trim($item);
+                $candidates = [$raw];
+                if (isset($uploadedNameMap[$raw])) {
+                    $candidates[] = (string) $uploadedNameMap[$raw];
+                }
+
+                foreach ($candidates as $candidate) {
+                    $normalizedCandidate = $this->normalizePublicMediaPath($candidate);
+                    if ($normalizedCandidate === null) {
+                        continue;
+                    }
+
+                    if (isset($finalByNormalized[$normalizedCandidate])) {
+                        $paths[] = $finalByNormalized[$normalizedCandidate];
+                        continue 2;
+                    }
+
+                    $filename = basename($normalizedCandidate);
+                    if ($filename !== '' && isset($finalByBasename[$filename])) {
+                        $paths[] = $finalByBasename[$filename];
                         continue 2;
                     }
                 }

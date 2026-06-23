@@ -541,10 +541,16 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                                 product_features: String(product?.product_features || product?.features || ''),
                                 product_composition: String(product?.product_composition || product?.composition || ''),
                                 size_chart_image: String(product?.size_chart_image || ''),
+                                size_chart_images: Array.isArray(product?.size_chart_images) ? product.size_chart_images : [],
+                                color_variant_size_charts:
+                                    product?.color_variant_size_charts && typeof product.color_variant_size_charts === 'object'
+                                        ? product.color_variant_size_charts
+                                        : {},
                                 colors: colors.map((color) => ({ label: color, value: color })),
                                 sizes,
                             }}
                             colorLookup={colorLookup}
+                            colorRecords={colorRecords}
                             selectedColor={selectedColor}
                             onSelectColor={handleSelectColor}
                             selectedSize={selectedSize}

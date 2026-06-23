@@ -30,6 +30,7 @@ export default function AddForm({
     variantRows = [],
     colorVariantImageMap = {},
     colorVariantVideoMap = {},
+    colorVariantSizeChartMap = {},
     onChange,
     onColorSelectChange,
     onSizeSelectChange,
@@ -41,6 +42,7 @@ export default function AddForm({
     onVariantRowChange,
     onColorVariantImagesChange,
     onColorVariantVideosChange,
+    onColorVariantSizeChartsChange,
     onGalleryFilesChange,
     onRemoveGalleryImage,
     onReorderGalleryImages,
@@ -48,7 +50,7 @@ export default function AddForm({
     onRemoveProductVideo,
     onSizeChartImageChange,
     onRemoveSizeChartImage,
-    sizeChartPreviewUrl = '',
+    sizeChartPreviewItems = [],
     galleryPreviewUrls = [],
     productVideoPreviewItems = [],
     onSubmit,
@@ -62,6 +64,9 @@ export default function AddForm({
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [activeColorForVideos, setActiveColorForVideos] = useState('');
     const [draftVideoValues, setDraftVideoValues] = useState([]);
+    const [isSizeChartModalOpen, setIsSizeChartModalOpen] = useState(false);
+    const [activeColorForSizeCharts, setActiveColorForSizeCharts] = useState('');
+    const [draftSizeChartValues, setDraftSizeChartValues] = useState([]);
     const [draggingColor, setDraggingColor] = useState('');
     const [draggingGalleryIndex, setDraggingGalleryIndex] = useState(-1);
 
@@ -163,6 +168,33 @@ export default function AddForm({
             onColorVariantVideosChange?.(activeColorForVideos, draftVideoValues);
         }
         closeColorVideosModal();
+    };
+
+    const openColorSizeChartsModal = (color) => {
+        setActiveColorForSizeCharts(color);
+        setDraftSizeChartValues(colorVariantSizeChartMap[color] || []);
+        setIsSizeChartModalOpen(true);
+    };
+
+    const closeColorSizeChartsModal = () => {
+        setIsSizeChartModalOpen(false);
+        setActiveColorForSizeCharts('');
+        setDraftSizeChartValues([]);
+    };
+
+    const toggleDraftSizeChart = (sizeChartValue) => {
+        setDraftSizeChartValues((previous) =>
+            previous.includes(sizeChartValue)
+                ? previous.filter((value) => value !== sizeChartValue)
+                : [...previous, sizeChartValue],
+        );
+    };
+
+    const saveColorSizeChartsSelection = () => {
+        if (activeColorForSizeCharts) {
+            onColorVariantSizeChartsChange?.(activeColorForSizeCharts, draftSizeChartValues);
+        }
+        closeColorSizeChartsModal();
     };
 
     const handleColorDragStart = (event, color) => {
@@ -366,31 +398,36 @@ export default function AddForm({
                                 <Label htmlFor="product-size-chart-upload">Size Chart Image</Label>
                                 <Input
                                     id="product-size-chart-upload"
-                                    name="size_chart_image_file"
+                                    name="size_chart_files"
                                     type="file"
                                     accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    multiple
                                     onChange={onSizeChartImageChange}
                                     disabled={isSubmitting}
                                 />
-                                <p className="text-xs text-muted-foreground">Upload one image used as the product size chart.</p>
-                                {errors.size_chart_image_file && <p className="text-xs text-destructive">{errors.size_chart_image_file[0]}</p>}
-                                {sizeChartPreviewUrl ? (
-                                    <div className="space-y-2 rounded-md border bg-muted/20 p-3">
-                                        <img
-                                            src={sizeChartPreviewUrl}
-                                            alt="Size chart preview"
-                                            className="h-48 w-full rounded bg-muted/30 object-contain"
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={onRemoveSizeChartImage}
-                                            disabled={isSubmitting}
-                                        >
-                                            Remove Size Chart
-                                        </Button>
+                                <p className="text-xs text-muted-foreground">Upload one or more size charts for this product.</p>
+                                {errors.size_chart_files && <p className="text-xs text-destructive">{errors.size_chart_files[0]}</p>}
+                                {sizeChartPreviewItems.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/20 p-3 md:grid-cols-3">
+                                        {sizeChartPreviewItems.map((item, index) => (
+                                            <div key={item.id} className="space-y-2">
+                                                <img
+                                                    src={item.url}
+                                                    alt={`Size chart preview ${index + 1}`}
+                                                    className="h-28 w-full rounded bg-muted/30 object-contain"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    onClick={() => onRemoveSizeChartImage?.(index)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    Remove Size Chart
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : null}
                             </div>
@@ -718,6 +755,7 @@ export default function AddForm({
                                                         <th className="py-2">Price</th>
                                                         <th className="py-2 pl-2">Color Images</th>
                                                         <th className="py-2 pl-2">Color Videos</th>
+                                                        <th className="py-2 pl-2">Size Charts</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -791,6 +829,27 @@ export default function AddForm({
                                                                     </div>
                                                                 ) : (
                                                                     <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} videos</p>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-2 pl-2 align-top">
+                                                                {firstColorRowKeys[row.key] ? (
+                                                                    <div className="space-y-1">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="w-full"
+                                                                            onClick={() => openColorSizeChartsModal(row.color)}
+                                                                            disabled={isSubmitting || sizeChartPreviewItems.length === 0}
+                                                                        >
+                                                                            Attach Size Charts
+                                                                        </Button>
+                                                                        <p className="text-[11px] text-muted-foreground">
+                                                                            {(colorVariantSizeChartMap[row.color] || []).length} selected for {getColorLabel(row.color)}
+                                                                        </p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} size charts</p>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -938,6 +997,69 @@ export default function AddForm({
                             </Button>
                             <Button type="button" onClick={saveColorVideosSelection}>
                                 Save Selection ({draftVideoValues.length})
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isSizeChartModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-4xl rounded-lg border bg-background shadow-lg">
+                        <div className="flex items-center justify-between border-b px-4 py-3">
+                            <h3 className="text-base font-semibold">Attach Size Charts to {getColorLabel(activeColorForSizeCharts)}</h3>
+                            <Button type="button" variant="ghost" size="sm" onClick={closeColorSizeChartsModal}>
+                                Close
+                            </Button>
+                        </div>
+
+                        <div className="max-h-[70vh] overflow-y-auto p-4">
+                            {sizeChartPreviewItems.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                                    {sizeChartPreviewItems.map((item) => {
+                                        const isSelected = draftSizeChartValues.includes(item.value);
+
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => toggleDraftSizeChart(item.value)}
+                                                className={`overflow-hidden rounded-md border text-left transition ${
+                                                    isSelected
+                                                        ? 'border-primary ring-2 ring-primary/30'
+                                                        : 'border-input hover:border-primary/60'
+                                                }`}
+                                            >
+                                                <img
+                                                    src={item.url}
+                                                    alt={item.name}
+                                                    className="h-40 w-full bg-muted/30 object-contain"
+                                                />
+                                                <div className="space-y-1 p-2">
+                                                    <p className="truncate text-xs font-medium" title={item.name}>
+                                                        {item.name}
+                                                    </p>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {isSelected ? 'Selected' : 'Click to select'}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                    Upload size charts first to attach them to this color variant.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                            <Button type="button" variant="outline" onClick={closeColorSizeChartsModal}>
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={saveColorSizeChartsSelection}>
+                                Save Selection ({draftSizeChartValues.length})
                             </Button>
                         </div>
                     </div>

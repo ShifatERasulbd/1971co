@@ -90,7 +90,7 @@ export default function AddProduct() {
     const [form, setForm] = useState(initialForm);
     const [galleryImageFiles, setGalleryImageFiles] = useState([]);
     const [productVideoFiles, setProductVideoFiles] = useState([]);
-    const [sizeChartImageFile, setSizeChartImageFile] = useState(null);
+    const [sizeChartImageFiles, setSizeChartImageFiles] = useState([]);
     const [colorSelectValue, setColorSelectValue] = useState('');
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
@@ -98,6 +98,7 @@ export default function AddProduct() {
     const [variantRows, setVariantRows] = useState([]);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
+    const [colorVariantSizeChartMap, setColorVariantSizeChartMap] = useState({});
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
     const [categoryOptions, setCategoryOptions] = useState([]);
@@ -118,13 +119,15 @@ export default function AddProduct() {
         [galleryImageFiles],
     );
 
-    const sizeChartPreviewUrl = useMemo(() => {
-        if (!(sizeChartImageFile instanceof File)) {
-            return '';
-        }
-
-        return URL.createObjectURL(sizeChartImageFile);
-    }, [sizeChartImageFile]);
+    const sizeChartPreviewItems = useMemo(
+        () => sizeChartImageFiles.map((file) => ({
+            id: `${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            value: file.name,
+            url: URL.createObjectURL(file),
+        })),
+        [sizeChartImageFiles],
+    );
 
     const productVideoPreviewItems = useMemo(
         () => productVideoFiles.map((file) => ({
@@ -193,11 +196,32 @@ export default function AddProduct() {
 
     useEffect(() => {
         return () => {
-            if (sizeChartPreviewUrl) {
-                URL.revokeObjectURL(sizeChartPreviewUrl);
-            }
+            sizeChartPreviewItems.forEach((item) => {
+                URL.revokeObjectURL(item.url);
+            });
         };
-    }, [sizeChartPreviewUrl]);
+    }, [sizeChartPreviewItems]);
+    useEffect(() => {
+        const validSizeChartValues = new Set(sizeChartPreviewItems.map((item) => item.value));
+
+        setColorVariantSizeChartMap((previous) => {
+            let changed = false;
+            const next = {};
+
+            Object.entries(previous).forEach(([color, values]) => {
+                const filtered = (Array.isArray(values) ? values : []).filter((value) => validSizeChartValues.has(value));
+                if (filtered.length > 0) {
+                    next[color] = filtered;
+                }
+
+                if (filtered.length !== (Array.isArray(values) ? values.length : 0)) {
+                    changed = true;
+                }
+            });
+
+            return changed ? next : previous;
+        });
+    }, [sizeChartPreviewItems]);
 
     useEffect(() => {
         return () => {
@@ -368,18 +392,29 @@ export default function AddProduct() {
     };
 
     const handleSizeChartImageChange = (event) => {
-        const [file] = Array.from(event.target.files || []);
-        setSizeChartImageFile(file instanceof File ? file : null);
+        const files = Array.from(event.target.files || []).filter((file) => file instanceof File);
+        setSizeChartImageFiles(files);
         setErrors((previous) => {
-            if (!previous.size_chart_image_file) return previous;
+            if (!previous.size_chart_files) return previous;
             const next = { ...previous };
-            delete next.size_chart_image_file;
+            delete next.size_chart_files;
             return next;
         });
     };
 
-    const handleRemoveSizeChartImage = () => {
-        setSizeChartImageFile(null);
+    const handleRemoveSizeChartImage = (indexToRemove) => {
+        setSizeChartImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+    const handleColorVariantSizeChartsChange = (color, selectedSizeChartIds) => {
+        setColorVariantSizeChartMap((previous) => {
+            const next = { ...previous };
+            if (!Array.isArray(selectedSizeChartIds) || selectedSizeChartIds.length === 0) {
+                delete next[color];
+                return next;
+            }
+            next[color] = selectedSizeChartIds;
+            return next;
+        });
     };
 
     const handleAddColor = () => {
@@ -403,6 +438,15 @@ export default function AddProduct() {
             return next;
         });
         setColorVariantVideoMap((previous) => {
+            if (!previous[colorToRemove]) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
+        setColorVariantSizeChartMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
             }
@@ -492,9 +536,11 @@ export default function AddProduct() {
                 variant_rows: variantRows,
                 color_variant_images: colorVariantImageMap,
                 color_variant_videos: colorVariantVideoMap,
+                color_variant_size_charts: colorVariantSizeChartMap,
                 galleryImageFiles,
                 productVideoFiles,
-                sizeChartImageFile,
+                sizeChartImageFiles,
+                clear_size_charts: sizeChartImageFiles.length === 0,
             });
             toast.success('Product created successfully', {
                 style: {
@@ -557,7 +603,7 @@ export default function AddProduct() {
                     productVideoPreviewItems={productVideoPreviewItems}
                     onSizeChartImageChange={handleSizeChartImageChange}
                     onRemoveSizeChartImage={handleRemoveSizeChartImage}
-                    sizeChartPreviewUrl={sizeChartPreviewUrl}
+                    sizeChartPreviewItems={sizeChartPreviewItems}
                     onSubmit={handleSubmit}
                     onCancel={() => navigate('/admin/products')}
                     isSubmitting={isSubmitting}

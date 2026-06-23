@@ -16,6 +16,7 @@ function buildProductPayload(data = {}) {
         additional_information: data.additional_information || '',
         cover_image: data.cover_image?.trim() || '',
         size_chart_image: data.size_chart_image?.trim() || '',
+        size_chart_images: Array.isArray(data.size_chart_images) ? data.size_chart_images : [],
         category_id: data.category_id ? Number(data.category_id) : null,
         subcategory_id: data.subcategory_id ? Number(data.subcategory_id) : null,
         grand_child_id: data.grand_child_id ? Number(data.grand_child_id) : null,
@@ -31,10 +32,16 @@ function buildProductPayload(data = {}) {
             data.color_variant_videos && typeof data.color_variant_videos === 'object'
                 ? data.color_variant_videos
                 : {},
+        color_variant_size_charts:
+            data.color_variant_size_charts && typeof data.color_variant_size_charts === 'object'
+                ? data.color_variant_size_charts
+                : {},
         image_gallery_existing: Array.isArray(data.image_gallery_existing) ? data.image_gallery_existing : [],
         clear_gallery: Boolean(data.clear_gallery),
         product_videos_existing: Array.isArray(data.product_videos_existing) ? data.product_videos_existing : [],
         clear_videos: Boolean(data.clear_videos),
+        size_chart_images_existing: Array.isArray(data.size_chart_images_existing) ? data.size_chart_images_existing : [],
+        clear_size_charts: Boolean(data.clear_size_charts),
     };
 }
 
@@ -65,6 +72,14 @@ function buildProductFormData(data = {}) {
         formData.append('size_chart_image_file', data.sizeChartImageFile);
     }
 
+    if (Array.isArray(data.sizeChartImageFiles)) {
+        data.sizeChartImageFiles.forEach((file) => {
+            if (file instanceof File) {
+                formData.append('size_chart_files[]', file);
+            }
+        });
+    }
+
     if (Array.isArray(data.galleryImageFiles)) {
         data.galleryImageFiles.forEach((file) => {
             if (file instanceof File) {
@@ -87,9 +102,10 @@ function buildProductFormData(data = {}) {
 function hasUploadFiles(data = {}) {
     const hasThumbnail = data.thumbnailImageFile instanceof File;
     const hasSizeChart = data.sizeChartImageFile instanceof File;
+    const hasMultiSizeCharts = Array.isArray(data.sizeChartImageFiles) && data.sizeChartImageFiles.some((file) => file instanceof File);
     const hasGallery = Array.isArray(data.galleryImageFiles) && data.galleryImageFiles.some((file) => file instanceof File);
     const hasVideos = Array.isArray(data.productVideoFiles) && data.productVideoFiles.some((file) => file instanceof File);
-    return hasThumbnail || hasSizeChart || hasGallery || hasVideos;
+    return hasThumbnail || hasSizeChart || hasMultiSizeCharts || hasGallery || hasVideos;
 }
 
 export async function fetchProducts() {

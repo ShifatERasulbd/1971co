@@ -53,6 +53,7 @@ function toOptionalImageUrl(path) {
 export default function SingleProductDetailsPanel({
     product,
     colorLookup,
+    colorRecords = [],
     selectedColor,
     onSelectColor,
     selectedSize,
@@ -73,7 +74,58 @@ export default function SingleProductDetailsPanel({
         ? product.sizes
         : ['One Size'];
 
-    const sizeChartImage = useMemo(() => toOptionalImageUrl(product?.size_chart_image), [product?.size_chart_image]);
+    const resolvedSizeChartImages = useMemo(() => {
+        const mapping = product?.color_variant_size_charts && typeof product.color_variant_size_charts === 'object'
+            ? product.color_variant_size_charts
+            : {};
+        const selected = String(selectedColor || '').trim();
+
+        const selectedRecordByName = colorRecords.find(
+            (record) => String(record?.name || '').trim().toLowerCase() === selected.toLowerCase(),
+        );
+        const selectedRecordById = colorRecords.find(
+            (record) => String(record?.id || '').trim() === selected,
+        );
+        const matchedRecord = selectedRecordById || selectedRecordByName;
+
+        const keys = [
+            selected,
+            selected.toLowerCase(),
+            String(matchedRecord?.id || '').trim(),
+            String(matchedRecord?.name || '').trim(),
+            String(matchedRecord?.name || '').trim().toLowerCase(),
+        ].filter(Boolean);
+
+        const mappedItems = [];
+        for (const key of keys) {
+            const direct = mapping[key];
+            if (Array.isArray(direct) && direct.length > 0) {
+                mappedItems.push(...direct);
+                continue;
+            }
+
+            const ciKey = Object.keys(mapping).find((itemKey) => itemKey.toLowerCase() === key.toLowerCase());
+            if (ciKey && Array.isArray(mapping[ciKey]) && mapping[ciKey].length > 0) {
+                mappedItems.push(...mapping[ciKey]);
+            }
+        }
+
+        const normalizedMapped = [...new Set(mappedItems.map((item) => toOptionalImageUrl(item)).filter(Boolean))];
+        if (normalizedMapped.length > 0) {
+            return normalizedMapped;
+        }
+
+        const fallbackList = Array.isArray(product?.size_chart_images)
+            ? product.size_chart_images
+            : [];
+        const normalizedFallback = [...new Set(fallbackList.map((item) => toOptionalImageUrl(item)).filter(Boolean))];
+        if (normalizedFallback.length > 0) {
+            return normalizedFallback;
+        }
+
+        const singleFallback = toOptionalImageUrl(product?.size_chart_image);
+        return singleFallback ? [singleFallback] : [];
+    }, [product?.size_chart_image, product?.size_chart_images, product?.color_variant_size_charts, selectedColor, colorRecords]);
 
     const accordionItems = useMemo(() => {
         return [
@@ -176,16 +228,16 @@ export default function SingleProductDetailsPanel({
                     <button
                         type="button"
                         onClick={() => {
-                            if (sizeChartImage) {
+                            if (resolvedSizeChartImages.length > 0) {
                                 setIsSizeChartModalOpen(true);
                             }
                         }}
                         className={`mt-2.5 inline-flex items-center gap-2 text-[1rem] font-medium ${
-                            sizeChartImage
+                            resolvedSizeChartImages.length > 0
                                 ? 'cursor-pointer text-zinc-800 hover:text-zinc-900'
                                 : 'cursor-not-allowed text-zinc-400'
                         }`}
-                        disabled={!sizeChartImage}
+                        disabled={resolvedSizeChartImages.length === 0}
                     >
                         SIZE Chart <RulerIcon />
                     </button>
@@ -284,13 +336,18 @@ export default function SingleProductDetailsPanel({
 
                         <h3 className="mb-3 pr-10 text-[1.05rem] font-semibold text-zinc-900">Size Chart</h3>
 
-                        {sizeChartImage ? (
+                        {resolvedSizeChartImages.length > 0 ? (
                             <div className="max-h-[80vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:p-3">
-                                <img
-                                    src={sizeChartImage}
-                                    alt="Product size chart"
-                                    className="mx-auto block h-auto max-h-[74vh] w-auto max-w-full object-contain"
-                                />
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {resolvedSizeChartImages.map((image, index) => (
+                                        <img
+                                            key={`${image}-${index}`}
+                                            src={image}
+                                            alt={`Product size chart ${index + 1}`}
+                                            className="mx-auto block h-auto max-h-[74vh] w-auto max-w-full object-contain"
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         ) : (
                             <p className="text-sm text-zinc-500">No size chart available for this product.</p>

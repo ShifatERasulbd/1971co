@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ProductZoomModal from './ProductZoomModal'; // Import your new modal component
+import ProductZoomModal from './ProductZoomModal'; 
 
 export default function SingleProductMediaGallery({
     images,
@@ -21,6 +21,7 @@ export default function SingleProductMediaGallery({
     if (!primaryVideo && !activeImage) return null;
 
     const handleMouseMove = (e, hoveredImage, index) => {
+        // Target the button itself to isolate correct hover percentages
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - left;
         const y = e.clientY - top;
@@ -43,15 +44,20 @@ export default function SingleProductMediaGallery({
         setHoveredIndex(null);
     };
 
-    // Triggered when a product thumbnail is clicked
     const handleImageClick = (image) => {
-        onSelectImage(image); // Maintains your original active state handler
-        setModalImage(image);  // Assign target asset to modal
-        setIsModalOpen(true);  // Pop up the viewport overlay
+        onSelectImage(image);
+        setModalImage(image);  
+        setIsModalOpen(true);  
     };
 
+    // Determine position variables based on what index is currently hovered
+    const isRightColumnHovered = hoveredIndex !== null && hoveredIndex % 2 !== 0;
+
     return (
-        <div className="w-full">
+        /* CRITICAL FIX: The outer container is 'relative' so the zoom layout window 
+           can accurately overlay across the whole grid layout map.
+        */
+        <div className="relative w-full">
             <div className="grid grid-cols-2 gap-3">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
@@ -72,14 +78,12 @@ export default function SingleProductMediaGallery({
                 {/* Product Images Loop */}
                 {safeImages.slice(0, 6).map((image, index) => {
                     const isCurrentlyActive = activeImage === image;
-                    const isRightColumn = index % 2 !== 0;
-                    const sidePositionClass = isRightColumn ? 'right-[104%]' : 'left-[104%]';
 
                     return (
-                        <div key={`${image}-${index}`} className="relative">
+                        <div key={`${image}-${index}`}>
                             <button
                                 type="button"
-                                onClick={() => handleImageClick(image)} // Dynamic click router
+                                onClick={() => handleImageClick(image)}
                                 onMouseMove={(e) => handleMouseMove(e, image, index)}
                                 onMouseLeave={handleMouseLeave}
                                 className={`w-full overflow-hidden border transition-all duration-200 cursor-zoom-in ${
@@ -94,18 +98,25 @@ export default function SingleProductMediaGallery({
                                     className="aspect-[4/5] w-full object-cover object-center pointer-events-none"
                                 />
                             </button>
-
-                            {/* Hovering side-by-side zoom window panel */}
-                            {zoomStyle.display !== 'none' && hoveredIndex === index && (
-                                <div
-                                    style={zoomStyle}
-                                    className={`absolute top-0 z-50 hidden md:block w-full h-full border border-zinc-200 bg-white shadow-xl rounded-sm pointer-events-none ${sidePositionClass}`}
-                                />
-                            )}
                         </div>
                     );
                 })}
             </div>
+
+            {/* FIXED OVERLAY ZOOM WINDOW:
+                - Removed from individual loops and positioned globally relative to the grid wrapper.
+                - Calculates width using `w-[calc(50%-6px)]` so it matches a single column exactly.
+                - If browsing the right image, it snaps to the left margin (`left-0`).
+                - If browsing the left image, it snaps to the right margin (`right-0`).
+            */}
+            {zoomStyle.display !== 'none' && hoveredIndex !== null && (
+                <div
+                    style={zoomStyle}
+                    className={`absolute top-0 z-50 hidden md:block w-[calc(50%-6px)] h-full border border-zinc-900 bg-white shadow-xl rounded-sm pointer-events-none ${
+                        isRightColumnHovered ? 'left-0' : 'right-0'
+                    }`}
+                />
+            )}
 
             {/* Connect and Mount Modal Viewport Component */}
             <ProductZoomModal 
