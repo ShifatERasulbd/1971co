@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -45,6 +45,19 @@ function pickVariantNumberValue(existingValue, fallbackValue) {
 
 function buildVariantKey(color, size) {
     return `${String(color || '').trim()}__${String(size || '').trim()}`;
+}
+
+function parseSelectionValues(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item ?? '').trim())
+            .filter(Boolean);
+    }
+
+    return String(value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
 }
 
 function reorderItems(items, fromIndex, toIndex) {
@@ -95,6 +108,114 @@ export default function EditProduct() {
     const [loadError, setLoadError] = useState('');
     const [variantRows, setVariantRows] = useState([]);
     const isGroupEdit = Boolean(location.state?.productGroup?.isGroupEdit && variantRows.length > 0);
+
+    const colorLookup = useMemo(() => {
+        const ids = new Set();
+        const byName = {};
+
+        colorOptions.forEach((color) => {
+            const id = String(color?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            ids.add(id);
+            const nameKey = String(color?.name ?? '').trim().toLowerCase();
+            if (nameKey) {
+                byName[nameKey] = id;
+            }
+        });
+
+        return { ids, byName };
+    }, [colorOptions]);
+
+    const sizeLookup = useMemo(() => {
+        const ids = new Set();
+        const byName = {};
+
+        sizeOptions.forEach((size) => {
+            const id = String(size?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            ids.add(id);
+            const sizeKey = String(size?.size ?? '').trim().toLowerCase();
+            if (sizeKey) {
+                byName[sizeKey] = id;
+            }
+        });
+
+        return { ids, byName };
+    }, [sizeOptions]);
+
+    const colorLabelById = useMemo(() => {
+        const map = {};
+        colorOptions.forEach((color) => {
+            const id = String(color?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            map[id] = String(color?.name || id).trim();
+        });
+        return map;
+    }, [colorOptions]);
+
+    const sizeLabelById = useMemo(() => {
+        const map = {};
+        sizeOptions.forEach((size) => {
+            const id = String(size?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            map[id] = String(size?.size || id).trim();
+        });
+        return map;
+    }, [sizeOptions]);
+
+    const resolveColorId = useCallback((value) => {
+        const token = String(value ?? '').trim();
+        if (!token) {
+            return '';
+        }
+
+        if (colorLookup.ids.has(token)) {
+            return token;
+        }
+
+        return colorLookup.byName[token.toLowerCase()] || token;
+    }, [colorLookup]);
+
+    const resolveSizeId = useCallback((value) => {
+        const token = String(value ?? '').trim();
+        if (!token) {
+            return '';
+        }
+
+        if (sizeLookup.ids.has(token)) {
+            return token;
+        }
+
+        return sizeLookup.byName[token.toLowerCase()] || token;
+    }, [sizeLookup]);
+
+    const normalizeIdList = useCallback((values, resolver) => {
+        const seen = new Set();
+
+        return values
+            .map((item) => resolver(item))
+            .map((item) => String(item || '').trim())
+            .filter((item) => {
+                if (!item || seen.has(item)) {
+                    return false;
+                }
+
+                seen.add(item);
+                return true;
+            });
+    }, []);
 
     const galleryPreviewItems = useMemo(() => {
         const existing = existingGalleryUrls.map((url, index) => {
@@ -293,8 +414,8 @@ export default function EditProduct() {
                             id: row?.id,
                             key: row?.key || buildVariantKey(row?.color || '', row?.size || '') || `variant-${index}`,
                             sku: row?.sku || '',
-                            color: row?.color || '',
-                            size: row?.size || '',
+                            color: String(row?.color || '').trim(),
+                            size: String(row?.size || '').trim(),
                             stock: row?.stock ?? '',
                             price: row?.price ?? '',
                         }));
@@ -307,14 +428,8 @@ export default function EditProduct() {
                         setSelectedColors([...new Set(fallbackVariants.map((row) => row.color).filter(Boolean))]);
                         setSelectedSizes([...new Set(fallbackVariants.map((row) => row.size).filter(Boolean))]);
                     } else {
-                        const fallbackColorValues = String(data?.color || '')
-                            .split(',')
-                            .map((item) => item.trim())
-                            .filter(Boolean);
-                        const fallbackSizeValues = String(data?.size || '')
-                            .split(',')
-                            .map((item) => item.trim())
-                            .filter(Boolean);
+                        const fallbackColorValues = parseSelectionValues(data?.color);
+                        const fallbackSizeValues = parseSelectionValues(data?.size);
 
                         const singleRow = {
                             key: buildVariantKey(data?.color || '', data?.size || '') || `${data?.color || 'color'}__${data?.size || 'size'}__0`,
@@ -357,6 +472,71 @@ export default function EditProduct() {
     }, [id]);
 
     useEffect(() => {
+        if (colorOptions.length === 0 && sizeOptions.length === 0) {
+            return;
+        }
+
+        setSelectedColors((previous) => normalizeIdList(previous, resolveColorId));
+        setSelectedSizes((previous) => normalizeIdList(previous, resolveSizeId));
+
+        setVariantRows((previous) =>
+            previous.map((row, index) => {
+                const color = resolveColorId(row?.color);
+                const size = resolveSizeId(row?.size);
+
+                return {
+                    ...row,
+                    color,
+                    size,
+                    key: row?.key || buildVariantKey(color, size) || `variant-${index}`,
+                };
+            }),
+        );
+
+        setColorVariantImageMap((previous) => {
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([colorKey, values]) => {
+                const colorId = resolveColorId(colorKey);
+                if (!colorId) {
+                    return;
+                }
+
+                next[colorId] = Array.isArray(values) ? values : [];
+            });
+
+            return next;
+        });
+
+        setColorVariantVideoMap((previous) => {
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([colorKey, values]) => {
+                const colorId = resolveColorId(colorKey);
+                if (!colorId) {
+                    return;
+                }
+
+                next[colorId] = Array.isArray(values) ? values : [];
+            });
+
+            return next;
+        });
+
+        setForm((previous) => ({
+            ...previous,
+            color: normalizeIdList(parseSelectionValues(previous.color), resolveColorId).join(', '),
+            size: normalizeIdList(parseSelectionValues(previous.size), resolveSizeId).join(', '),
+        }));
+    }, [
+        colorOptions,
+        sizeOptions,
+        resolveColorId,
+        resolveSizeId,
+        normalizeIdList,
+    ]);
+
+    useEffect(() => {
         if (selectedColors.length === 0 || selectedSizes.length === 0) {
             setVariantRows([]);
             return;
@@ -370,7 +550,9 @@ export default function EditProduct() {
                 selectedSizes.forEach((size) => {
                     const key = buildVariantKey(color, size);
                     const existing = previousByKey[key];
-                    const defaultSkuSuffix = `${color}-${size}`.toUpperCase().replace(/\s+/g, '-');
+                    const colorSkuToken = colorLabelById[String(color)] || color;
+                    const sizeSkuToken = sizeLabelById[String(size)] || size;
+                    const defaultSkuSuffix = `${colorSkuToken}-${sizeSkuToken}`.toUpperCase().replace(/\s+/g, '-');
 
                     next.push({
                         key,
@@ -386,7 +568,7 @@ export default function EditProduct() {
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit, colorLabelById, sizeLabelById]);
 
     useEffect(() => {
         const validValues = new Set(galleryPreviewItems.map((item) => item.value));

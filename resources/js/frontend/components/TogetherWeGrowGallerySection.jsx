@@ -62,18 +62,24 @@ function formatDate(isoDate) {
 }
 
 export default function TogetherWeGrowGallerySection({ sectionData }) {
+    const items = Array.isArray(sectionData?.galleryItems) && sectionData.galleryItems.length > 0
+        ? sectionData.galleryItems
+        : galleryItems;
+
     const [activeIndex, setActiveIndex] = useState(0);
 
     const activeItem = useMemo(() => {
-        return galleryItems[activeIndex] || galleryItems[0];
-    }, [activeIndex]);
+        return items[activeIndex] || items[0];
+    }, [activeIndex, items]);
+
+    const safeActiveItem = activeItem || items[0] || galleryItems[0];
 
     function showPrevious() {
-        setActiveIndex((previous) => (previous === 0 ? galleryItems.length - 1 : previous - 1));
+        setActiveIndex((previous) => (previous === 0 ? items.length - 1 : previous - 1));
     }
 
     function showNext() {
-        setActiveIndex((previous) => (previous === galleryItems.length - 1 ? 0 : previous + 1));
+        setActiveIndex((previous) => (previous === items.length - 1 ? 0 : previous + 1));
     }
 
     return (
@@ -96,8 +102,8 @@ export default function TogetherWeGrowGallerySection({ sectionData }) {
 
                 <div className="relative mt-4 overflow-hidden bg-zinc-100">
                     <img
-                        src={activeItem.src}
-                        alt={activeItem.alt}
+                        src={safeActiveItem.src}
+                        alt={safeActiveItem.alt || 'Community gallery image'}
                         className="h-[340px] w-full object-contain sm:h-[430px] lg:h-[560px] xl:h-[620px]"
                     />
 
@@ -106,10 +112,10 @@ export default function TogetherWeGrowGallerySection({ sectionData }) {
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-3 sm:p-4">
                         <div>
                             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/85">
-                                {activeItem.label}
+                                {safeActiveItem.label || 'Community'}
                             </p>
                             <p className="mt-1 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-white/75">
-                                {formatDate(activeItem.date)}
+                                {formatDate(safeActiveItem.date || '')}
                             </p>
                         </div>
 
@@ -135,18 +141,18 @@ export default function TogetherWeGrowGallerySection({ sectionData }) {
                 </div>
 
                 <div className="mt-3 grid grid-cols-6 gap-2.5">
-                    {galleryItems.map((item, index) => (
+                    {items.map((item, index) => (
                         <button
                             type="button"
-                            key={item.id}
+                            key={item.id || `gallery-item-${index}`}
                             onClick={() => setActiveIndex(index)}
                             className={`relative overflow-hidden border ${index === activeIndex ? 'border-zinc-950' : 'border-zinc-200 opacity-75'} transition-all hover:opacity-100`}
-                            aria-label={`Show ${item.label} photo`}
+                            aria-label={`Show ${item.label || 'gallery'} photo`}
                         >
                             <img
                                 src={item.src}
-                                alt={item.alt}
-                                className="h-[58px] w-full object-cover sm:h-[72px]"
+                                alt={item.alt || 'Community gallery thumbnail'}
+                                className="h-[58px] w-full bg-white object-contain sm:h-[72px]"
                             />
                         </button>
                     ))}

@@ -11,6 +11,14 @@ Route::get('/shop', function () {
     return view('home');
 });
 
+Route::get('/best-sellers', function () {
+    return view('home');
+});
+
+Route::get('/collection/{slug}', function () {
+    return view('home');
+});
+
 Route::get('/singleProduct', function () {
     return view('home');
 });
@@ -29,6 +37,10 @@ Route::get('/together-we-grow', function () {
 });
 
 Route::get('/checkout', function () {
+    return view('home');
+});
+
+Route::get('/order-confirmation', function () {
     return view('home');
 });
 

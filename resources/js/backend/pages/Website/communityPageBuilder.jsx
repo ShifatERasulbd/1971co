@@ -37,6 +37,60 @@ export default function CommunityPageBuilder() {
         setPageTitle('Community Page Builder');
     }, [setPageTitle]);
 
+    useEffect(() => {
+        fetch('/api/community-page-sections', {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Failed to load community page sections');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                const incoming = Array.isArray(data) ? data : [];
+                const mapped = incoming.map((section) => ({
+                    ...section,
+                    contentTitle: section.contentTitle ?? section.content_title ?? '',
+                    sectionDescription: section.sectionDescription ?? section.section_description ?? '',
+                    buttonText: section.buttonText ?? section.button_text ?? '',
+                    buttonUrl: section.buttonUrl ?? section.button_url ?? '',
+                    featureImage: section.featureImage ?? section.feature_image ?? '',
+                    featureItems: Array.isArray(section.featureItems)
+                        ? section.featureItems
+                        : Array.isArray(section.feature_items)
+                          ? section.feature_items
+                          : [],
+                                        communityImage: section.communityImage ?? section.community_image ?? '',
+                                        communityItems: Array.isArray(section.communityItems)
+                                                ? section.communityItems
+                                                : Array.isArray(section.community_items)
+                                                    ? section.community_items
+                                                    : [],
+                                        galleryItems: Array.isArray(section.galleryItems)
+                                                ? section.galleryItems
+                                                : Array.isArray(section.gallery_items)
+                                                    ? section.gallery_items
+                                                    : [],
+                }));
+
+                const mappedByKey = new Map(mapped.map((section) => [section.key, section]));
+                const merged = communitySections.map((defaultSection) => ({
+                    ...defaultSection,
+                    ...(mappedByKey.get(defaultSection.key) || {}),
+                }));
+
+                setSections(merged);
+            })
+            .catch(() => {
+                // Keep defaults when API fetch fails.
+            });
+    }, []);
+
     const publishSectionsLayout = () => {
         const target = iframeRef.current?.contentWindow;
         if (!target) {

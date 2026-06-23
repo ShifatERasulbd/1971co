@@ -1,8 +1,6 @@
 import {
     Gauge,
     Palette,
-    Sparkles,
-    Blocks,
     LayoutList,
     Package,
     LogOut,
@@ -35,8 +33,6 @@ const websiteItems = [
     { title: 'Home Page', icon: LayoutList, path: '/admin/website/home-page' },
     { title: 'About Page', icon: LayoutList, path: '/admin/website/about-page' },
     { title: 'Community Page', icon: LayoutList, path: '/admin/website/community-page' },
-    { title: 'Hero', icon: Sparkles, path: '/admin/hero' },
-    { title: 'Features', icon: Blocks, path: '/admin/features' },
     { title: 'Categories', icon: LayoutList, path: '/admin/category' },
     { title: 'SubCategories', icon: LayoutList, path: '/admin/sub-category' },
     { title: 'GrandChilds', icon: LayoutList, path: '/admin/grand-child' },

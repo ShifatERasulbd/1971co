@@ -29,10 +29,6 @@ function lazyWithRetry(importer, key) {
 }
 
 const Dashboard = lazyWithRetry(() => import('@/pages/dashboard'), 'dashboard');
-// Hero Management
-const Heroes    = lazyWithRetry(() => import('@/pages/Hero/hero'), 'hero');
-const AddHero   = lazyWithRetry(() => import('@/pages/Hero/addHero'), 'add-hero');
-const EditHero  = lazyWithRetry(() => import('@/pages/Hero/editHero'), 'edit-hero');
 
 // size Management
 const Size  = lazyWithRetry(() => import('@/pages/Size/size'), 'size');
@@ -43,11 +39,6 @@ const EditSize  = lazyWithRetry(() => import('@/pages/Size/editSize'), 'edit-siz
 const Color = lazyWithRetry(() => import('@/pages/Color/color'), 'color');
 const AddColor = lazyWithRetry(() => import('@/pages/Color/addColor'), 'add-color');
 const EditColor = lazyWithRetry(() => import('@/pages/Color/editColor'), 'edit-color');
-
-// Features Management
-const Features = lazyWithRetry(()=> import ('@/pages/Features/features'), 'features');
-const AddFeature = lazyWithRetry(() => import('@/pages/Features/addFeature'), 'add-feature');
-const EditFeature = lazyWithRetry(() => import('@/pages/Features/editFeature'), 'edit-feature');
 
 // Website Management
 const HomePageBuilder = lazyWithRetry(() => import('@/pages/Website/homePageBuilder'), 'website-home-page-builder');
@@ -104,10 +95,6 @@ export default function App() {
                         {/* user Managemnent */}
                         <Route path="/admin" element={<AppLayout />}>
                             <Route path="dashboard" element={<Dashboard />} />
-                            {/* Hero  */}
-                            <Route path="hero" element={<Heroes />} />
-                            <Route path="hero/add" element={<AddHero />} />
-                            <Route path="hero/:id/edit" element={<EditHero />} />
 
                             {/* Size Management */}
                             <Route path="size" element={<Size />} />
@@ -118,11 +105,6 @@ export default function App() {
                             <Route path="color" element={<Color />} />
                             <Route path="color/add" element={<AddColor />} />
                             <Route path="color/:id/edit" element={<EditColor />} />
-
-                            {/* Features Management */}
-                            <Route path="features" element={<Features />} />
-                            <Route path="features/add" element={<AddFeature />} />
-                            <Route path="features/:id/edit" element={<EditFeature />} />
 
                             {/* Website Management */}
                             <Route path="website/home-page" element={<HomePageBuilder />} />

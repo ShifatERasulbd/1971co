@@ -1,82 +1,59 @@
 import { requestJson } from '@/lib/apiClient';
 
-function buildHeroFormData(data = {}, asUpdate = false) {
+function buildHeroFormData(payload = {}) {
     const formData = new FormData();
 
-    function appendIfDefined(key) {
-        if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== undefined) {
-            if (key === 'button_enabled') {
-                formData.append(key, data[key] ? '1' : '0');
-                return;
-            }
+    formData.append('title', payload.title || '');
+    formData.append('description', payload.description || '');
+    formData.append('title_display_mode', payload.title_display_mode || 'double');
+    formData.append('image_url', payload.image_url || '');
+    formData.append('video_url', payload.video_url || '');
+    formData.append('title_font_size', String(payload.title_font_size ?? ''));
+    formData.append('title_font_family', payload.title_font_family || '');
+    formData.append('description_font_size', String(payload.description_font_size ?? ''));
+    formData.append('description_font_family', payload.description_font_family || '');
+    formData.append('text_offset_x', String(payload.text_offset_x ?? 0));
+    formData.append('text_offset_y', String(payload.text_offset_y ?? 0));
+    formData.append('title_offset_x', String(payload.title_offset_x ?? 0));
+    formData.append('title_offset_y', String(payload.title_offset_y ?? 0));
+    formData.append('description_offset_x', String(payload.description_offset_x ?? 0));
+    formData.append('description_offset_y', String(payload.description_offset_y ?? 0));
+    formData.append('button_offset_x', String(payload.button_offset_x ?? 0));
+    formData.append('button_offset_y', String(payload.button_offset_y ?? 0));
+    formData.append('button_enabled', payload.button_enabled ? '1' : '0');
+    formData.append('button_url', payload.button_url || '');
 
-            formData.append(key, data[key] ?? '');
-        }
+    if (payload.image instanceof File) {
+        formData.append('image_file', payload.image);
     }
 
-    formData.append('title', data.title || '');
-    formData.append('description', data.description || '');
-    formData.append('title_display_mode', data.title_display_mode || '');
-    formData.append('title_font_size', data.title_font_size || '');
-    formData.append('title_font_family', data.title_font_family || '');
-    formData.append('description_font_size', data.description_font_size || '');
-    formData.append('description_font_family', data.description_font_family || '');
-    formData.append('image_url', data.image_url || '');
-    formData.append('video_url', data.video_url || '');
-    appendIfDefined('text_offset_x');
-    appendIfDefined('text_offset_y');
-    appendIfDefined('title_offset_x');
-    appendIfDefined('title_offset_y');
-    appendIfDefined('description_offset_x');
-    appendIfDefined('description_offset_y');
-    appendIfDefined('button_offset_x');
-    appendIfDefined('button_offset_y');
-    appendIfDefined('button_enabled');
-    appendIfDefined('button_url');
-
-    if (data.image instanceof File) {
-        formData.append('image', data.image);
-    }
-
-    if (data.video instanceof File) {
-        formData.append('video', data.video);
-    }
-
-    if (asUpdate) {
-        formData.append('_method', 'PUT');
+    if (payload.video instanceof File) {
+        formData.append('video_file', payload.video);
     }
 
     return formData;
 }
 
 export async function fetchHeroes() {
-    const payload = await requestJson('/api/heroes');
-    return Array.isArray(payload) ? payload : [];
+    return requestJson('/api/heroes');
 }
 
-export async function fetchHero(id) {
-    return requestJson(`/api/heroes/${id}`);
-}
-
-export async function createHero(data) {
+export async function createHero(payload) {
     return requestJson('/api/heroes', {
         needsCsrf: true,
         method: 'POST',
-        body: buildHeroFormData(data),
+        body: buildHeroFormData(payload),
     });
 }
 
-export async function updateHero(id, data) {
+export async function updateHero(id, payload) {
     return requestJson(`/api/heroes/${id}`, {
         needsCsrf: true,
         method: 'POST',
-        body: buildHeroFormData(data, true),
-    });
-}
-
-export async function deleteHero(id) {
-    return requestJson(`/api/heroes/${id}`, {
-        needsCsrf: true,
-        method: 'DELETE',
+        body: (() => {
+            const formData = buildHeroFormData(payload);
+            formData.append('_method', 'PUT');
+            return formData;
+        })(),
     });
 }

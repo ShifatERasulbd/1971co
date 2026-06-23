@@ -14,29 +14,135 @@ const PRODUCTS_PER_PAGE = 12;
 
 function parseSizeList(value) {
     if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
+        return value
+            .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
     }
 
-    if (typeof value === 'string') {
-        return value
+    if (typeof value === 'string' && value.trim()) {
+        const raw = value.trim();
+
+        if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('"') && raw.endsWith('"'))) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+
+                if (typeof parsed === 'string') {
+                    return parsed
+                        .split(',')
+                        .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+            } catch {
+                // Fall back to CSV parsing.
+            }
+        }
+
+        return raw
             .split(',')
-            .map((item) => item.trim())
+            .map((item) => item.trim().replace(/^"+|"+$/g, ''))
             .filter(Boolean);
     }
 
     return [];
 }
 
-function extractSizes(product) {
+function normalizeSizeId(value, sizeNameLookup = {}, sizeIdByNameLookup = {}) {
+    const token = String(value || '').trim().replace(/^"+|"+$/g, '');
+    if (!token) {
+        return '';
+    }
+
+    if (sizeNameLookup[token]) {
+        return token;
+    }
+
+    const byName = sizeIdByNameLookup[token.toLowerCase()];
+    if (byName) {
+        return byName;
+    }
+
+    const numeric = Number(token);
+    if (Number.isInteger(numeric) && numeric > 0) {
+        return String(numeric);
+    }
+
+    return token;
+}
+
+function parseColorList(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        const raw = value.trim();
+
+        if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('"') && raw.endsWith('"'))) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+
+                if (typeof parsed === 'string') {
+                    return parsed
+                        .split(',')
+                        .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+            } catch {
+                // Fall back to CSV parsing.
+            }
+        }
+
+        return raw
+            .split(',')
+            .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
+function resolveColorDisplayName(value, colorNameLookup = {}) {
+    const token = String(value || '').trim().replace(/^"+|"+$/g, '');
+    if (!token) {
+        return '';
+    }
+
+    return colorNameLookup[token] || token;
+}
+
+function extractSizeIds(product, sizeNameLookup = {}, sizeIdByNameLookup = {}) {
     const directSizes = parseSizeList(product?.size);
     if (directSizes.length > 0) {
-        return directSizes;
+        return [
+            ...new Set(
+                directSizes
+                    .map((item) => normalizeSizeId(item, sizeNameLookup, sizeIdByNameLookup))
+                    .filter(Boolean),
+            ),
+        ];
     }
 
     const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
-    return variants
-        .map((row) => String(row?.size || '').trim())
-        .filter(Boolean);
+    return [
+        ...new Set(
+            variants
+                .flatMap((row) => parseSizeList(row?.size))
+                .map((item) => normalizeSizeId(item, sizeNameLookup, sizeIdByNameLookup))
+                .filter(Boolean),
+        ),
+    ];
 }
 
 function getProductStock(product) {
@@ -87,7 +193,12 @@ function buildVariantRowKey(row = {}) {
     return `${color}__${size}`;
 }
 
-function groupProductsByName(products) {
+function groupProductsByName(products, options = {}) {
+    const {
+        colorNameLookup = {},
+        sizeNameLookup = {},
+        sizeIdByNameLookup = {},
+    } = options;
     const grouped = new Map();
 
     products.forEach((product, index) => {
@@ -95,12 +206,15 @@ function groupProductsByName(products) {
         const key = name.toLowerCase() || `unnamed-${product?.id ?? index}`;
         const existing = grouped.get(key);
 
-        const productColors = normalizeProductColors(product?.color);
-        const productSizes = extractSizes(product);
+        const productColors = normalizeProductColors(product?.color, colorNameLookup);
+        const productSizes = extractSizeIds(product, sizeNameLookup, sizeIdByNameLookup);
         const productImages = collectVariantImages(product);
         const directVariantImages =
             product?.color_variant_images && typeof product.color_variant_images === 'object'
-                ? product.color_variant_images
+                ? Object.fromEntries(
+                    Object.entries(product.color_variant_images)
+                        .map(([key, images]) => [resolveColorDisplayName(key, colorNameLookup), images]),
+                )
                 : {};
         const productVariants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
 
@@ -117,7 +231,7 @@ function groupProductsByName(products) {
 
         const target = grouped.get(key);
 
-        const mergedColors = new Set(normalizeProductColors(target.color));
+        const mergedColors = new Set(normalizeProductColors(target.color, colorNameLookup));
         productColors.forEach((color) => mergedColors.add(color));
         target.color = [...mergedColors];
 
@@ -202,45 +316,73 @@ function expandProductsByColorVariants(products) {
     });
 }
 
-function normalizeProducts(payload) {
+function normalizeProducts(payload, colorNameLookup = {}, sizeNameLookup = {}, sizeIdByNameLookup = {}) {
     if (!Array.isArray(payload)) {
         return [];
     }
 
-    const normalized = payload.map((item, index) => ({
-        ...item,
-        id: item?.id ?? `product-${index}`,
-        name: String(item?.name || '').trim() || 'Untitled Product',
-        priceValue: Number(item?.price) || 0,
-        price: `$${(Number(item?.price) || 0).toFixed(2)}`,
-        cover_image: item?.cover_image || null,
-        image_gallery: Array.isArray(item?.image_gallery) ? item.image_gallery : [],
-        color: item?.color,
-        color_variant_images:
+    const normalized = payload.map((item, index) => {
+        const normalizedColorVariantImages =
             item?.color_variant_images && typeof item.color_variant_images === 'object'
-                ? item.color_variant_images
-                : {},
-        sizes: extractSizes(item),
-        stockValue: getProductStock(item),
-        grand_child_id: item?.grand_child_id != null ? String(item.grand_child_id) : '',
-        tag: item?.show_on_best_sellers ? 'Best Seller' : null,
-    }));
+                ? Object.fromEntries(
+                    Object.entries(item.color_variant_images)
+                        .map(([key, images]) => [resolveColorDisplayName(key, colorNameLookup), images]),
+                )
+                : {};
 
-    return expandProductsByColorVariants(groupProductsByName(normalized));
+        const normalizedVariantRows = Array.isArray(item?.variant_rows)
+            ? item.variant_rows.map((row) => ({
+                ...row,
+                color: resolveColorDisplayName(row?.color, colorNameLookup),
+            }))
+            : [];
+
+        return {
+            ...item,
+            id: item?.id ?? `product-${index}`,
+            name: String(item?.name || '').trim() || 'Untitled Product',
+            priceValue: Number(item?.price) || 0,
+            price: `$${(Number(item?.price) || 0).toFixed(2)}`,
+            cover_image: item?.cover_image || null,
+            image_gallery: Array.isArray(item?.image_gallery) ? item.image_gallery : [],
+            color: normalizeProductColors(item?.color, colorNameLookup),
+            color_variant_images: normalizedColorVariantImages,
+            variant_rows: normalizedVariantRows,
+            sizes: extractSizeIds(item, sizeNameLookup, sizeIdByNameLookup),
+            stockValue: getProductStock(item),
+            grand_child_id: item?.grand_child_id != null ? String(item.grand_child_id) : '',
+            tag: item?.show_on_best_sellers ? 'Best Seller' : null,
+        };
+    });
+
+    return expandProductsByColorVariants(
+        groupProductsByName(normalized, {
+            colorNameLookup,
+            sizeNameLookup,
+            sizeIdByNameLookup,
+        }),
+    );
 }
 
 function normalizeSizeOptions(payload) {
-    if (!Array.isArray(payload)) {
-        return [];
-    }
+    const list = Array.isArray(payload)
+        ? payload
+        : (Array.isArray(payload?.data) ? payload.data : []);
 
-    return [
-        ...new Set(
-            payload
-                .flatMap((item) => parseSizeList(item?.size ?? item?.Size ?? item?.name ?? ''))
-                .filter(Boolean),
-        ),
-    ];
+    const byId = new Map();
+
+    list.forEach((item) => {
+        const id = String(item?.id ?? '').trim();
+        const name = String(item?.size ?? item?.Size ?? item?.name ?? '').trim();
+
+        if (!id || !name) {
+            return;
+        }
+
+        byId.set(id, { id, name });
+    });
+
+    return [...byId.values()];
 }
 
 function normalizeGrandChildOptions(payload) {
@@ -274,16 +416,10 @@ function resolveEntityByQuery(items, rawValue) {
     );
 }
 
-function normalizeProductColors(value) {
-    if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
-    }
-
-    if (typeof value === 'string' && value.trim()) {
-        return value.split(',').map((item) => item.trim()).filter(Boolean);
-    }
-
-    return [];
+function normalizeProductColors(value, colorNameLookup = {}) {
+    return parseColorList(value)
+        .map((item) => resolveColorDisplayName(item, colorNameLookup))
+        .filter(Boolean);
 }
 
 function normalizeColorLookupEntry(record) {
@@ -299,6 +435,21 @@ function normalizeColorLookupEntry(record) {
     }
 
     return [name.toLowerCase(), colorCode];
+}
+
+function normalizeColorNameLookupEntry(record) {
+    if (!record || typeof record !== 'object') {
+        return null;
+    }
+
+    const id = String(record.id ?? '').trim();
+    const name = String(record.name || '').trim();
+
+    if (!id || !name) {
+        return null;
+    }
+
+    return [id, name];
 }
 
 function getSwatchColor(value, colorLookup = {}) {
@@ -355,21 +506,23 @@ function isBestSellerProduct(product) {
     return Number(product.show_on_best_sellers) === 1;
 }
 
-function ColorSwatch({ color, active, onClick, colorLookup }) {
+function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {} }) {
+    const displayColor = resolveColorDisplayName(color, colorNameLookup);
+
     return (
         <button
             type="button"
-            title={color}
+            title={displayColor}
             onClick={onClick}
             className={`inline-block size-5 rounded-full border shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
                 active ? 'border-zinc-900 ring-1 ring-zinc-900/25' : 'border-zinc-200'
             }`}
-            style={{ backgroundColor: getSwatchColor(color, colorLookup) }}
+            style={{ backgroundColor: getSwatchColor(displayColor, colorLookup) }}
         />
     );
 }
 
-function ProductCard({ product, colorLookup = {}, onAddToCart }) {
+function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart }) {
     const navigate = useNavigate();
     const colors = useMemo(() => normalizeProductColors(product.color), [product.color]);
 
@@ -627,6 +780,7 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
                                 color={c}
                                 active={selectedColor === c}
                                 colorLookup={colorLookup}
+                                colorNameLookup={colorNameLookup}
                                 onClick={(event) => handleSelectColor(c, event)}
                             />
                         ))}
@@ -650,6 +804,7 @@ function ProductCard({ product, colorLookup = {}, onAddToCart }) {
 function ShopProductsGrid({
     products = [],
     colorLookup = {},
+    colorNameLookup = {},
     currentPage = 1,
     totalPages = 1,
     totalResults = 0,
@@ -681,7 +836,7 @@ function ShopProductsGrid({
             {visibleProducts.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} onAddToCart={onAddToCart} />
+                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} />
                     ))}
                 </div>
             ) : (
@@ -720,10 +875,13 @@ export default function ShopCatalogSection() {
     const [isLoading, setIsLoading] = useState(true);
     const [products, setProducts] = useState([]);
     const [colorLookup, setColorLookup] = useState({});
+    const [colorNameLookup, setColorNameLookup] = useState({});
     const [allCategories, setAllCategories] = useState([]);
     const [allSubCategories, setAllSubCategories] = useState([]);
     const [allGrandChilds, setAllGrandChilds] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
+    const [sizeNameLookup, setSizeNameLookup] = useState({});
+    const [sizeIdByNameLookup, setSizeIdByNameLookup] = useState({});
     const [categoryOptions, setCategoryOptions] = useState([]);
     const [selectedAvailability, setSelectedAvailability] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
@@ -771,36 +929,73 @@ export default function ShopCatalogSection() {
                     setIsLoading(true);
                 }
 
-                const [sizesRes, categoriesRes, subCategoriesRes, grandChildsRes, productsRes, collectionsRes] = await Promise.all([
+                const [sizesRes, categoriesRes, subCategoriesRes, grandChildsRes, productsRes, collectionsRes, colorsRes] = await Promise.all([
                     fetch('/api/public/sizes', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/categories', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/sub-categories', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/grand-childs', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/shop-products', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/collections', { headers: { Accept: 'application/json' } }),
+                    fetch('/api/public/colors', { headers: { Accept: 'application/json' } }),
                 ]);
 
-                const [sizesPayload, categoriesPayload, subCategoriesPayload, grandChildsPayload, productsPayload, collectionsPayload] = await Promise.all([
+                const [sizesPayload, categoriesPayload, subCategoriesPayload, grandChildsPayload, productsPayload, collectionsPayload, colorsPayload] = await Promise.all([
                     sizesRes.ok ? sizesRes.json() : [],
                     categoriesRes.ok ? categoriesRes.json() : [],
                     subCategoriesRes.ok ? subCategoriesRes.json() : [],
                     grandChildsRes.ok ? grandChildsRes.json() : [],
                     productsRes.ok ? productsRes.json() : [],
                     collectionsRes.ok ? collectionsRes.json() : [],
+                    colorsRes.ok ? colorsRes.json() : [],
                 ]);
 
                 if (ignore) {
                     return;
                 }
 
-                const normalizedProducts = normalizeProducts(productsPayload);
+                const colorList = Array.isArray(colorsPayload)
+                    ? colorsPayload
+                    : (Array.isArray(colorsPayload?.data) ? colorsPayload.data : []);
 
-                setSizeOptions(normalizeSizeOptions(sizesPayload));
+                const nextColorLookup = Object.fromEntries(
+                    colorList
+                        .map(normalizeColorLookupEntry)
+                        .filter(Boolean),
+                );
+
+                const nextColorNameLookup = Object.fromEntries(
+                    colorList
+                        .map(normalizeColorNameLookupEntry)
+                        .filter(Boolean),
+                );
+
+                const nextSizeOptions = normalizeSizeOptions(sizesPayload);
+                const nextSizeNameLookup = Object.fromEntries(
+                    nextSizeOptions
+                        .map((item) => [String(item.id), String(item.name)]),
+                );
+                const nextSizeIdByNameLookup = Object.fromEntries(
+                    nextSizeOptions
+                        .map((item) => [String(item.name).trim().toLowerCase(), String(item.id)]),
+                );
+
+                const normalizedProducts = normalizeProducts(
+                    productsPayload,
+                    nextColorNameLookup,
+                    nextSizeNameLookup,
+                    nextSizeIdByNameLookup,
+                );
+
+                setSizeOptions(nextSizeOptions);
+                setSizeNameLookup(nextSizeNameLookup);
+                setSizeIdByNameLookup(nextSizeIdByNameLookup);
                 setAllCategories(Array.isArray(categoriesPayload) ? categoriesPayload : []);
                 setAllSubCategories(Array.isArray(subCategoriesPayload) ? subCategoriesPayload : []);
                 setAllGrandChilds(Array.isArray(grandChildsPayload) ? grandChildsPayload : []);
                 setCategoryOptions(normalizeGrandChildOptions(grandChildsPayload));
                 setProducts(normalizedProducts);
+                setColorLookup(nextColorLookup);
+                setColorNameLookup(nextColorNameLookup);
                 setCollectionItems(
                     Array.isArray(collectionsPayload?.items)
                         ? collectionsPayload.items.map((item) => ({
@@ -831,32 +1026,14 @@ export default function ShopCatalogSection() {
                     setHighestDbPrice('0.00');
                 }
 
-                const colorsRes = await fetch('/api/public/colors', {
-                    headers: { Accept: 'application/json' },
-                });
-
-                if (colorsRes.ok) {
-                    const colorData = await colorsRes.json();
-                    const colorList = Array.isArray(colorData)
-                        ? colorData
-                        : (Array.isArray(colorData?.data) ? colorData.data : []);
-
-                    setColorLookup(
-                        Object.fromEntries(
-                            colorList
-                                .map(normalizeColorLookupEntry)
-                                .filter(Boolean),
-                        ),
-                    );
-                } else {
-                    setColorLookup({});
-                }
             } catch {
                 if (ignore) {
                     return;
                 }
 
                 setSizeOptions([]);
+                setSizeNameLookup({});
+                setSizeIdByNameLookup({});
                 setAllCategories([]);
                 setAllSubCategories([]);
                 setAllGrandChilds([]);
@@ -864,6 +1041,7 @@ export default function ShopCatalogSection() {
                 setProducts([]);
                 setCollectionItems([]);
                 setColorLookup({});
+                setColorNameLookup({});
                 setMinPrice('0.00');
                 setMaxPrice('0.00');
                 setHighestDbPrice('0.00');
@@ -925,9 +1103,9 @@ export default function ShopCatalogSection() {
         if (sizeValue.trim()) {
             const requestedSizes = sizeValue
                 .split(',')
-                .map((item) => item.trim())
+                .map((item) => normalizeSizeId(item, sizeNameLookup, sizeIdByNameLookup))
                 .filter(Boolean);
-            setSelectedSizes(requestedSizes);
+            setSelectedSizes([...new Set(requestedSizes)]);
         } else {
             setSelectedSizes([]);
         }
@@ -962,7 +1140,7 @@ export default function ShopCatalogSection() {
 
         setSelectedCategories([...selectedGrandChildIds]);
         setCurrentPage(1);
-    }, [location.search, allCategories, allSubCategories, allGrandChilds]);
+    }, [location.search, allCategories, allSubCategories, allGrandChilds, sizeNameLookup, sizeIdByNameLookup]);
 
     function toggleSelected(setter, value) {
         setter((previous) =>
@@ -1007,7 +1185,11 @@ export default function ShopCatalogSection() {
             }
 
             if (selectedSizes.length > 0) {
-                const matchesSize = product.sizes.some((size) => selectedSizes.includes(String(size)));
+                const productSizeIds = parseSizeList(product?.sizes)
+                    .map((size) => normalizeSizeId(size, sizeNameLookup, sizeIdByNameLookup))
+                    .filter(Boolean);
+
+                const matchesSize = productSizeIds.some((sizeId) => selectedSizes.includes(sizeId));
                 if (!matchesSize) {
                     return false;
                 }
@@ -1044,6 +1226,8 @@ export default function ShopCatalogSection() {
         minPrice,
         maxPrice,
         searchTerm,
+        sizeNameLookup,
+        sizeIdByNameLookup,
         isCollectionView,
         activeCollection,
         activeCollectionProductIdSet,
@@ -1160,6 +1344,7 @@ export default function ShopCatalogSection() {
                 <ShopProductsGrid
                     products={paginatedProducts}
                     colorLookup={colorLookup}
+                    colorNameLookup={colorNameLookup}
                     currentPage={safeCurrentPage}
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}

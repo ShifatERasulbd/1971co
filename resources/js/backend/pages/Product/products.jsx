@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import ProductTable from '@/components/products/table';
 import { useAppContext } from '@/context/AppContext';
+import { fetchColors } from '@/pages/Color/api';
+import { fetchSizes } from '@/pages/Size/api';
 
 import { deleteProduct, fetchProducts, syncApiProducts } from './api';
 
@@ -26,6 +28,8 @@ export default function Products() {
     const [errorMessage, setErrorMessage] = useState('');
     const [deletingId, setDeletingId] = useState(null);
     const [productToDelete, setProductToDelete] = useState(null);
+    const [colorOptions, setColorOptions] = useState([]);
+    const [sizeOptions, setSizeOptions] = useState([]);
 
     const handleEdit = (productOrPayload) => {
         if (productOrPayload && typeof productOrPayload === 'object') {
@@ -69,6 +73,31 @@ export default function Products() {
         }
 
         loadProducts();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadAttributeOptions() {
+            try {
+                const [colors, sizes] = await Promise.all([fetchColors(), fetchSizes()]);
+                if (!ignore) {
+                    setColorOptions(Array.isArray(colors) ? colors : []);
+                    setSizeOptions(Array.isArray(sizes) ? sizes : []);
+                }
+            } catch {
+                if (!ignore) {
+                    setColorOptions([]);
+                    setSizeOptions([]);
+                }
+            }
+        }
+
+        loadAttributeOptions();
 
         return () => {
             ignore = true;
@@ -141,6 +170,8 @@ export default function Products() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-1">
                     <ProductTable
                         products={products}
+                        colorOptions={colorOptions}
+                        sizeOptions={sizeOptions}
                         isLoading={isLoading}
                         deletingId={deletingId}
                         onAdd={() => navigate('/admin/products/add')}

@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import {
 
 export default function ProductTable({
     products = [],
+    colorOptions = [],
+    sizeOptions = [],
     isLoading,
     deletingId,
     onAdd,
@@ -24,6 +26,81 @@ export default function ProductTable({
 }) {
     const [search, setSearch] = useState('');
     const [expandedGroups, setExpandedGroups] = useState({});
+
+    const colorLabelById = useMemo(() => {
+        const map = {};
+        colorOptions.forEach((color) => {
+            const id = String(color?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            map[id] = String(color?.name || id).trim();
+        });
+        return map;
+    }, [colorOptions]);
+
+    const sizeLabelById = useMemo(() => {
+        const map = {};
+        sizeOptions.forEach((size) => {
+            const id = String(size?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            map[id] = String(size?.size || id).trim();
+        });
+        return map;
+    }, [sizeOptions]);
+
+    const normalizeSelectionTokens = (value) => {
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => String(item ?? '').trim())
+                .filter(Boolean);
+        }
+
+        const raw = String(value ?? '').trim();
+        if (!raw) {
+            return [];
+        }
+
+        if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('"') && raw.endsWith('"'))) {
+            try {
+                const parsed = JSON.parse(raw);
+
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item) => String(item ?? '').trim())
+                        .filter(Boolean);
+                }
+
+                if (typeof parsed === 'string') {
+                    return parsed
+                        .split(',')
+                        .map((item) => item.trim())
+                        .filter(Boolean);
+                }
+            } catch {
+                // Fall through to manual split.
+            }
+        }
+
+        return raw
+            .split(',')
+            .map((item) => item.trim().replace(/^['"]+|['"]+$/g, ''))
+            .filter(Boolean);
+    };
+
+    const formatSelectionValues = (value, labelById) => {
+        const values = normalizeSelectionTokens(value);
+
+        if (values.length === 0) {
+            return '-';
+        }
+
+        return values.map((item) => labelById[item] || item).join(', ');
+    };
 
     const toPlainText = (value = '') => String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -180,8 +257,8 @@ export default function ProductTable({
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="font-mono text-xs">{primary.sku}</TableCell>
-                                                <TableCell>{primary.color || '-'}</TableCell>
-                                                <TableCell>{primary.size || '-'}</TableCell>
+                                                <TableCell>{formatSelectionValues(primary.color, colorLabelById)}</TableCell>
+                                                <TableCell>{formatSelectionValues(primary.size, sizeLabelById)}</TableCell>
                                                 <TableCell className="max-w-[180px] truncate" title={toPlainText(primary.fit || primary.long_description || '')}>
                                                     {toPlainText(primary.fit || primary.long_description || '') || '-'}
                                                 </TableCell>
@@ -252,8 +329,8 @@ export default function ProductTable({
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground">Variant</TableCell>
                                                         <TableCell className="font-mono text-xs">{variant.sku}</TableCell>
-                                                        <TableCell>{variant.color || '-'}</TableCell>
-                                                        <TableCell>{variant.size || '-'}</TableCell>
+                                                        <TableCell>{formatSelectionValues(variant.color, colorLabelById)}</TableCell>
+                                                        <TableCell>{formatSelectionValues(variant.size, sizeLabelById)}</TableCell>
                                                         <TableCell className="max-w-[180px] truncate" title={toPlainText(variant.fit || variant.long_description || '')}>
                                                             {toPlainText(variant.fit || variant.long_description || '') || '-'}
                                                         </TableCell>

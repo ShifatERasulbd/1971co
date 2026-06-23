@@ -20,12 +20,11 @@ export default function TogetherWeGrowPage() {
 
     // Fetch community page sections from API
     useEffect(() => {
-        fetch('/api/community-page-sections', {
+        fetch('/api/public/community-page-sections', {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            credentials: 'include',
         })
             .then((response) => {
                 if (!response.ok) {
@@ -34,13 +33,34 @@ export default function TogetherWeGrowPage() {
                 return response.json();
             })
             .then((data) => {
-                // Convert snake_case to camelCase for button_text and button_url
+                // Convert snake_case to camelCase payload keys.
                 const sectionsMap = {};
-                Array.isArray(data) ? data : Object.values(data || {}).forEach((section) => {
+                const sections = Array.isArray(data) ? data : Object.values(data || {});
+
+                sections.forEach((section) => {
                     sectionsMap[section.key] = {
                         ...section,
-                        buttonText: section.button_text || section.buttonText,
-                        buttonUrl: section.button_url || section.buttonUrl,
+                        contentTitle: section.contentTitle || section.content_title,
+                        sectionDescription: section.sectionDescription || section.section_description,
+                        buttonText: section.buttonText || section.button_text,
+                        buttonUrl: section.buttonUrl || section.button_url,
+                        featureImage: section.featureImage || section.feature_image,
+                        featureItems: Array.isArray(section.featureItems)
+                            ? section.featureItems
+                            : Array.isArray(section.feature_items)
+                              ? section.feature_items
+                              : [],
+                                                communityImage: section.communityImage || section.community_image,
+                                                communityItems: Array.isArray(section.communityItems)
+                                                        ? section.communityItems
+                                                        : Array.isArray(section.community_items)
+                                                            ? section.community_items
+                                                            : [],
+                                                galleryItems: Array.isArray(section.galleryItems)
+                                                        ? section.galleryItems
+                                                        : Array.isArray(section.gallery_items)
+                                                            ? section.gallery_items
+                                                            : [],
                     };
                 });
                 setSectionsData(sectionsMap);

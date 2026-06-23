@@ -11,7 +11,7 @@ class ColorController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Color::orderBy('name')->get());
+        return response()->json(Color::orderBy('id')->get());
     }
 
     public function store(Request $request): JsonResponse

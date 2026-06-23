@@ -40,26 +40,110 @@ function normalizeImageKey(path) {
     return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
 }
 
-function normalizeColors(value) {
+function normalizeColors(value, colorRecords = []) {
     if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
+        return [
+            ...new Set(
+                value
+                    .map((item) => resolveColorDisplayName(item, colorRecords))
+                    .filter(Boolean),
+            ),
+        ];
     }
 
     if (typeof value === 'string') {
-        return value.split(',').map((item) => item.trim()).filter(Boolean);
+        return [
+            ...new Set(
+                value
+                    .split(',')
+                    .map((item) => resolveColorDisplayName(item, colorRecords))
+                    .filter(Boolean),
+            ),
+        ];
     }
 
     return [];
 }
 
-function normalizeSizes(product) {
-    if (typeof product?.size === 'string' && product.size.trim()) {
-        return product.size.split(',').map((item) => item.trim()).filter(Boolean);
+function resolveColorDisplayName(value, colorRecords = []) {
+    const token = String(value || '').trim();
+    if (!token) {
+        return '';
+    }
+
+    const byId = colorRecords.find((record) => String(record?.id || '').trim() === token);
+    if (byId?.name) {
+        return String(byId.name).trim();
+    }
+
+    const byName = colorRecords.find(
+        (record) => String(record?.name || '').trim().toLowerCase() === token.toLowerCase(),
+    );
+    if (byName?.name) {
+        return String(byName.name).trim();
+    }
+
+    return token;
+}
+
+function parseOptionTokens(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        const raw = value.trim();
+
+        if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('"') && raw.endsWith('"'))) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item) => String(item || '').trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+
+                if (typeof parsed === 'string') {
+                    return parsed
+                        .split(',')
+                        .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+                        .filter(Boolean);
+                }
+            } catch {
+                // Fall back to CSV parsing.
+            }
+        }
+
+        return raw
+            .split(',')
+            .map((item) => item.trim().replace(/^"+|"+$/g, ''))
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
+function resolveSizeDisplayName(value, sizeNameLookup = {}) {
+    const token = String(value || '').trim().replace(/^"+|"+$/g, '');
+    if (!token) {
+        return '';
+    }
+
+    return sizeNameLookup[token] || token;
+}
+
+function normalizeSizes(product, sizeNameLookup = {}) {
+    const directSizes = parseOptionTokens(product?.size);
+    if (directSizes.length > 0) {
+        return [...new Set(directSizes.map((item) => resolveSizeDisplayName(item, sizeNameLookup)).filter(Boolean))];
     }
 
     const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
     const extracted = variants
-        .map((row) => String(row?.size || '').trim())
+        .flatMap((row) => parseOptionTokens(row?.size))
+        .map((item) => resolveSizeDisplayName(item, sizeNameLookup))
         .filter(Boolean);
 
     return [...new Set(extracted)];
@@ -118,28 +202,37 @@ function resolveColorVariantItems(mapping, selectedColor, colorRecords) {
     return [];
 }
 
-function resolveInitialColor(preferredColor, availableColors) {
+function resolveInitialColor(preferredColor, availableColors, colorRecords = [], allowFallback = true) {
     const requested = String(preferredColor || '').trim();
     if (!requested) {
         return availableColors[0] || '';
     }
 
-    const exactMatch = availableColors.find((item) => String(item || '').trim() === requested);
+    const normalizedRequested = resolveColorDisplayName(requested, colorRecords);
+
+    const exactMatch = availableColors.find((item) => String(item || '').trim() === normalizedRequested);
     if (exactMatch) {
         return exactMatch;
     }
 
     const caseInsensitiveMatch = availableColors.find(
-        (item) => String(item || '').trim().toLowerCase() === requested.toLowerCase(),
+        (item) => String(item || '').trim().toLowerCase() === normalizedRequested.toLowerCase(),
     );
 
-    return caseInsensitiveMatch || availableColors[0] || '';
+    if (caseInsensitiveMatch) {
+        return caseInsensitiveMatch;
+    }
+
+    return allowFallback ? (availableColors[0] || '') : '';
 }
 
 export default function SingleProductMainSection({ product, initialColor = '' }) {
     const { addToCart, openCartDrawer } = useCart();
     const [colorLookup, setColorLookup] = useState({});
     const [colorRecords, setColorRecords] = useState([]);
+    const [sizeNameLookup, setSizeNameLookup] = useState({});
+    const [isColorLookupReady, setIsColorLookupReady] = useState(false);
+    const hasRequestedColor = String(initialColor || '').trim() !== '';
 
     const imageList = useMemo(() => {
         const gallery = Array.isArray(product?.image_gallery) ? product.image_gallery : [];
@@ -162,7 +255,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
         return unique.map((item) => toAbsoluteImageUrl(item));
     }, [product?.cover_image, product?.image_gallery]);
 
-    const colors = useMemo(() => normalizeColors(product?.color), [product?.color]);
+    const colors = useMemo(() => normalizeColors(product?.color, colorRecords), [product?.color, colorRecords]);
     const colorVariantImages = useMemo(
         () => normalizeColorVariantImages(product?.color_variant_images),
         [product?.color_variant_images],
@@ -171,19 +264,26 @@ export default function SingleProductMainSection({ product, initialColor = '' })
         () => normalizeColorVariantVideos(product?.color_variant_videos),
         [product?.color_variant_videos],
     );
-    const sizes = useMemo(() => normalizeSizes(product), [product]);
-    const [selectedImage, setSelectedImage] = useState(imageList[0]);
-    const [selectedColor, setSelectedColor] = useState(() => resolveInitialColor(initialColor, colors));
+    const sizes = useMemo(() => normalizeSizes(product, sizeNameLookup), [product, sizeNameLookup]);
+    const [selectedImage, setSelectedImage] = useState('');
+    const [selectedColor, setSelectedColor] = useState(() => {
+        return resolveInitialColor(initialColor, colors, colorRecords, !hasRequestedColor);
+    });
     const [selectedSize, setSelectedSize] = useState(sizes[0] || '');
     const [quantity, setQuantity] = useState(1);
 
     useEffect(() => {
+        if (hasRequestedColor && !isColorLookupReady) {
+            return;
+        }
+
         setSelectedImage(imageList[0]);
-    }, [imageList]);
+    }, [imageList, initialColor, isColorLookupReady]);
 
     useEffect(() => {
-        setSelectedColor(resolveInitialColor(initialColor, colors));
-    }, [colors, initialColor]);
+        const allowFallback = !hasRequestedColor || isColorLookupReady;
+        setSelectedColor(resolveInitialColor(initialColor, colors, colorRecords, allowFallback));
+    }, [colors, initialColor, colorRecords, isColorLookupReady]);
 
     useEffect(() => {
         setSelectedSize(sizes[0] || '');
@@ -191,6 +291,10 @@ export default function SingleProductMainSection({ product, initialColor = '' })
 
     useEffect(() => {
         let ignore = false;
+
+        if (!ignore) {
+            setIsColorLookupReady(false);
+        }
 
         async function loadColorLookup() {
             try {
@@ -201,6 +305,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                 if (!response.ok) {
                     if (!ignore) {
                         setColorLookup({});
+                        setColorRecords([]);
                     }
                     return;
                 }
@@ -242,9 +347,64 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                     setColorRecords([]);
                 }
             }
+            finally {
+                if (!ignore) {
+                    setIsColorLookupReady(true);
+                }
+            }
         }
 
         loadColorLookup();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadSizeLookup() {
+            try {
+                const response = await fetch('/api/public/sizes', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setSizeNameLookup({});
+                    }
+                    return;
+                }
+
+                const payload = await response.json();
+                const list = Array.isArray(payload)
+                    ? payload
+                    : (Array.isArray(payload?.data) ? payload.data : []);
+
+                const nextLookup = {};
+                list.forEach((item) => {
+                    const id = String(item?.id ?? '').trim();
+                    const name = String(item?.size ?? item?.Size ?? '').trim();
+
+                    if (!id || !name) {
+                        return;
+                    }
+
+                    nextLookup[id] = name;
+                });
+
+                if (!ignore) {
+                    setSizeNameLookup(nextLookup);
+                }
+            } catch {
+                if (!ignore) {
+                    setSizeNameLookup({});
+                }
+            }
+        }
+
+        loadSizeLookup();
 
         return () => {
             ignore = true;
@@ -292,12 +452,18 @@ export default function SingleProductMainSection({ product, initialColor = '' })
 
     const filteredImages = useMemo(() => {
         if (!selectedColor) {
+            if (hasRequestedColor && !isColorLookupReady) {
+                return [];
+            }
             return imageList;
         }
 
         const mappedImages = resolveColorVariantItems(colorVariantImages, selectedColor, colorRecords);
 
         if (mappedImages.length === 0) {
+            if (hasRequestedColor && !isColorLookupReady) {
+                return [];
+            }
             return imageList;
         }
 
@@ -307,7 +473,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
             .filter((item) => imageSet.has(normalizeImageKey(item)));
 
         return filtered.length > 0 ? filtered : imageList;
-    }, [selectedColor, colorRecords, colorVariantImages, imageList]);
+    }, [selectedColor, colorRecords, colorVariantImages, imageList, hasRequestedColor, isColorLookupReady]);
 
     const filteredVideos = useMemo(() => {
         if (!selectedColor) {
@@ -325,8 +491,12 @@ export default function SingleProductMainSection({ product, initialColor = '' })
     }, [selectedColor, colorRecords, colorVariantVideos]);
 
     useEffect(() => {
+        if (filteredImages.length === 0) {
+            return;
+        }
+
         if (!filteredImages.includes(selectedImage)) {
-            setSelectedImage(filteredImages[0] || imageList[0]);
+            setSelectedImage(filteredImages[0]);
         }
     }, [filteredImages, selectedImage, imageList]);
 

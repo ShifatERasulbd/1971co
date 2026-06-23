@@ -65,6 +65,36 @@ export default function AddForm({
     const [draggingColor, setDraggingColor] = useState('');
     const [draggingGalleryIndex, setDraggingGalleryIndex] = useState(-1);
 
+    const colorLabelById = useMemo(() => {
+        const map = {};
+        colorOptions.forEach((color) => {
+            const id = String(color?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            const label = `${color?.name || id}${color?.color_code ? ` (${color.color_code})` : ''}`;
+            map[id] = label;
+        });
+        return map;
+    }, [colorOptions]);
+
+    const sizeLabelById = useMemo(() => {
+        const map = {};
+        sizeOptions.forEach((size) => {
+            const id = String(size?.id ?? '').trim();
+            if (!id) {
+                return;
+            }
+
+            map[id] = size?.size || id;
+        });
+        return map;
+    }, [sizeOptions]);
+
+    const getColorLabel = (value) => colorLabelById[String(value ?? '').trim()] || String(value ?? '').trim();
+    const getSizeLabel = (value) => sizeLabelById[String(value ?? '').trim()] || String(value ?? '').trim();
+
     const firstColorRowKeys = useMemo(() => {
         const seenColors = new Set();
         const firstKeys = {};
@@ -546,7 +576,7 @@ export default function AddForm({
                                             >
                                                 <option value="">{isOptionsLoading ? 'Loading colors...' : 'Select a color'}</option>
                                                 {colorOptions.map((color) => (
-                                                    <option key={color.id} value={color.name || ''}>
+                                                    <option key={color.id} value={String(color.id)}>
                                                         {color.name}{color.color_code ? ` (${color.color_code})` : ''}
                                                     </option>
                                                 ))}
@@ -576,13 +606,13 @@ export default function AddForm({
                                                         } ${isSubmitting ? 'cursor-not-allowed' : 'cursor-move'}`}
                                                         title="Drag to reorder"
                                                     >
-                                                        <span>{color}</span>
+                                                        <span>{getColorLabel(color)}</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => onRemoveColor?.(color)}
                                                             disabled={isSubmitting}
                                                             className="text-[11px] leading-none opacity-70 transition-opacity hover:opacity-100"
-                                                            aria-label={`Remove ${color}`}
+                                                            aria-label={`Remove ${getColorLabel(color)}`}
                                                         >
                                                             x
                                                         </button>
@@ -605,7 +635,7 @@ export default function AddForm({
                                             >
                                                 <option value="">{isOptionsLoading ? 'Loading sizes...' : 'Select a size'}</option>
                                                 {sizeOptions.map((size) => (
-                                                    <option key={size.id} value={size.size || ''}>
+                                                    <option key={size.id} value={String(size.id)}>
                                                         {size.size}
                                                     </option>
                                                 ))}
@@ -631,7 +661,7 @@ export default function AddForm({
                                                         onClick={() => onRemoveSize?.(size)}
                                                         disabled={isSubmitting}
                                                     >
-                                                        {size} x
+                                                        {getSizeLabel(size)} x
                                                     </Button>
                                                 ))}
                                             </div>
@@ -693,8 +723,8 @@ export default function AddForm({
                                                 <tbody>
                                                     {variantRows.map((row) => (
                                                         <tr key={row.key} className="border-b last:border-0">
-                                                            <td className="py-2 pr-2">{row.color}</td>
-                                                            <td className="py-2 pr-2">{row.size}</td>
+                                                            <td className="py-2 pr-2">{getColorLabel(row.color)}</td>
+                                                            <td className="py-2 pr-2">{getSizeLabel(row.size)}</td>
                                                             <td className="py-2 pr-2">
                                                                 <Input
                                                                     value={row.sku ?? ''}
@@ -735,11 +765,11 @@ export default function AddForm({
                                                                             Attach Images
                                                                         </Button>
                                                                         <p className="text-[11px] text-muted-foreground">
-                                                                            {(colorVariantImageMap[row.color] || []).length} selected for {row.color}
+                                                                            {(colorVariantImageMap[row.color] || []).length} selected for {getColorLabel(row.color)}
                                                                         </p>
                                                                     </div>
                                                                 ) : (
-                                                                    <p className="text-xs text-muted-foreground">Uses {row.color} images</p>
+                                                                    <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} images</p>
                                                                 )}
                                                             </td>
                                                             <td className="py-2 pl-2 align-top">
@@ -756,11 +786,11 @@ export default function AddForm({
                                                                             Attach Videos
                                                                         </Button>
                                                                         <p className="text-[11px] text-muted-foreground">
-                                                                            {(colorVariantVideoMap[row.color] || []).length} selected for {row.color}
+                                                                            {(colorVariantVideoMap[row.color] || []).length} selected for {getColorLabel(row.color)}
                                                                         </p>
                                                                     </div>
                                                                 ) : (
-                                                                    <p className="text-xs text-muted-foreground">Uses {row.color} videos</p>
+                                                                    <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} videos</p>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -791,7 +821,7 @@ export default function AddForm({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-4xl rounded-lg border bg-background shadow-lg">
                         <div className="flex items-center justify-between border-b px-4 py-3">
-                            <h3 className="text-base font-semibold">Attach Images to {activeColorForImages}</h3>
+                            <h3 className="text-base font-semibold">Attach Images to {getColorLabel(activeColorForImages)}</h3>
                             <Button type="button" variant="ghost" size="sm" onClick={closeColorImagesModal}>
                                 Close
                             </Button>
@@ -854,7 +884,7 @@ export default function AddForm({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-4xl rounded-lg border bg-background shadow-lg">
                         <div className="flex items-center justify-between border-b px-4 py-3">
-                            <h3 className="text-base font-semibold">Attach Videos to {activeColorForVideos}</h3>
+                            <h3 className="text-base font-semibold">Attach Videos to {getColorLabel(activeColorForVideos)}</h3>
                             <Button type="button" variant="ghost" size="sm" onClick={closeColorVideosModal}>
                                 Close
                             </Button>

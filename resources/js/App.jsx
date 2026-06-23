@@ -88,6 +88,10 @@ function DocumentBrandingManager() {
     }, []);
 
     useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+
+    useEffect(() => {
         const pageLabel = resolvePageLabel(pathname);
         document.title = `${pageLabel} | ${BRAND_NAME}`;
 

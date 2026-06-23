@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Color;
 use App\Models\Product;
+use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
@@ -179,6 +181,8 @@ class ProductController extends Controller
         }
 
         $finalGallery = is_array($validated['image_gallery'] ?? null) ? $validated['image_gallery'] : [];
+        $validated['color'] = $this->normalizeColorSelectionValue($validated['color'] ?? '');
+        $validated['size'] = $this->normalizeSizeSelectionValue($validated['size'] ?? '');
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? []);
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? '')));
@@ -333,6 +337,8 @@ class ProductController extends Controller
             ? $validated['image_gallery']
             : (is_array($product->image_gallery ?? null) ? $product->image_gallery : []);
 
+        $validated['color'] = $this->normalizeColorSelectionValue($validated['color'] ?? ($product->color ?? ''));
+        $validated['size'] = $this->normalizeSizeSelectionValue($validated['size'] ?? ($product->size ?? ''));
         $validated['variant_rows'] = $this->normalizeVariantRows($validated['variant_rows'] ?? ($product->variant_rows ?? []));
         $validated['show_on_best_sellers'] = $request->boolean('show_on_best_sellers');
         $validated['fit'] = trim((string) ($validated['fit'] ?? ($validated['long_description'] ?? ($product->fit ?? ''))));
@@ -603,20 +609,65 @@ class ProductController extends Controller
             return [];
         }
 
-        return array_values(array_map(static function ($row): array {
+        return array_values(array_map(function ($row): array {
             if (! is_array($row)) {
                 return [];
             }
 
             return [
                 'key' => (string) ($row['key'] ?? ''),
-                'color' => (string) ($row['color'] ?? ''),
-                'size' => (string) ($row['size'] ?? ''),
+                'color' => $this->normalizeColorSelectionValue($row['color'] ?? ''),
+                'size' => $this->normalizeSizeSelectionValue($row['size'] ?? ''),
                 'sku' => (string) ($row['sku'] ?? ''),
                 'stock' => $row['stock'] ?? '',
                 'price' => $row['price'] ?? '',
             ];
         }, $variantRows));
+    }
+
+    private function normalizeColorSelectionValue($value): string
+    {
+        return $this->normalizeSelectionValueToIds(
+            $value,
+            static fn (string $token): ?string => Color::query()->whereRaw('LOWER(name) = ?', [strtolower($token)])->value('id')
+        );
+    }
+
+    private function normalizeSizeSelectionValue($value): string
+    {
+        return $this->normalizeSelectionValueToIds(
+            $value,
+            static fn (string $token): ?string => Size::query()->whereRaw('LOWER(size) = ?', [strtolower($token)])->value('id')
+        );
+    }
+
+    private function normalizeSelectionValueToIds($value, callable $lookupIdByName): string
+    {
+        $parts = array_values(array_filter(array_map(static function ($item): string {
+            return trim(trim((string) $item), "\"'");
+        }, explode(',', (string) $value)), static function ($item): bool {
+            return $item !== '';
+        }));
+
+        if ($parts === []) {
+            return '';
+        }
+
+        $ids = [];
+        foreach ($parts as $token) {
+            if (ctype_digit($token)) {
+                $ids[] = $token;
+                continue;
+            }
+
+            $plainToken = preg_replace('/\s*\([^)]*\)\s*$/', '', $token) ?? $token;
+            $resolved = $lookupIdByName($token) ?? $lookupIdByName($plainToken);
+            if ($resolved !== null && $resolved !== '') {
+                $ids[] = (string) $resolved;
+            }
+        }
+
+        return implode(', ', array_values(array_unique($ids)));
     }
 
     private function resolveColorVariantImages($mapping, array $finalGallery, array $uploadedNameMap = []): array
@@ -625,7 +676,21 @@ class ProductController extends Controller
             return [];
         }
 
-        $finalGallerySet = array_fill_keys($finalGallery, true);
+        $finalGalleryByNormalized = [];
+        $finalGalleryByBasename = [];
+
+        foreach ($finalGallery as $path) {
+            if (! is_string($path) || trim($path) === '') {
+                continue;
+            }
+
+            $normalized = $this->normalizePublicMediaPath($path);
+            if ($normalized !== null) {
+                $finalGalleryByNormalized[$normalized] = $normalized;
+                $finalGalleryByBasename[basename($normalized)] = $normalized;
+            }
+        }
+
         $resolved = [];
 
         foreach ($mapping as $color => $items) {
@@ -633,6 +698,8 @@ class ProductController extends Controller
                 continue;
             }
 
+            $normalizedColor = $this->normalizeColorSelectionValue((string) $color);
+            $targetColorKey = $normalizedColor !== '' ? $normalizedColor : trim((string) $color);
             $paths = [];
 
             foreach ($items as $item) {
@@ -642,22 +709,33 @@ class ProductController extends Controller
 
                 $raw = trim($item);
 
-                if (isset($finalGallerySet[$raw])) {
-                    $paths[] = $raw;
-                    continue;
+                $candidates = [$raw];
+                if (isset($uploadedNameMap[$raw])) {
+                    $candidates[] = (string) $uploadedNameMap[$raw];
                 }
 
-                if (isset($uploadedNameMap[$raw])) {
-                    $mappedPath = $uploadedNameMap[$raw];
-                    if (isset($finalGallerySet[$mappedPath])) {
-                        $paths[] = $mappedPath;
+                foreach ($candidates as $candidate) {
+                    $normalizedCandidate = $this->normalizePublicMediaPath($candidate);
+                    if ($normalizedCandidate === null) {
+                        continue;
+                    }
+
+                    if (isset($finalGalleryByNormalized[$normalizedCandidate])) {
+                        $paths[] = $finalGalleryByNormalized[$normalizedCandidate];
+                        continue 2;
+                    }
+
+                    $filename = basename($normalizedCandidate);
+                    if ($filename !== '' && isset($finalGalleryByBasename[$filename])) {
+                        $paths[] = $finalGalleryByBasename[$filename];
+                        continue 2;
                     }
                 }
             }
 
             $paths = array_values(array_unique($paths));
             if ($paths !== []) {
-                $resolved[(string) $color] = $paths;
+                $resolved[$targetColorKey] = $paths;
             }
         }
 
@@ -670,7 +748,21 @@ class ProductController extends Controller
             return [];
         }
 
-        $finalVideosSet = array_fill_keys($finalVideos, true);
+        $finalVideosByNormalized = [];
+        $finalVideosByBasename = [];
+
+        foreach ($finalVideos as $path) {
+            if (! is_string($path) || trim($path) === '') {
+                continue;
+            }
+
+            $normalized = $this->normalizePublicMediaPath($path);
+            if ($normalized !== null) {
+                $finalVideosByNormalized[$normalized] = $normalized;
+                $finalVideosByBasename[basename($normalized)] = $normalized;
+            }
+        }
+
         $resolved = [];
 
         foreach ($mapping as $color => $items) {
@@ -678,6 +770,8 @@ class ProductController extends Controller
                 continue;
             }
 
+            $normalizedColor = $this->normalizeColorSelectionValue((string) $color);
+            $targetColorKey = $normalizedColor !== '' ? $normalizedColor : trim((string) $color);
             $paths = [];
 
             foreach ($items as $item) {
@@ -687,26 +781,52 @@ class ProductController extends Controller
 
                 $raw = trim($item);
 
-                if (isset($finalVideosSet[$raw])) {
-                    $paths[] = $raw;
-                    continue;
+                $candidates = [$raw];
+                if (isset($uploadedNameMap[$raw])) {
+                    $candidates[] = (string) $uploadedNameMap[$raw];
                 }
 
-                if (isset($uploadedNameMap[$raw])) {
-                    $mappedPath = $uploadedNameMap[$raw];
-                    if (isset($finalVideosSet[$mappedPath])) {
-                        $paths[] = $mappedPath;
+                foreach ($candidates as $candidate) {
+                    $normalizedCandidate = $this->normalizePublicMediaPath($candidate);
+                    if ($normalizedCandidate === null) {
+                        continue;
+                    }
+
+                    if (isset($finalVideosByNormalized[$normalizedCandidate])) {
+                        $paths[] = $finalVideosByNormalized[$normalizedCandidate];
+                        continue 2;
+                    }
+
+                    $filename = basename($normalizedCandidate);
+                    if ($filename !== '' && isset($finalVideosByBasename[$filename])) {
+                        $paths[] = $finalVideosByBasename[$filename];
+                        continue 2;
                     }
                 }
             }
 
             $paths = array_values(array_unique($paths));
             if ($paths !== []) {
-                $resolved[(string) $color] = $paths;
+                $resolved[$targetColorKey] = $paths;
             }
         }
 
         return $resolved;
+    }
+
+    private function normalizePublicMediaPath(string $path): ?string
+    {
+        $raw = trim($path);
+        if ($raw === '') {
+            return null;
+        }
+
+        $parsed = parse_url($raw, PHP_URL_PATH);
+        $normalized = is_string($parsed) && $parsed !== '' ? $parsed : $raw;
+        $normalized = str_replace('\\', '/', $normalized);
+        $normalized = '/' . ltrim($normalized, '/');
+
+        return $normalized !== '/' ? $normalized : null;
     }
 
     private function resolveProductSlug(?string $requestedSlug, string $productName, ?int $ignoreProductId = null): string

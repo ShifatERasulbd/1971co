@@ -6,10 +6,28 @@ use App\Models\CollectionSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class CollectionController extends Controller
 {
+    private function hasProductIdsColumn(): bool
+    {
+        return Schema::hasTable('collection_items') && Schema::hasColumn('collection_items', 'product_ids');
+    }
+
+    private function normalizeProductIds($value): array
+    {
+        if (! $this->hasProductIdsColumn()) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map(
+            'intval',
+            is_array($value) ? $value : [],
+        )));
+    }
+
     private function resolveImageUrl(?string $image): ?string
     {
         if (!$image) {
@@ -38,6 +56,7 @@ class CollectionController extends Controller
     private function ensureSection(): CollectionSection
     {
         $section = CollectionSection::query()->with('items')->first();
+        $hasProductIdsColumn = $this->hasProductIdsColumn();
 
         if (!$section) {
             $section = CollectionSection::query()->create([
@@ -48,36 +67,41 @@ class CollectionController extends Controller
         }
 
         if ($section->items()->count() === 0) {
-            $section->items()->createMany([
+            $defaultItems = [
                 [
                     'name' => 'New Arrivals',
                     'slug' => 'new-arrivals',
                     'image' => '/uploads/heroes/images/hero1.webp',
-                           'product_ids' => [],
                     'sort_order' => 0,
                 ],
                 [
                     'name' => 'Essentials',
                     'slug' => 'essentials',
                     'image' => '/uploads/heroes/images/hero1.webp',
-                           'product_ids' => [],
                     'sort_order' => 1,
                 ],
                 [
                     'name' => 'Tees',
                     'slug' => 'tees',
                     'image' => '/uploads/heroes/images/hero1.webp',
-                           'product_ids' => [],
                     'sort_order' => 2,
                 ],
                 [
                     'name' => 'Bottoms',
                     'slug' => 'bottoms',
                     'image' => '/uploads/heroes/images/hero1.webp',
-                           'product_ids' => [],
                     'sort_order' => 3,
                 ],
-            ]);
+            ];
+
+            if ($hasProductIdsColumn) {
+                $defaultItems = array_map(function (array $item): array {
+                    $item['product_ids'] = [];
+                    return $item;
+                }, $defaultItems);
+            }
+
+            $section->items()->createMany($defaultItems);
         }
 
         return $section->fresh('items');
@@ -85,6 +109,8 @@ class CollectionController extends Controller
 
     private function toResponse(CollectionSection $section): array
     {
+        $hasProductIdsColumn = $this->hasProductIdsColumn();
+
         return [
             'section' => [
                 'id' => $section->id,
@@ -100,10 +126,12 @@ class CollectionController extends Controller
                     'name' => $item->name,
                     'slug' => $item->slug,
                     'image' => $this->resolveImageUrl($item->image),
-                       'productIds' => array_values(array_filter(
-                           array_map('intval', is_array($item->product_ids) ? $item->product_ids : []),
-                           fn ($value) => $value > 0,
-                       )),
+                    'productIds' => $hasProductIdsColumn
+                        ? array_values(array_filter(
+                            array_map('intval', is_array($item->product_ids) ? $item->product_ids : []),
+                            fn ($value) => $value > 0,
+                        ))
+                        : [],
                     'sort_order' => $item->sort_order,
                 ]),
         ];
@@ -123,6 +151,8 @@ class CollectionController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        $hasProductIdsColumn = $this->hasProductIdsColumn();
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'titlePosition' => ['required', 'in:left,center,right'],
@@ -132,8 +162,8 @@ class CollectionController extends Controller
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.slug' => ['required', 'string', 'max:255'],
             'items.*.image' => ['nullable', 'string'],
-               'items.*.productIds' => ['nullable', 'array'],
-               'items.*.productIds.*' => ['integer', 'exists:products,id'],
+                'items.*.productIds' => ['nullable', 'array'],
+                'items.*.productIds.*' => ['integer', 'exists:products,id'],
         ]);
 
         $section = $this->ensureSection();
@@ -153,31 +183,35 @@ class CollectionController extends Controller
             if ($itemId && in_array($itemId, $existingIds, true)) {
                 $collectionItem = $section->items()->find($itemId);
                 if ($collectionItem) {
-                    $collectionItem->update([
+                    $payload = [
                         'name' => $item['name'],
                         'slug' => $item['slug'],
                         'image' => $item['image'] ?? null,
-                           'product_ids' => array_values(array_unique(array_map(
-                               'intval',
-                               is_array($item['productIds'] ?? null) ? $item['productIds'] : [],
-                           ))),
                         'sort_order' => $index,
-                    ]);
+                    ];
+
+                    if ($hasProductIdsColumn) {
+                        $payload['product_ids'] = $this->normalizeProductIds($item['productIds'] ?? null);
+                    }
+
+                    $collectionItem->update($payload);
                     $usedIds[] = $collectionItem->id;
                 }
                 continue;
             }
 
-            $created = $section->items()->create([
+            $payload = [
                 'name' => $item['name'],
                 'slug' => $item['slug'],
                 'image' => $item['image'] ?? null,
-                   'product_ids' => array_values(array_unique(array_map(
-                       'intval',
-                       is_array($item['productIds'] ?? null) ? $item['productIds'] : [],
-                   ))),
                 'sort_order' => $index,
-            ]);
+            ];
+
+            if ($hasProductIdsColumn) {
+                $payload['product_ids'] = $this->normalizeProductIds($item['productIds'] ?? null);
+            }
+
+            $created = $section->items()->create($payload);
             $usedIds[] = $created->id;
         }
 

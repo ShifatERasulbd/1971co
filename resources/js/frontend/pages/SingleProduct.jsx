@@ -13,6 +13,34 @@ function LazySection({ children, heightClass, variant = 'generic' }) {
     return <Suspense fallback={<SectionSkeleton heightClass={heightClass} variant={variant} />}>{children}</Suspense>;
 }
 
+function parseColorTokens(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || '').trim())
+            .filter(Boolean);
+    }
+
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((item) => String(item || '').trim())
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
+function productMatchesColor(product, colorParam) {
+    const wanted = String(colorParam || '').trim().toLowerCase();
+    if (!wanted) {
+        return false;
+    }
+
+    return parseColorTokens(product?.color).some(
+        (token) => String(token || '').trim().toLowerCase() === wanted,
+    );
+}
+
 export default function SingleProductPage() {
     const [searchParams] = useSearchParams();
     const [products, setProducts] = useState([]);
@@ -63,9 +91,11 @@ export default function SingleProductPage() {
 
         const slugParam = searchParams.get('slug');
         const nameParam = searchParams.get('name');
+        const colorParam = searchParams.get('color');
 
         if (slugParam) {
-            const bySlug = products.find((item) => String(item?.slug || '') === String(slugParam));
+            const bySlugCandidates = products.filter((item) => String(item?.slug || '') === String(slugParam));
+            const bySlug = bySlugCandidates.find((item) => productMatchesColor(item, colorParam)) || bySlugCandidates[0];
             if (bySlug) {
                 return bySlug;
             }
@@ -73,9 +103,10 @@ export default function SingleProductPage() {
 
         if (nameParam) {
             const normalizedName = String(nameParam).trim().toLowerCase();
-            const byName = products.find(
+            const byNameCandidates = products.filter(
                 (item) => String(item?.name || '').trim().toLowerCase() === normalizedName,
             );
+            const byName = byNameCandidates.find((item) => productMatchesColor(item, colorParam)) || byNameCandidates[0];
 
             if (byName) {
                 return byName;

@@ -12,7 +12,6 @@ use App\Http\Controllers\AboutGivingBackController;
 use App\Http\Controllers\AboutMissionController;
 use App\Http\Controllers\AboutStoryController;
 use App\Http\Controllers\CommunityPageSectionController;
-use App\Http\Controllers\FeaturesController;
 use App\Http\Controllers\GrandChildController;
 use App\Http\Controllers\HeroController;
 use App\Http\Controllers\OurStorySectionController;
@@ -29,15 +28,14 @@ Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'thr
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['web', 'throttle:6,1']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['web', 'throttle:6,1']);
-Route::get('/public/hero', [HeroController::class, 'publicHero']);
-Route::get('/public/heroes', [HeroController::class, 'publicHeroes']);
 Route::get('/public/about-hero', [AboutHeroController::class, 'publicIndex']);
 Route::get('/public/about-story', [AboutStoryController::class, 'publicIndex']);
 Route::get('/public/about-mission', [AboutMissionController::class, 'publicIndex']);
 Route::get('/public/about-giving-back', [AboutGivingBackController::class, 'publicIndex']);
-Route::get('/public/features', [FeaturesController::class, 'publicIndex']);
 Route::get('/public/colors', [ColorController::class, 'index']);
 Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
+Route::get('/public/hero', [HeroController::class, 'publicIndex']);
+Route::get('/public/heroes', [HeroController::class, 'publicList']);
 Route::get('/public/our-story', [OurStorySectionController::class, 'publicIndex']);
 Route::get('/public/products', [ProductController::class, 'publicIndex']);
 Route::get('/public/shop-products', [ProductController::class, 'publicShopIndex']);
@@ -48,6 +46,7 @@ Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
 Route::get('/public/settings', [SettingsController::class, 'publicLatest']);
 Route::get('/public/best-sellers-section', [SettingsController::class, 'publicBestSellersSection']);
 Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
+Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
 Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
@@ -68,7 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 	Route::apiResource('/sizes', SizeController::class);
 	Route::apiResource('/colors', ColorController::class);
-	Route::apiResource('/heroes', HeroController::class);
+	Route::get('/heroes', [HeroController::class, 'index']);
+	Route::post('/heroes', [HeroController::class, 'store']);
+	Route::put('/heroes/{hero}', [HeroController::class, 'update']);
 	Route::get('/about-hero', [AboutHeroController::class, 'index']);
 	Route::post('/about-hero', [AboutHeroController::class, 'update']);
 	Route::get('/about-story', [AboutStoryController::class, 'index']);
@@ -77,11 +78,10 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/about-mission', [AboutMissionController::class, 'update']);
 	Route::get('/about-giving-back', [AboutGivingBackController::class, 'index']);
 	Route::post('/about-giving-back', [AboutGivingBackController::class, 'update']);
-	Route::apiResource('/features', FeaturesController::class);
-
 	// Community Page Sections
 	Route::get('/community-page-sections', [CommunityPageSectionController::class, 'index']);
 	Route::post('/community-page-sections', [CommunityPageSectionController::class, 'store']);
+	Route::post('/community-page-sections/upload-feature-image', [CommunityPageSectionController::class, 'uploadFeatureImage']);
 	Route::get('/community-page-sections/{key}', [CommunityPageSectionController::class, 'show']);
 	Route::delete('/community-page-sections/{key}', [CommunityPageSectionController::class, 'destroy']);
 
