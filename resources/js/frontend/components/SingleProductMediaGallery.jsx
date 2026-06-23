@@ -21,19 +21,26 @@ export default function SingleProductMediaGallery({
     if (!primaryVideo && !activeImage) return null;
 
     const handleMouseMove = (e, hoveredImage, index) => {
-        // Target the button itself to isolate correct hover percentages
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        
+        // 1. Precise cursor location relative to the currently hovered box
         const x = e.clientX - left;
         const y = e.clientY - top;
 
-        const xPercent = Math.max(0, Math.min(100, (x / width) * 100));
-        const yPercent = Math.max(0, Math.min(100, (y / height) * 100));
+        // 2. Normalize to a 0-1 ratio decimal
+        const xRatio = Math.max(0, Math.min(1, x / width));
+        const yRatio = Math.max(0, Math.min(1, y / height));
+
+        // 3. Zoom focal point offset correction math
+        const zoomFactor = 2.5; // Matches 250% size
+        const xOffset = (xRatio * zoomFactor - xRatio) * (100 / (zoomFactor - 1));
+        const yOffset = (yRatio * zoomFactor - yRatio) * (100 / (zoomFactor - 1));
 
         setHoveredIndex(index);
         setZoomStyle({
             display: 'block',
             backgroundImage: `url(${hoveredImage})`,
-            backgroundPosition: `${xPercent}% ${yPercent}%`,
+            backgroundPosition: `${xOffset}% ${yOffset}%`,
             backgroundSize: '250%',
             backgroundRepeat: 'no-repeat',
         });
@@ -50,14 +57,9 @@ export default function SingleProductMediaGallery({
         setIsModalOpen(true);  
     };
 
-    // Determine position variables based on what index is currently hovered
-    const isRightColumnHovered = hoveredIndex !== null && hoveredIndex % 2 !== 0;
-
     return (
-        /* CRITICAL FIX: The outer container is 'relative' so the zoom layout window 
-           can accurately overlay across the whole grid layout map.
-        */
-        <div className="relative w-full">
+        <div className="w-full">
+            {/* Main grid wrapper handling the columns */}
             <div className="grid grid-cols-2 gap-3">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
@@ -78,9 +80,23 @@ export default function SingleProductMediaGallery({
                 {/* Product Images Loop */}
                 {safeImages.slice(0, 6).map((image, index) => {
                     const isCurrentlyActive = activeImage === image;
+                    
+                    /* CRITICAL FIX: Calculate the ACTUAL visual column placement.
+                       If a video exists, it occupies slot 0, pushing index 0 to grid slot 1.
+                    */
+                    const visualGridIndex = primaryVideo ? index + 1 : index;
+                    const isRightColumn = visualGridIndex % 2 !== 0;
+
+                    /* THE ROW ALIGNMENT FIX:
+                       If the item is visually on the right column, show zoom on its left.
+                       If the item is visually on the left column, show zoom on its right.
+                    */
+                    const alignmentClass = isRightColumn 
+                        ? 'right-[calc(100%+12px)]' 
+                        : 'left-[calc(100%+12px)]';
 
                     return (
-                        <div key={`${image}-${index}`}>
+                        <div key={`${image}-${index}`} className="relative">
                             <button
                                 type="button"
                                 onClick={() => handleImageClick(image)}
@@ -98,27 +114,20 @@ export default function SingleProductMediaGallery({
                                     className="aspect-[4/5] w-full object-cover object-center pointer-events-none"
                                 />
                             </button>
+
+                            {/* LOCALIZED ZOOM PORTAL */}
+                            {zoomStyle.display !== 'none' && hoveredIndex === index && (
+                                <div
+                                    style={zoomStyle}
+                                    className={`absolute top-0 z-50 hidden md:block w-full h-full border border-zinc-200 bg-white shadow-xl rounded-sm pointer-events-none ${alignmentClass}`}
+                                />
+                            )}
                         </div>
                     );
                 })}
             </div>
 
-            {/* FIXED OVERLAY ZOOM WINDOW:
-                - Removed from individual loops and positioned globally relative to the grid wrapper.
-                - Calculates width using `w-[calc(50%-6px)]` so it matches a single column exactly.
-                - If browsing the right image, it snaps to the left margin (`left-0`).
-                - If browsing the left image, it snaps to the right margin (`right-0`).
-            */}
-            {zoomStyle.display !== 'none' && hoveredIndex !== null && (
-                <div
-                    style={zoomStyle}
-                    className={`absolute top-0 z-50 hidden md:block w-[calc(50%-6px)] h-full border border-zinc-900 bg-white shadow-xl rounded-sm pointer-events-none ${
-                        isRightColumnHovered ? 'left-0' : 'right-0'
-                    }`}
-                />
-            )}
-
-            {/* Connect and Mount Modal Viewport Component */}
+            {/* Modal Lightbox Viewport Component */}
             <ProductZoomModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

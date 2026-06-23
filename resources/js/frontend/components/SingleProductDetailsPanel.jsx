@@ -111,21 +111,8 @@ export default function SingleProductDetailsPanel({
         }
 
         const normalizedMapped = [...new Set(mappedItems.map((item) => toOptionalImageUrl(item)).filter(Boolean))];
-        if (normalizedMapped.length > 0) {
-            return normalizedMapped;
-        }
-
-        const fallbackList = Array.isArray(product?.size_chart_images)
-            ? product.size_chart_images
-            : [];
-        const normalizedFallback = [...new Set(fallbackList.map((item) => toOptionalImageUrl(item)).filter(Boolean))];
-        if (normalizedFallback.length > 0) {
-            return normalizedFallback;
-        }
-
-        const singleFallback = toOptionalImageUrl(product?.size_chart_image);
-        return singleFallback ? [singleFallback] : [];
-    }, [product?.size_chart_image, product?.size_chart_images, product?.color_variant_size_charts, selectedColor, colorRecords]);
+        return normalizedMapped;
+    }, [product?.color_variant_size_charts, selectedColor, colorRecords]);
 
     const accordionItems = useMemo(() => {
         return [
@@ -136,6 +123,8 @@ export default function SingleProductDetailsPanel({
             { key: 'composition', title: 'Product Composition', content: product?.product_composition || '' },
         ];
     }, [product]);
+
+    const hasMultipleSizeCharts = resolvedSizeChartImages.length > 1;
 
     function toggleAccordionItem(key) {
         setOpenAccordionKey((previous) => (previous === key ? '' : key));
@@ -322,7 +311,9 @@ export default function SingleProductDetailsPanel({
                     onClick={() => setIsSizeChartModalOpen(false)}
                 >
                     <div
-                        className="relative mt-6 w-full max-w-3xl rounded-xl bg-white p-3 shadow-2xl sm:mt-0 sm:p-4"
+                        className={`relative mt-6 w-[min(92vw,980px)] rounded-xl bg-white p-3 shadow-2xl sm:mt-0 sm:p-4 ${
+                            hasMultipleSizeCharts ? 'max-w-[92vw] lg:max-w-5xl' : 'max-w-[min(92vw,700px)]'
+                        }`}
                         onClick={(event) => event.stopPropagation()}
                     >
                         <button
@@ -337,20 +328,20 @@ export default function SingleProductDetailsPanel({
                         <h3 className="mb-3 pr-10 text-[1.05rem] font-semibold text-zinc-900">Size Chart</h3>
 
                         {resolvedSizeChartImages.length > 0 ? (
-                            <div className="max-h-[80vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:p-3">
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="max-h-[78vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:p-3">
+                                <div className={`grid gap-3 ${hasMultipleSizeCharts ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
                                     {resolvedSizeChartImages.map((image, index) => (
                                         <img
                                             key={`${image}-${index}`}
                                             src={image}
                                             alt={`Product size chart ${index + 1}`}
-                                            className="mx-auto block h-auto max-h-[74vh] w-auto max-w-full object-contain"
+                                            className="mx-auto block h-auto max-h-[72vh] w-auto max-w-full rounded-md object-contain"
                                         />
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-zinc-500">No size chart available for this product.</p>
+                            <p className="text-sm text-zinc-500">No size chart available for this color variant.</p>
                         )}
                     </div>
                 </div>
