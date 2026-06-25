@@ -12,29 +12,74 @@ const fallbackImage = '/uploads/heroes/images/hero1.webp';
 
 function normalizeProductColors(value) {
     if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
+        return value
+            .map((item) => {
+                if (item == null) {
+                    return '';
+                }
+
+                if (typeof item === 'object') {
+                    if (item.name) {
+                        return String(item.name).trim();
+                    }
+
+                    if (item.id != null) {
+                        return String(item.id).trim();
+                    }
+
+                    return '';
+                }
+
+                return String(item).trim().replace(/^[\[\]"']+|[\[\]"']+$/g, '');
+            })
+            .filter(Boolean);
     }
 
     if (typeof value === 'string' && value.trim()) {
-        return value.split(',').map((item) => item.trim()).filter(Boolean);
+        const trimmedValue = value.trim();
+
+        if (trimmedValue.startsWith('[') && trimmedValue.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(trimmedValue);
+                return normalizeProductColors(parsed);
+            } catch {
+                // Fall through to comma-delimited parsing.
+            }
+        }
+
+        return trimmedValue
+            .split(',')
+            .map((item) => item.trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
+            .filter(Boolean);
     }
 
     return [];
 }
 
-function normalizeColorLookupEntry(record) {
+function normalizeColorLookupEntries(record) {
     if (!record || typeof record !== 'object') {
-        return null;
+        return [];
     }
 
     const name = String(record.name || '').trim();
+    const id = record.id != null ? String(record.id).trim() : '';
     const colorCode = String(record.color_code || '').trim();
 
-    if (!name || !/^#[0-9a-f]{3,8}$/i.test(colorCode)) {
-        return null;
+    if (!/^#[0-9a-f]{3,8}$/i.test(colorCode)) {
+        return [];
     }
 
-    return [name.toLowerCase(), colorCode];
+    const entries = [];
+
+    if (name) {
+        entries.push([name.toLowerCase(), colorCode]);
+    }
+
+    if (id) {
+        entries.push([id, colorCode]);
+    }
+
+    return entries;
 }
 
 function toPrice(value) {
@@ -136,9 +181,13 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
     );
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
-    const productLink = productSlug
+    const preferredColor = String(colors[0] || '').trim();
+    const productLinkBase = productSlug
         ? `/product-details/${encodeURIComponent(productSlug)}`
         : `/product-details/${encodeURIComponent(productName)}`;
+    const productLink = preferredColor
+        ? `${productLinkBase}/${encodeURIComponent(preferredColor)}`
+        : productLinkBase;
 
     function handleAddToCart(event) {
         event.preventDefault();
@@ -251,13 +300,15 @@ export default function RelatedProductsSection({ products = [] }) {
                 }
 
                 const payload = await response.json();
-                if (!Array.isArray(payload)) {
+                const colorList = Array.isArray(payload)
+                    ? payload
+                    : (Array.isArray(payload?.data) ? payload.data : []);
+
+                if (colorList.length === 0) {
                     return;
                 }
 
-                const normalized = payload
-                    .map((item) => normalizeColorLookupEntry(item))
-                    .filter(Boolean);
+                const normalized = colorList.flatMap((item) => normalizeColorLookupEntries(item));
 
                 if (!ignore) {
                     setColorLookup(Object.fromEntries(normalized));

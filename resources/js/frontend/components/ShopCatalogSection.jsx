@@ -1097,13 +1097,23 @@ export default function ShopCatalogSection() {
         const pathName = String(location.pathname || '').toLowerCase();
         const categoryValueFromPath = pathName === '/best-sellers' ? 'best-sellers' : '';
         const pathSegments = pathName.split('/').filter(Boolean);
-        const isShopPathSegment = !['collection', 'best-sellers', 'shop'].includes(pathSegments[0]);
+        const isSearchPath = pathSegments.length >= 2 && pathSegments[0] === 'search';
+        const searchPathToken = isSearchPath
+            ? (() => {
+                try {
+                    return decodeURIComponent(pathSegments.slice(1).join('/')).trim();
+                } catch {
+                    return String(pathSegments.slice(1).join('/') || '').trim();
+                }
+            })()
+            : '';
+        const isShopPathSegment = !['collection', 'best-sellers', 'shop', 'search'].includes(pathSegments[0]);
         const subCategoryValueFromPath = pathSegments.length >= 1 && isShopPathSegment ? pathSegments[0] : '';
         const grandChildValueFromPath = pathSegments.length >= 2 && isShopPathSegment ? pathSegments[1] : '';
         const categoryValue = categoryValueFromPath || params.get('category');
         const subCategoryValue = subCategoryValueFromPath || params.get('sub_category');
         const grandChildValue = grandChildValueFromPath || params.get('grand_child');
-        const rawSearch = params.get('search') || params.get('q') || '';
+        const rawSearch = (isSearchPath ? searchPathToken.replace(/-/g, ' ') : '') || params.get('search') || params.get('q') || '';
         const sizeValue = params.get('size') || '';
 
         setSearchTerm(rawSearch.trim());

@@ -16,14 +16,28 @@ function LazySection({ children, heightClass, variant = 'generic' }) {
 function parseColorTokens(value) {
     if (Array.isArray(value)) {
         return value
-            .map((item) => String(item || '').trim())
+            .map((item) => String(item || '').trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
             .filter(Boolean);
     }
 
     if (typeof value === 'string') {
-        return value
+        const raw = value.trim();
+        if (!raw) {
+            return [];
+        }
+
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(raw);
+                return parseColorTokens(parsed);
+            } catch {
+                // Fall back to comma-separated parsing.
+            }
+        }
+
+        return raw
             .split(',')
-            .map((item) => String(item || '').trim())
+            .map((item) => String(item || '').trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
             .filter(Boolean);
     }
 

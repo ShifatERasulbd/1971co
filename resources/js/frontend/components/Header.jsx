@@ -20,6 +20,16 @@ function normalizeMediaUrl(value = '') {
     return `/${raw.replace(/^\/+/, '')}`;
 }
 
+function toSearchSlug(value = '') {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]+/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 const utilityIcons = [
     { label: 'Account', icon: UserRound, href: '/login' },
     { label: 'Search', icon: Search, href: '#search' },
@@ -74,7 +84,13 @@ export default function Header() {
             return;
         }
 
-        navigate(`/shop?search=${encodeURIComponent(normalized)}`);
+        const searchSlug = toSearchSlug(normalized);
+        if (!searchSlug) {
+            navigate('/shop');
+            return;
+        }
+
+        navigate(`/search/${encodeURIComponent(searchSlug)}`);
     }
 
     function toggleMobileItem(itemKey) {

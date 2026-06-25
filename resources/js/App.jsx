@@ -46,6 +46,7 @@ function resolvePageLabel(pathname) {
 
     if (path === '/') return 'Home';
     if (path === '/shop') return 'Shop';
+    if (path.startsWith('/search/')) return 'Search';
     if (path.startsWith('/collection/')) return 'Collection';
     if (path === '/new-arrivals') return 'Collection';
     if (path === '/best-sellers') return 'Best Sellers';
@@ -156,6 +157,7 @@ function AppRouter() {
                     <Route path="/" element={<FrontendLayout />}>
                         <Route index element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
+                        <Route path="search/:productSlug" element={withPageFallback(ShopPage)} />
                         <Route path="collection/:slug" element={withPageFallback(ShopPage)} />
                         <Route path="new-arrivals" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />

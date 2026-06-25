@@ -17,13 +17,26 @@ function toAbsoluteImageUrl(path) {
 
 function parseList(value) {
     if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
+        return value
+            .map((item) => String(item || '').trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
+            .filter(Boolean);
     }
 
     if (typeof value === 'string' && value.trim()) {
-        return value
+        const raw = value.trim();
+
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(raw);
+                return parseList(parsed);
+            } catch {
+                // Fall back to comma-delimited parsing.
+            }
+        }
+
+        return raw
             .split(',')
-            .map((item) => item.trim())
+            .map((item) => item.trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
             .filter(Boolean);
     }
 
@@ -140,10 +153,63 @@ function toPrice(value) {
     return Number.isFinite(next) ? next : 0;
 }
 
+function resolveOptionValue(preferredValue, options = [], labelLookup = {}) {
+    const raw = String(preferredValue || '').trim();
+    if (!raw || !Array.isArray(options) || options.length === 0) {
+        return '';
+    }
+
+    const direct = options.find((item) => String(item || '').trim() === raw);
+    if (direct) {
+        return direct;
+    }
+
+    const byLabel = options.find((item) => {
+        const token = String(item || '').trim();
+        const label = String(labelLookup[token] || '').trim();
+
+        return label && label.toLowerCase() === raw.toLowerCase();
+    });
+
+    return byLabel || '';
+}
+
+function resolveColorDisplayName(value, colorLabelLookup = {}) {
+    const token = String(value || '').trim();
+    if (!token) {
+        return '';
+    }
+
+    const byExact = colorLabelLookup[token];
+    if (byExact) {
+        return byExact;
+    }
+
+    const byCaseInsensitive = Object.keys(colorLabelLookup).find(
+        (key) => String(key).toLowerCase() === token.toLowerCase(),
+    );
+
+    if (byCaseInsensitive) {
+        return colorLabelLookup[byCaseInsensitive];
+    }
+
+    return token;
+}
+
+function resolveSizeDisplayName(value, sizeLabelLookup = {}) {
+    const token = String(value || '').trim();
+    if (!token) {
+        return '';
+    }
+
+    return sizeLabelLookup[token] || token;
+}
+
 export default function ProductVariantModal({
     isOpen,
     product,
     colorLookup = {},
+    sizeLookup,
     defaults = {},
     onClose,
     onConfirm,
@@ -155,6 +221,106 @@ export default function ProductVariantModal({
     const [selectedSize, setSelectedSize] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [colorLabelLookup, setColorLabelLookup] = useState({});
+    const [sizeLabelLookup, setSizeLabelLookup] = useState({});
+    const [modalColorHexLookup, setModalColorHexLookup] = useState({});
+
+    const effectiveColorLookup = useMemo(
+        () => ({
+            ...modalColorHexLookup,
+            ...(colorLookup && typeof colorLookup === 'object' ? colorLookup : {}),
+        }),
+        [modalColorHexLookup, colorLookup],
+    );
+
+    const effectiveSizeLookup = useMemo(
+        () => ({
+            ...sizeLabelLookup,
+            ...(sizeLookup && typeof sizeLookup === 'object' ? sizeLookup : {}),
+        }),
+        [sizeLabelLookup, sizeLookup],
+    );
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        let ignore = false;
+
+        async function loadOptionLookups() {
+            try {
+                const [colorsResponse, sizesResponse] = await Promise.all([
+                    fetch('/api/public/colors', { headers: { Accept: 'application/json' } }),
+                    fetch('/api/public/sizes', { headers: { Accept: 'application/json' } }),
+                ]);
+
+                const colorsPayload = colorsResponse.ok ? await colorsResponse.json() : [];
+                const sizesPayload = sizesResponse.ok ? await sizesResponse.json() : [];
+
+                if (ignore) {
+                    return;
+                }
+
+                const colorList = Array.isArray(colorsPayload)
+                    ? colorsPayload
+                    : (Array.isArray(colorsPayload?.data) ? colorsPayload.data : []);
+
+                const sizeList = Array.isArray(sizesPayload)
+                    ? sizesPayload
+                    : (Array.isArray(sizesPayload?.data) ? sizesPayload.data : []);
+
+                const nextColorLabelLookup = {};
+                const nextColorHexLookup = {};
+
+                colorList.forEach((item) => {
+                    const id = String(item?.id ?? '').trim();
+                    const name = String(item?.name || '').trim();
+                    const code = String(item?.color_code || '').trim();
+
+                    if (name) {
+                        nextColorLabelLookup[name] = name;
+                        nextColorHexLookup[name.toLowerCase()] = code;
+                    }
+
+                    if (id) {
+                        nextColorLabelLookup[id] = name || id;
+                        if (/^#[0-9a-f]{6}$/i.test(code)) {
+                            nextColorHexLookup[id] = code;
+                        }
+                    }
+                });
+
+                const nextSizeLabelLookup = {};
+
+                sizeList.forEach((item) => {
+                    const id = String(item?.id ?? '').trim();
+                    const size = String(item?.size ?? item?.Size ?? item?.name ?? '').trim();
+                    if (!id || !size) {
+                        return;
+                    }
+
+                    nextSizeLabelLookup[id] = size;
+                });
+
+                setColorLabelLookup(nextColorLabelLookup);
+                setModalColorHexLookup(nextColorHexLookup);
+                setSizeLabelLookup(nextSizeLabelLookup);
+            } catch {
+                if (!ignore) {
+                    setColorLabelLookup({});
+                    setModalColorHexLookup({});
+                    setSizeLabelLookup({});
+                }
+            }
+        }
+
+        loadOptionLookups();
+
+        return () => {
+            ignore = true;
+        };
+    }, [isOpen]);
 
     const galleryImages = useMemo(
         () => collectGalleryImages(product, selectedColor),
@@ -167,15 +333,15 @@ export default function ProductVariantModal({
         }
 
         const initialColor = String(defaults?.selectedColor || '').trim();
-        const nextColor = colors.includes(initialColor) ? initialColor : (colors[0] || '');
+        const nextColor = resolveOptionValue(initialColor, colors, colorLabelLookup) || colors[0] || '';
         const initialSize = String(defaults?.selectedSize || '').trim();
-        const nextSize = sizes.includes(initialSize) ? initialSize : (sizes[0] || '');
+        const nextSize = resolveOptionValue(initialSize, sizes, effectiveSizeLookup) || sizes[0] || '';
 
         setSelectedColor(nextColor);
         setSelectedSize(nextSize);
         setQuantity(1);
         setActiveImageIndex(0);
-    }, [isOpen, product, defaults, colors, sizes]);
+    }, [isOpen, product?.id, defaults, colors, sizes]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -283,9 +449,9 @@ export default function ProductVariantModal({
                                         >
                                             <span
                                                 className="inline-block size-3.5 rounded-full border border-black/15"
-                                                style={{ backgroundColor: getSwatchColor(color, colorLookup) }}
+                                                style={{ backgroundColor: getSwatchColor(color, effectiveColorLookup) }}
                                             />
-                                            {color}
+                                            {resolveColorDisplayName(color, colorLabelLookup)}
                                         </button>
                                     ))}
                                 </div>
@@ -309,7 +475,7 @@ export default function ProductVariantModal({
                                                     : 'border-zinc-300 text-zinc-700 hover:border-zinc-700'
                                             }`}
                                         >
-                                            {size}
+                                            {resolveSizeDisplayName(size, effectiveSizeLookup)}
                                         </button>
                                     ))}
                                 </div>
