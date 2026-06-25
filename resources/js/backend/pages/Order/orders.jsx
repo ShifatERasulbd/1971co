@@ -16,10 +16,11 @@ import { useAppContext } from '@/context/AppContext';
 
 import { bulkDeleteOrders, bulkUpdateOrders, cancelCustomerOrder, fetchCustomerOrders, fetchOrders } from './api';
 
-const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const STATUS_OPTIONS = ['pending', 'approved', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
 const STATUS_COLORS = {
     pending:    'bg-yellow-100 text-yellow-800',
+    approved:   'bg-emerald-100 text-emerald-800',
     processing: 'bg-blue-100 text-blue-800',
     shipped:    'bg-indigo-100 text-indigo-800',
     delivered:  'bg-green-100 text-green-800',
@@ -313,7 +314,7 @@ export default function Orders() {
                                     {isCustomer ? (
                                         <button
                                             onClick={() => handleCustomerCancel(order.id)}
-                                            disabled={!['pending', 'processing'].includes(order.status)}
+                                            disabled={!['pending', 'approved', 'processing'].includes(order.status)}
                                             className="rounded border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             Cancel

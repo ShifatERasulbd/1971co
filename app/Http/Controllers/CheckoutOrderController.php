@@ -96,9 +96,9 @@ class CheckoutOrderController extends Controller
             abort(403, 'Forbidden');
         }
 
-        if (! in_array($ownedOrder->status, ['pending', 'processing'], true)) {
+        if (! in_array($ownedOrder->status, ['pending', 'approved', 'processing'], true)) {
             return response()->json([
-                'message' => 'Only pending or processing orders can be cancelled.',
+                'message' => 'Only pending, approved, or processing orders can be cancelled.',
             ], 422);
         }
 
@@ -124,7 +124,7 @@ class CheckoutOrderController extends Controller
             'postal_code'     => 'nullable|string|max:40',
             'country'         => 'nullable|string|max:120',
             'notes'           => 'nullable|string|max:3000',
-            'status'          => 'nullable|string|in:pending,processing,shipped,delivered,cancelled,refunded',
+            'status'          => 'nullable|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
         ]);
 
         $checkoutOrder->update($validated);
@@ -147,7 +147,7 @@ class CheckoutOrderController extends Controller
         $validated = $request->validate([
             'ids'    => 'required|array|min:1',
             'ids.*'  => 'integer',
-            'status' => 'required|string|in:pending,processing,shipped,delivered,cancelled,refunded',
+            'status' => 'required|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
         ]);
 
         CheckoutOrder::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
@@ -247,7 +247,7 @@ class CheckoutOrderController extends Controller
             'shipping' => $validated['shipping'],
             'total' => $validated['total'],
             'items' => $validated['items'],
-            'status' => 'processing',
+            'status' => 'approved',
             'payment_provider' => 'stripe',
             'payment_status' => 'paid',
             'payment_intent_id' => $validated['payment_intent_id'],

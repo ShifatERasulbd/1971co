@@ -6,7 +6,7 @@ import { useAppContext } from '@/context/AppContext';
 
 import { fetchOrder, updateOrder } from './api';
 
-const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const STATUS_OPTIONS = ['pending', 'approved', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
 function Field({ label, required, error, children }) {
     return (
