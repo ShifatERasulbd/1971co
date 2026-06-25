@@ -462,13 +462,13 @@ function getSwatchColor(value, colorLookup = {}) {
         return trimmed;
     }
 
-    if (/^[a-z]+$/i.test(trimmed)) {
-        return trimmed.toLowerCase();
-    }
-
     const mappedColor = colorLookup[trimmed.toLowerCase()];
     if (mappedColor) {
         return mappedColor;
+    }
+
+    if (/^[a-z]+$/i.test(trimmed)) {
+        return trimmed.toLowerCase();
     }
 
     return '#d4d4d8';

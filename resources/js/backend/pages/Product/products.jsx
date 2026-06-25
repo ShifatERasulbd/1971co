@@ -17,7 +17,7 @@ import { useAppContext } from '@/context/AppContext';
 import { fetchColors } from '@/pages/Color/api';
 import { fetchSizes } from '@/pages/Size/api';
 
-import { deleteProduct, fetchProducts, syncApiProducts } from './api';
+import { deleteProduct, fetchProducts, reorderProducts, syncApiProducts } from './api';
 
 export default function Products() {
     const navigate = useNavigate();
@@ -30,6 +30,7 @@ export default function Products() {
     const [productToDelete, setProductToDelete] = useState(null);
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
+    const [isReordering, setIsReordering] = useState(false);
 
     const handleEdit = (productOrPayload) => {
         if (productOrPayload && typeof productOrPayload === 'object') {
@@ -163,6 +164,47 @@ export default function Products() {
         }
     };
 
+    const handleReorderProducts = async (nextProducts = []) => {
+        const normalizedNext = Array.isArray(nextProducts) ? nextProducts : [];
+
+        if (normalizedNext.length === 0) {
+            return;
+        }
+
+        const previousProducts = products;
+        const withPositions = normalizedNext.map((product, index) => ({
+            ...product,
+            position: index + 1,
+        }));
+
+        setProducts(withPositions);
+        setIsReordering(true);
+
+        try {
+            await reorderProducts(
+                withPositions.map((product) => ({
+                    id: Number(product.id),
+                    position: Number(product.position),
+                })),
+            );
+
+            toast.success('Product order updated.', {
+                style: {
+                    color: '#16a34a',
+                },
+            });
+        } catch (error) {
+            setProducts(previousProducts);
+            toast.error(error.message || 'Failed to update product order.', {
+                style: {
+                    color: '#dc2626',
+                },
+            });
+        } finally {
+            setIsReordering(false);
+        }
+    };
+
     return (
         <>
             <div className="space-y-5">
@@ -178,6 +220,8 @@ export default function Products() {
                         onEdit={handleEdit}
                         onRequestDelete={setProductToDelete}
                         onSync={handleSyncProducts}
+                        onReorder={handleReorderProducts}
+                        isReordering={isReordering}
                     />
                 </div>
 

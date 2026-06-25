@@ -38,6 +38,7 @@ class Product extends Model
         'subcategory_id',
         'grand_child_id',
         'stock',
+        'position',
         'show_on_best_sellers',
     ];
 
@@ -56,6 +57,7 @@ class Product extends Model
             'color_variant_size_charts' => 'array',
             'price' => 'decimal:2',
             'stock' => 'integer',
+            'position' => 'integer',
             'show_on_best_sellers' => 'boolean',
         ];
     }

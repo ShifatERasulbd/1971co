@@ -210,3 +210,16 @@ export async function syncApiProducts() {
         method: 'POST',
     });
 }
+
+export async function reorderProducts(items = []) {
+    return requestJson('/api/products/reorder', {
+        needsCsrf: true,
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            items: Array.isArray(items) ? items : [],
+        }),
+    });
+}

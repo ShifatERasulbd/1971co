@@ -12,12 +12,17 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        $products = Product::orderByDesc('updated_at')->get();
+        $products = Product::query()
+            ->orderByRaw('position IS NULL')
+            ->orderBy('position')
+            ->orderByDesc('updated_at')
+            ->get();
        
         return response()->json($products);
     }
@@ -50,6 +55,7 @@ class ProductController extends Controller
             'subcategory_id',
             'grand_child_id',
             'show_on_best_sellers',
+            'position',
         ];
 
         if (Schema::hasColumn('products', 'slug')) {
@@ -58,7 +64,9 @@ class ProductController extends Controller
 
         $products = Product::select($columns)
             ->where('show_on_best_sellers', true)
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw('position IS NULL')
+            ->orderBy('position')
+            ->orderByDesc('created_at')
             ->limit(12)
             ->get();
 
@@ -92,6 +100,7 @@ class ProductController extends Controller
             'variant_rows',
             'grand_child_id',
             'show_on_best_sellers',
+            'position',
         ];
 
         if (Schema::hasColumn('products', 'slug')) {
@@ -100,6 +109,8 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->select($columns)
+            ->orderByRaw('position IS NULL')
+            ->orderBy('position')
             ->orderByDesc('created_at')
             ->get();
 
@@ -148,6 +159,7 @@ class ProductController extends Controller
             'subcategory_id' => 'nullable|integer',
             'grand_child_id' => 'nullable|integer',
             'stock' => 'required|integer',
+            'position' => 'nullable|integer|min:1',
             'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',
             'variant_rows.*.key' => 'nullable|string|max:255',
@@ -208,6 +220,11 @@ class ProductController extends Controller
         $validated['fabric_and_care'] = trim((string) ($validated['fabric_and_care'] ?? ($validated['additional_information'] ?? '')));
         $validated['long_description'] = $validated['fit'];
         $validated['additional_information'] = $validated['fabric_and_care'];
+
+        if (!isset($validated['position']) || $validated['position'] === null || $validated['position'] === '') {
+            $validated['position'] = (int) Product::query()->max('position') + 1;
+        }
+
         $validated['color_variant_images'] = $this->resolveColorVariantImages(
             $validated['color_variant_images'] ?? [],
             $finalGallery,
@@ -293,6 +310,7 @@ class ProductController extends Controller
             'subcategory_id' => 'nullable|integer',
             'grand_child_id' => 'nullable|integer',
             'stock' => 'required|integer',
+            'position' => 'nullable|integer|min:1',
             'show_on_best_sellers' => 'nullable|boolean',
             'variant_rows' => 'nullable|array',
             'variant_rows.*.key' => 'nullable|string|max:255',
@@ -483,6 +501,27 @@ class ProductController extends Controller
             'deleted_scope' => $requestedScope === 'group' ? 'group' : 'single',
             'deleted_count' => $deletedCount,
             'deleted_ids' => $deletedIds,
+        ]);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer|exists:products,id',
+            'items.*.position' => 'required|integer|min:1',
+        ]);
+
+        DB::transaction(function () use ($validated): void {
+            foreach ($validated['items'] as $item) {
+                Product::query()
+                    ->whereKey($item['id'])
+                    ->update(['position' => (int) $item['position']]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Product order updated successfully.',
         ]);
     }
 

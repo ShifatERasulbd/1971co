@@ -105,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::put('/website/best-sellers-section', [SettingsController::class, 'updateBestSellersSection']);
 
 	Route::get('/products', [ProductController::class, 'index']);
+	Route::put('/products/reorder', [ProductController::class, 'reorder']);
 	Route::get('/products/{product}', [ProductController::class, 'show']);
 	Route::post('/products', [ProductController::class, 'store']);
 	Route::put('/products/{product}', [ProductController::class, 'update']);

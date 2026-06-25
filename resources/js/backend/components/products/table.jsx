@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,9 +23,13 @@ export default function ProductTable({
     onEdit,
     onRequestDelete,
     onSync,
+    onReorder,
+    isReordering,
 }) {
     const [search, setSearch] = useState('');
     const [expandedGroups, setExpandedGroups] = useState({});
+    const [draggingGroupKey, setDraggingGroupKey] = useState(null);
+    const [dropGroupKey, setDropGroupKey] = useState(null);
 
     const colorLabelById = useMemo(() => {
         const map = {};
@@ -104,17 +108,9 @@ export default function ProductTable({
 
     const toPlainText = (value = '') => String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-    const filtered = products.filter((product) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
+    const q = search.trim().toLowerCase();
 
-        return (
-            product.name?.toLowerCase().includes(q) ||
-            product.sku?.toLowerCase().includes(q)
-        );
-    });
-
-    const groupedProducts = filtered.reduce((groups, product, index) => {
+    const groupProductsByName = (list = []) => list.reduce((groups, product, index) => {
         const rawName = product.name?.trim() || 'Unnamed Product';
         const lookupKey = rawName.toLowerCase() || `unnamed-${product.id ?? index}`;
         const existing = groups.find((group) => group.lookupKey === lookupKey);
@@ -134,11 +130,90 @@ export default function ProductTable({
         return groups;
     }, []);
 
+    const allGroupedProducts = useMemo(() => groupProductsByName(products), [products]);
+
+    const groupedProducts = useMemo(() => {
+        if (!q) {
+            return allGroupedProducts;
+        }
+
+        return allGroupedProducts.filter((group) =>
+            group.items.some((product) =>
+                String(product?.name || '').toLowerCase().includes(q) ||
+                String(product?.sku || '').toLowerCase().includes(q),
+            ),
+        );
+    }, [allGroupedProducts, q]);
+
+    const hasActiveSearch = q.length > 0;
+    const canDragAndDrop = !isLoading && !isReordering && !hasActiveSearch;
+
     const toggleGroup = (groupKey) => {
         setExpandedGroups((previous) => ({
             ...previous,
             [groupKey]: !previous[groupKey],
         }));
+    };
+
+    const handleDragStart = (event, groupKey) => {
+        if (!canDragAndDrop) {
+            return;
+        }
+
+        setDraggingGroupKey(groupKey);
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', groupKey);
+    };
+
+    const handleDragOver = (event, groupKey) => {
+        if (!canDragAndDrop || !draggingGroupKey || draggingGroupKey === groupKey) {
+            return;
+        }
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        setDropGroupKey(groupKey);
+    };
+
+    const handleDragEnd = () => {
+        setDraggingGroupKey(null);
+        setDropGroupKey(null);
+    };
+
+    const handleDrop = async (event, targetGroupKey) => {
+        event.preventDefault();
+
+        if (!canDragAndDrop) {
+            handleDragEnd();
+            return;
+        }
+
+        const sourceGroupKey = draggingGroupKey || event.dataTransfer.getData('text/plain');
+
+        if (!sourceGroupKey || sourceGroupKey === targetGroupKey) {
+            handleDragEnd();
+            return;
+        }
+
+        const sourceIndex = allGroupedProducts.findIndex((group) => group.key === sourceGroupKey);
+        const targetIndex = allGroupedProducts.findIndex((group) => group.key === targetGroupKey);
+
+        if (sourceIndex < 0 || targetIndex < 0) {
+            handleDragEnd();
+            return;
+        }
+
+        const reorderedGroups = [...allGroupedProducts];
+        const [moved] = reorderedGroups.splice(sourceIndex, 1);
+        reorderedGroups.splice(targetIndex, 0, moved);
+
+        const reorderedProducts = reorderedGroups.flatMap((group) => group.items);
+
+        try {
+            await onReorder?.(reorderedProducts);
+        } finally {
+            handleDragEnd();
+        }
     };
 
     return (
@@ -157,7 +232,7 @@ export default function ProductTable({
                     <Button
                         className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 border border-primary disabled:opacity-60"
                         onClick={onSync}
-                        disabled={isLoading}
+                        disabled={isLoading || isReordering}
                         type="button"
                     >
                         {isLoading ? 'Syncing...' : 'Sync Products'}
@@ -213,6 +288,14 @@ export default function ProductTable({
                                 </TableRow>
                             )}
 
+                            {!isLoading && hasActiveSearch && (
+                                <TableRow>
+                                    <TableCell colSpan={12} className="h-10 text-center text-xs text-muted-foreground">
+                                        Clear search to drag and reposition products.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+
                             {!isLoading &&
                                 groupedProducts.map((group, index) => {
                                     const primary = group.items[0];
@@ -222,7 +305,14 @@ export default function ProductTable({
 
                                     return (
                                         <Fragment key={`group-${group.key}`}>
-                                            <TableRow className="hover:bg-muted/20">
+                                            <TableRow
+                                                draggable={canDragAndDrop}
+                                                onDragStart={(event) => handleDragStart(event, group.key)}
+                                                onDragOver={(event) => handleDragOver(event, group.key)}
+                                                onDrop={(event) => handleDrop(event, group.key)}
+                                                onDragEnd={handleDragEnd}
+                                                className={`hover:bg-muted/20 ${canDragAndDrop ? 'cursor-move' : ''} ${dropGroupKey === group.key ? 'bg-primary/10' : ''}`}
+                                            >
                                                 <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                                                 <TableCell>
                                                     {primary.cover_image ? (
@@ -237,6 +327,7 @@ export default function ProductTable({
                                                 </TableCell>
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center gap-2">
+                                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
                                                         <span>{group.displayName}</span>
                                                         {hasVariants && (
                                                             <Button
@@ -245,6 +336,7 @@ export default function ProductTable({
                                                                 className="h-7 gap-1 px-2 text-xs"
                                                                 onClick={() => toggleGroup(group.key)}
                                                                 type="button"
+                                                                onMouseDown={(event) => event.stopPropagation()}
                                                             >
                                                                 {isExpanded ? (
                                                                     <ChevronDown className="h-3.5 w-3.5" />
@@ -285,6 +377,7 @@ export default function ProductTable({
                                                                 })
                                                             }
                                                             aria-label={`Edit ${primary.name}`}
+                                                            onMouseDown={(event) => event.stopPropagation()}
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
@@ -301,6 +394,7 @@ export default function ProductTable({
                                                             }
                                                             disabled={deletingId === primary.id}
                                                             aria-label={`Delete ${primary.name}`}
+                                                            onMouseDown={(event) => event.stopPropagation()}
                                                         >
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
