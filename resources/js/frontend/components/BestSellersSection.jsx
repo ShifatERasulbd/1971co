@@ -26,11 +26,45 @@ const PLACEHOLDER_PRODUCTS = [
 
 function normalizeProductColors(value) {
     if (Array.isArray(value)) {
-        return value.map((item) => String(item || '').trim()).filter(Boolean);
+        return value
+            .map((item) => {
+                if (item == null) {
+                    return '';
+                }
+
+                if (typeof item === 'object') {
+                    if (item.name) {
+                        return String(item.name).trim();
+                    }
+
+                    if (item.id != null) {
+                        return String(item.id).trim();
+                    }
+
+                    return '';
+                }
+
+                return String(item).trim().replace(/^[\[\]"']+|[\[\]"']+$/g, '');
+            })
+            .filter(Boolean);
     }
 
     if (typeof value === 'string' && value.trim()) {
-        return value.split(',').map((item) => item.trim()).filter(Boolean);
+        const trimmedValue = value.trim();
+
+        if (trimmedValue.startsWith('[') && trimmedValue.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(trimmedValue);
+                return normalizeProductColors(parsed);
+            } catch {
+                // Fall back to comma-delimited parsing for malformed persisted strings.
+            }
+        }
+
+        return trimmedValue
+            .split(',')
+            .map((item) => item.trim().replace(/^[\[\]"']+|[\[\]"']+$/g, ''))
+            .filter(Boolean);
     }
 
     return [];
@@ -53,19 +87,30 @@ function normalizeProductSizes(value) {
     return [];
 }
 
-function normalizeColorLookupEntry(record) {
+function normalizeColorLookupEntries(record) {
     if (!record || typeof record !== 'object') {
-        return null;
+        return [];
     }
 
     const name = String(record.name || '').trim();
+    const id = record.id != null ? String(record.id).trim() : '';
     const colorCode = String(record.color_code || '').trim();
 
-    if (!name || !/^#[0-9a-f]{6}$/i.test(colorCode)) {
-        return null;
+    if (!/^#[0-9a-f]{6}$/i.test(colorCode)) {
+        return [];
     }
 
-    return [name.toLowerCase(), colorCode];
+    const entries = [];
+
+    if (name) {
+        entries.push([name.toLowerCase(), colorCode]);
+    }
+
+    if (id) {
+        entries.push([id, colorCode]);
+    }
+
+    return entries;
 }
 
 function getSwatchColor(value, colorLookup = {}) {
@@ -551,9 +596,7 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                         : (Array.isArray(colorData?.data) ? colorData.data : []);
 
                     nextColorLookup = Object.fromEntries(
-                        colorList
-                            .map(normalizeColorLookupEntry)
-                            .filter(Boolean),
+                        colorList.flatMap((record) => normalizeColorLookupEntries(record)),
                     );
                 }
 

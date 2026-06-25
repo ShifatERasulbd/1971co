@@ -415,7 +415,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
         () => {
             const slug = String(product?.slug || '').trim();
             const name = String(product?.name || '').trim();
-            const color = String(initialColor || '').trim();
+            const color = String(initialColor || '').trim().replace(/ /g, '-');
             const detailUrl = slug
                 ? `/product-details/${encodeURIComponent(slug)}${color ? `/${encodeURIComponent(color)}` : ''}`
                 : `/product-details/${encodeURIComponent(name)}${color ? `/${encodeURIComponent(color)}` : ''}`;

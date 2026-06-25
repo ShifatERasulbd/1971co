@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ProductZoomModal from './ProductZoomModal'; 
 
 export default function SingleProductMediaGallery({
@@ -9,6 +9,9 @@ export default function SingleProductMediaGallery({
 }) {
     const safeImages = Array.isArray(images) && images.length > 0 ? images : [];
     const activeImage = selectedImage || safeImages[0];
+    const videoPlaceholderImage = safeImages[0] || activeImage || '';
+    const [isVideoReady, setIsVideoReady] = useState(false);
+    const videoRef = useRef(null);
 
     // Gallery Hover Magnifier State
     const [zoomStyle, setZoomStyle] = useState({ display: 'none' });
@@ -17,6 +20,10 @@ export default function SingleProductMediaGallery({
     // Modal Control State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImage, setModalImage] = useState('');
+
+    useEffect(() => {
+        setIsVideoReady(false);
+    }, [primaryVideo]);
 
     if (!primaryVideo && !activeImage) return null;
 
@@ -57,21 +64,47 @@ export default function SingleProductMediaGallery({
         setIsModalOpen(true);  
     };
 
+    const handleVideoCanPlay = () => {
+        setIsVideoReady(true);
+
+        if (!videoRef.current) {
+            return;
+        }
+
+        const playPromise = videoRef.current.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+                // Ignore autoplay interruptions (browser policy/network timing).
+            });
+        }
+    };
+
     return (
         <div className="w-full">
             {/* Main grid wrapper handling the columns */}
             <div className="grid grid-cols-2 gap-3">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
-                    <div className="overflow-hidden border border-zinc-900">
+                    <div className="relative overflow-hidden border border-zinc-900">
+                        {!isVideoReady && videoPlaceholderImage ? (
+                            <img
+                                src={videoPlaceholderImage}
+                                alt="Product preview"
+                                className="aspect-[4/5] w-full object-cover object-center"
+                            />
+                        ) : null}
                         <video
+                            ref={videoRef}
                             src={primaryVideo}
                             autoPlay
                             loop
                             muted
                             playsInline
                             controls
-                            className="aspect-[4/5] w-full object-cover object-center"
+                            onCanPlay={handleVideoCanPlay}
+                            className={`aspect-[4/5] w-full object-cover object-center ${
+                                isVideoReady ? 'opacity-100' : 'absolute inset-0 opacity-0'
+                            }`}
                             preload="metadata"
                         />
                     </div>

@@ -92,7 +92,7 @@ export default function SingleProductPage() {
 
         const slugParam = routeSlug || searchParams.get('slug');
         const nameParam = searchParams.get('name');
-        const colorParam = routeColor || searchParams.get('color');
+        const colorParam = (routeColor || searchParams.get('color') || '').replace(/-/g, ' ');
 
         if (slugParam) {
             const bySlugCandidates = products.filter((item) => String(item?.slug || '') === String(slugParam));
@@ -118,7 +118,7 @@ export default function SingleProductPage() {
     }, [products, routeSlug, routeColor, searchParams]);
 
     const initialColor = useMemo(() => {
-        const colorParam = String(routeColor || searchParams.get('color') || '').trim();
+        const colorParam = String(routeColor || searchParams.get('color') || '').trim().replace(/-/g, ' ');
         return colorParam;
     }, [routeColor, searchParams]);
 
