@@ -32,6 +32,14 @@ class CheckoutOrder extends Model
         'payment_provider',
         'payment_status',
         'payment_intent_id',
+        'courier_service',
+        'courier_reference',
+        'courier_sync_status',
+        'courier_sync_error',
+        'ups_tracking_number',
+        'ups_synced_at',
+        'shipstation_order_id',
+        'shipstation_synced_at',
         'status',
     ];
 
@@ -44,6 +52,8 @@ class CheckoutOrder extends Model
             'subtotal' => 'decimal:2',
             'shipping' => 'decimal:2',
             'total' => 'decimal:2',
+            'ups_synced_at' => 'datetime',
+            'shipstation_synced_at' => 'datetime',
         ];
     }
 

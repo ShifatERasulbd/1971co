@@ -3,12 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\CheckoutOrder;
+use App\Services\ShippingRateService;
+use App\Services\ShipStationService;
+use App\Services\UpsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Stripe\StripeClient;
 
 class CheckoutOrderController extends Controller
 {
+    public function __construct(
+        private readonly ShipStationService $shipStationService,
+        private readonly ShippingRateService $shippingRateService,
+        private readonly UpsService $upsService,
+    )
+    {
+    }
+
+    public function quoteShipping(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'courier' => 'required|string|in:ups,shipstation',
+            'country' => 'nullable|string|max:120',
+            'state' => 'nullable|string|max:120',
+            'city' => 'nullable|string|max:120',
+            'postal_code' => 'nullable|string|max:40',
+            'items' => 'nullable|array',
+            'items.*.quantity' => 'nullable|integer|min:1|max:999',
+            'subtotal' => 'required|numeric|min:0',
+        ]);
+
+        $shipping = $this->calculateShippingByCourier($validated['courier'], $validated);
+
+        return response()->json([
+            'courier' => $validated['courier'],
+            'shipping' => $shipping,
+        ]);
+    }
+
     protected function customerScopedOrders(Request $request)
     {
         $user = $request->user();
@@ -112,6 +146,9 @@ class CheckoutOrderController extends Controller
 
     public function update(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
     {
+        $previousStatus = (string) $checkoutOrder->status;
+        $syncWarning = null;
+
         $validated = $request->validate([
             'first_name'      => 'sometimes|required|string|max:100',
             'last_name'       => 'sometimes|required|string|max:100',
@@ -127,10 +164,58 @@ class CheckoutOrderController extends Controller
             'status'          => 'nullable|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
         ]);
 
+        $nextStatus = (string) ($validated['status'] ?? $previousStatus);
+
+        if ($previousStatus === 'approved' && $nextStatus === 'processing') {
+            $courier = (string) ($checkoutOrder->courier_service ?? 'shipstation');
+
+            if ($courier === 'ups') {
+                try {
+                    $upsResponse = $this->upsService->createShipmentForCheckoutOrder($checkoutOrder);
+                    $trackingNumber = $this->extractUpsTrackingNumber($upsResponse);
+
+                    $validated['courier_sync_status'] = 'synced';
+                    $validated['courier_sync_error'] = null;
+                    $validated['courier_reference'] = $trackingNumber;
+                    $validated['ups_tracking_number'] = $trackingNumber;
+                    $validated['ups_synced_at'] = now();
+                } catch (\Throwable $exception) {
+                    Log::error('UPS shipment push failed on single order update.', [
+                        'checkout_order_id' => $checkoutOrder->id,
+                        'order_number' => $checkoutOrder->order_number,
+                        'error' => $exception->getMessage(),
+                    ]);
+
+                    $validated['courier_sync_status'] = 'failed';
+                    $validated['courier_sync_error'] = $exception->getMessage();
+                    $syncWarning = 'Order status updated, but UPS sync failed.';
+                }
+            } else {
+                try {
+                    $shipStationResponse = $this->shipStationService->createOrderForCheckoutOrder($checkoutOrder);
+                    $validated['courier_sync_status'] = 'synced';
+                    $validated['courier_sync_error'] = null;
+                    $validated['courier_reference'] = $this->extractShipStationOrderId($shipStationResponse);
+                    $validated['shipstation_order_id'] = $this->extractShipStationOrderId($shipStationResponse);
+                    $validated['shipstation_synced_at'] = now();
+                } catch (\Throwable $exception) {
+                    Log::error('ShipStation order push failed on single order update.', [
+                        'checkout_order_id' => $checkoutOrder->id,
+                        'order_number' => $checkoutOrder->order_number,
+                        'error' => $exception->getMessage(),
+                    ]);
+
+                    $validated['courier_sync_status'] = 'failed';
+                    $validated['courier_sync_error'] = $exception->getMessage();
+                    $syncWarning = 'Order status updated, but ShipStation sync failed.';
+                }
+            }
+        }
+
         $checkoutOrder->update($validated);
 
         return response()->json([
-            'message' => 'Order updated successfully',
+            'message' => $syncWarning ?: 'Order updated successfully',
             'order'   => $checkoutOrder->fresh(),
         ]);
     }
@@ -149,6 +234,87 @@ class CheckoutOrderController extends Controller
             'ids.*'  => 'integer',
             'status' => 'required|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
         ]);
+
+        if ($validated['status'] === 'processing') {
+            $ordersToSend = CheckoutOrder::query()
+                ->whereIn('id', $validated['ids'])
+                ->where('status', 'approved')
+                ->get();
+
+            $syncPayloadByOrderId = [];
+            $failedSyncs = 0;
+
+            foreach ($ordersToSend as $order) {
+                $courier = (string) ($order->courier_service ?? 'shipstation');
+
+                if ($courier === 'ups') {
+                    try {
+                        $upsResponse = $this->upsService->createShipmentForCheckoutOrder($order);
+                        $trackingNumber = $this->extractUpsTrackingNumber($upsResponse);
+                        $syncPayloadByOrderId[$order->id] = [
+                            'courier_sync_status' => 'synced',
+                            'courier_sync_error' => null,
+                            'courier_reference' => $trackingNumber,
+                            'ups_tracking_number' => $trackingNumber,
+                            'ups_synced_at' => now(),
+                        ];
+                    } catch (\Throwable $exception) {
+                        Log::error('UPS shipment push failed on bulk order update.', [
+                            'checkout_order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'error' => $exception->getMessage(),
+                        ]);
+
+                        $failedSyncs++;
+                        $syncPayloadByOrderId[$order->id] = [
+                            'courier_sync_status' => 'failed',
+                            'courier_sync_error' => $exception->getMessage(),
+                        ];
+                    }
+                } else {
+                    try {
+                        $shipStationResponse = $this->shipStationService->createOrderForCheckoutOrder($order);
+                        $syncPayloadByOrderId[$order->id] = [
+                            'courier_sync_status' => 'synced',
+                            'courier_sync_error' => null,
+                            'courier_reference' => $this->extractShipStationOrderId($shipStationResponse),
+                            'shipstation_order_id' => $this->extractShipStationOrderId($shipStationResponse),
+                            'shipstation_synced_at' => now(),
+                        ];
+                    } catch (\Throwable $exception) {
+                        Log::error('ShipStation order push failed on bulk order update.', [
+                            'checkout_order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'error' => $exception->getMessage(),
+                        ]);
+
+                        $failedSyncs++;
+                        $syncPayloadByOrderId[$order->id] = [
+                            'courier_sync_status' => 'failed',
+                            'courier_sync_error' => $exception->getMessage(),
+                        ];
+                    }
+                }
+            }
+
+            DB::transaction(function () use ($validated, $syncPayloadByOrderId): void {
+                foreach ($validated['ids'] as $orderId) {
+                    $updatePayload = ['status' => $validated['status']];
+
+                    if (isset($syncPayloadByOrderId[$orderId])) {
+                        $updatePayload = array_merge($updatePayload, $syncPayloadByOrderId[$orderId]);
+                    }
+
+                    CheckoutOrder::query()->whereKey($orderId)->update($updatePayload);
+                }
+            });
+
+            $message = $failedSyncs > 0
+                ? 'Orders updated, but ' . $failedSyncs . ' courier sync(s) failed.'
+                : 'Orders updated successfully';
+
+            return response()->json(['message' => $message]);
+        }
 
         CheckoutOrder::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
 
@@ -190,6 +356,7 @@ class CheckoutOrderController extends Controller
             'items.*.image' => 'nullable|string|max:2048',
             'items.*.selectedColor' => 'nullable|string|max:100',
             'items.*.selectedSize' => 'nullable|string|max:100',
+            'courier' => 'required|string|in:ups,shipstation',
             'subtotal' => 'required|numeric|min:0',
             'shipping' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
@@ -203,7 +370,9 @@ class CheckoutOrderController extends Controller
             ], 500);
         }
 
-        $expectedAmount = (int) round(((float) $validated['total']) * 100);
+        $shipping = $this->calculateShippingByCourier($validated['courier'], $validated);
+        $computedTotal = (float) $validated['subtotal'] + $shipping;
+        $expectedAmount = (int) round($computedTotal * 100);
 
         try {
             $stripe = new StripeClient($secretKey);
@@ -240,23 +409,171 @@ class CheckoutOrderController extends Controller
             'city' => trim($validated['city']),
             'state' => isset($validated['state']) ? trim((string) $validated['state']) : null,
             'postal_code' => isset($validated['postal_code']) ? trim((string) $validated['postal_code']) : null,
-            'country' => isset($validated['country']) ? trim((string) $validated['country']) : null,
+            'country' => $this->shippingRateService->normalizeCountryCode($validated['country'] ?? null),
             'notes' => isset($validated['notes']) ? trim((string) $validated['notes']) : null,
             'items_count' => collect($validated['items'])->sum('quantity'),
             'subtotal' => $validated['subtotal'],
-            'shipping' => $validated['shipping'],
-            'total' => $validated['total'],
+            'shipping' => $shipping,
+            'total' => $computedTotal,
             'items' => $validated['items'],
             'status' => 'approved',
             'payment_provider' => 'stripe',
             'payment_status' => 'paid',
             'payment_intent_id' => $validated['payment_intent_id'],
+            'courier_service' => $validated['courier'],
+            'courier_sync_status' => 'pending',
         ]);
+
+        if ($validated['courier'] === 'ups') {
+            $syncPayload = $this->dispatchOrderToCourier($order);
+
+            if (! empty($syncPayload)) {
+                $order->update($syncPayload);
+            }
+        }
 
         return response()->json([
             'message' => 'Order created successfully',
             'order_id' => $order->id,
             'order_number' => $order->order_number,
+            'courier_service' => $order->courier_service,
+            'courier_sync_status' => $order->fresh()?->courier_sync_status,
         ], 201);
+    }
+
+    protected function calculateShippingByCourier(string $courier, array $payload): float
+    {
+        $subtotal = (float) ($payload['subtotal'] ?? 0);
+        $fallbackShipping = $this->shippingRateService->calculate([
+            'country' => $payload['country'] ?? null,
+            'state' => $payload['state'] ?? null,
+        ], $subtotal);
+
+        if ($courier === 'ups') {
+            $weight = $this->estimateWeight($payload['items'] ?? []);
+
+            if (! $this->upsService->isConfigured()) {
+                // Graceful fallback while UPS credentials are not set in local/dev.
+                return $fallbackShipping;
+            }
+
+            try {
+                return $this->upsService->getShipmentCharge([
+                    'country' => $payload['country'] ?? null,
+                    'state' => $payload['state'] ?? null,
+                    'city' => $payload['city'] ?? null,
+                    'postal_code' => $payload['postal_code'] ?? null,
+                    'weight' => $weight,
+                ]);
+            } catch (\Throwable $exception) {
+                Log::warning('UPS shipping quote failed. Falling back to default shipping rate.', [
+                    'error' => $exception->getMessage(),
+                    'country' => $payload['country'] ?? null,
+                    'state' => $payload['state'] ?? null,
+                    'postal_code' => $payload['postal_code'] ?? null,
+                ]);
+
+                return $fallbackShipping;
+            }
+        }
+
+        return $fallbackShipping;
+    }
+
+    protected function estimateWeight(array $items): float
+    {
+        $quantity = 0;
+
+        foreach ($items as $item) {
+            $quantity += max(1, (int) ($item['quantity'] ?? 1));
+        }
+
+        return max(1.0, $quantity * 0.8);
+    }
+
+    protected function dispatchOrderToCourier(CheckoutOrder $order): array
+    {
+        $courier = (string) ($order->courier_service ?? 'shipstation');
+
+        if ($courier === 'ups') {
+            try {
+                $response = $this->upsService->createShipmentForCheckoutOrder($order);
+                $trackingNumber = $this->extractUpsTrackingNumber($response);
+
+                return [
+                    'courier_sync_status' => 'synced',
+                    'courier_sync_error' => null,
+                    'courier_reference' => $trackingNumber,
+                    'ups_tracking_number' => $trackingNumber,
+                    'ups_synced_at' => now(),
+                ];
+            } catch (\Throwable $exception) {
+                Log::error('UPS shipment push failed on order create.', [
+                    'checkout_order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return [
+                    'courier_sync_status' => 'failed',
+                    'courier_sync_error' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        try {
+            $response = $this->shipStationService->createOrderForCheckoutOrder($order);
+            $shipStationOrderId = $this->extractShipStationOrderId($response);
+
+            return [
+                'courier_sync_status' => 'synced',
+                'courier_sync_error' => null,
+                'courier_reference' => $shipStationOrderId,
+                'shipstation_order_id' => $shipStationOrderId,
+                'shipstation_synced_at' => now(),
+            ];
+        } catch (\Throwable $exception) {
+            Log::error('ShipStation order push failed on order create.', [
+                'checkout_order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return [
+                'courier_sync_status' => 'failed',
+                'courier_sync_error' => $exception->getMessage(),
+            ];
+        }
+    }
+
+    protected function extractUpsTrackingNumber(array $upsResponse): ?string
+    {
+        $candidates = [
+            data_get($upsResponse, 'ShipmentResponse.ShipmentResults.ShipmentIdentificationNumber'),
+            data_get($upsResponse, 'ShipmentResponse.ShipmentResults.PackageResults.0.TrackingNumber'),
+            data_get($upsResponse, 'ShipmentResults.ShipmentIdentificationNumber'),
+            data_get($upsResponse, 'ShipmentResults.PackageResults.0.TrackingNumber'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== null && $candidate !== '') {
+                return (string) $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    protected function extractShipStationOrderId(array $shipStationResponse): ?string
+    {
+        foreach (['orderId', 'orderKey', 'orderNumber'] as $key) {
+            $value = $shipStationResponse[$key] ?? null;
+
+            if ($value !== null && $value !== '') {
+                return (string) $value;
+            }
+        }
+
+        return null;
     }
 }

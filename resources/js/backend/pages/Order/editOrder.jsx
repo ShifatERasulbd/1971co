@@ -131,6 +131,12 @@ export default function EditOrder() {
         return <div className="px-6 py-10 text-center text-sm text-zinc-400">Order not found.</div>;
     }
 
+    const courierService = String(order.courier_service || 'shipstation').toLowerCase();
+    const courierName = courierService === 'ups' ? 'UPS' : 'ShipStation';
+    const courierReferenceLabel = courierService === 'ups' ? 'UPS Tracking Number' : 'ShipStation Order ID';
+    const courierReference = order.courier_reference || order.ups_tracking_number || order.shipstation_order_id;
+    const isCourierConnected = order.courier_sync_status === 'synced';
+
     return (
         <div className="px-4 py-6 sm:px-6">
             <div className="mb-6 flex items-center justify-between">
@@ -245,6 +251,23 @@ export default function EditOrder() {
                                 <span>Total</span>
                                 <span>${Number(order.total).toFixed(2)}</span>
                             </div>
+                            <div className="flex justify-between border-t border-zinc-100 pt-2">
+                                <span className="text-zinc-500">{courierName} Connection</span>
+                                <span className={isCourierConnected ? 'text-emerald-700' : 'text-amber-700'}>
+                                    {isCourierConnected ? 'Connected' : 'Not connected'}
+                                </span>
+                            </div>
+                            {courierReference && (
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-500">{courierReferenceLabel}</span>
+                                    <span className="font-mono text-zinc-700">{courierReference}</span>
+                                </div>
+                            )}
+                            {order.courier_sync_error && (
+                                <div className="border-t border-zinc-100 pt-2 text-xs text-red-600">
+                                    {order.courier_sync_error}
+                                </div>
+                            )}
                         </div>
                     </section>
 
