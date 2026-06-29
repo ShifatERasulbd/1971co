@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Eye, Heart } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Autoplay, Navigation } from 'swiper/modules';
@@ -14,15 +14,6 @@ import ProductVariantModal from './ProductVariantModal.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
-
-const PLACEHOLDER_PRODUCTS = [
-    { id: 1, name: 'Athletic Shorts', price: '15.99', cover_image: null, color: ['#9ca3af', '#18181b', '#3b82f6', '#f4f4f5'] },
-    { id: 2, name: 'Athletic Shorts 5 Pcs Bundle', price: '59.99', cover_image: null, color: ['#9ca3af', '#3b82f6', '#18181b'] },
-    { id: 3, name: 'Classic Polo Shirt', price: '19.99', cover_image: null, color: ['#f4f4f5', '#3b82f6', '#18181b', '#d4b896'] },
-    { id: 4, name: "Classic Tank Tops For Men's", price: '9.99', cover_image: null, color: ['#f4f4f5', '#18181b', '#3b82f6', '#d4b896'] },
-    { id: 5, name: "Classic Tank Tops For Men's- 4 Pcs Bundle", price: '39.96', cover_image: null, color: ['#ef4444', '#1e3a5f', '#3d5c3a', '#3b82f6'] },
-    { id: 6, name: "Men's Puffer Vest", price: '44.99', cover_image: null, color: ['#374151', '#1e3a5f'] },
-];
 
 function normalizeProductColors(value) {
     if (Array.isArray(value)) {
@@ -168,6 +159,8 @@ function collectVariantImages(product) {
 }
 
 function groupProductsByName(products) {
+    if (!Array.isArray(products)) return [];
+    
     const grouped = new Map();
 
     products.forEach((product, index) => {
@@ -497,7 +490,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
     );
 }
 
-export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
+export default function BestSellersSection({ sectionTitle = 'Trending' }) {
     const { addToCart, openCartDrawer } = useCart();
     const [products, setProducts] = useState([]);
     const [colorLookup, setColorLookup] = useState({});
@@ -506,6 +499,10 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
     const sliderId = useId().replace(/:/g, '');
     const prevNavClass = `best-sellers-prev-${sliderId}`;
     const nextNavClass = `best-sellers-next-${sliderId}`;
+    
+    const sectionRef = useRef(null);
+    const [isVisible, setIsVisible] = useState(false);
+
     const [isBuilderPreview] = useState(() => {
         try {
             return window.self !== window.top;
@@ -513,6 +510,28 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
             return false;
         }
     });
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsVisible(entry.isIntersecting);
+            },
+            {
+                threshold: 0.1,
+            }
+        );
+
+        const currentRef = sectionRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            if (currentRef) {
+                observer.unobserve(currentRef);
+            }
+        };
+    }, []);
 
     function isBestSeller(product) {
         if (product?.show_on_best_sellers === true) {
@@ -618,9 +637,8 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
         return () => { ignore = true; };
     }, [isBuilderPreview]);
 
-    const displayProducts = loading
-        ? PLACEHOLDER_PRODUCTS
-        : groupProductsByName(products);
+    // Derived collection purely from live fetched state
+    const displayProducts = loading ? [] : groupProductsByName(products);
 
     function handleAddToCart(product, options = {}) {
         setVariantModalState({
@@ -642,7 +660,12 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
 
     return (
         <section
-            className={`${timelessFontClass} bg-white py-10 sm:py-14`}
+            ref={sectionRef}
+            className={`${timelessFontClass} bg-white py-10 sm:py-14 transform transition-all duration-1000 ease-out ${
+                isVisible 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-12'
+            }`}
             style={{ backgroundColor: '#ffffff' }}
             onClick={() => notifyBuilderSelection(null)}
         >
@@ -668,64 +691,68 @@ export default function BestSellersSection({ sectionTitle = 'Best Sellers' }) {
                         </button>
                         <Link
                             to="/shop"
-                            className={`${sectionTypography.sectionMetaLink} text-zinc-500 transition-colors hover:text-zinc-900`}
+                            className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-zinc-500 transition-colors hover:text-zinc-900`}
                         >
                             Shop All
                         </Link>
                     </div>
                 </div>
 
-                <Swiper
-                    modules={[Navigation, Autoplay]}
-                    navigation={{
-                        prevEl: `.${prevNavClass}`,
-                        nextEl: `.${nextNavClass}`,
-                    }}
-                    autoplay={{
-                        delay: 2800,
-                        disableOnInteraction: false,
-                        pauseOnMouseEnter: true,
-                    }}
-                    loop={displayProducts.length > 1}
-                    spaceBetween={12}
-                    slidesPerView={2}
-                    breakpoints={{
-                        480: { slidesPerView: 2 },
-                        640: { slidesPerView: 2.1 },
-                        860: { slidesPerView: 3.1 },
-                        1180: { slidesPerView: 4.1 },
-                        1460: { slidesPerView: 5.1 },
-                    }}
-                    className="best-sellers-swiper pb-4"
-                >
-                    {displayProducts.map((product, index) => (
-                        <SwiperSlide
-                            key={product.id || `${product.name}-${index}`}
-                            className="h-auto"
-                            onClick={(event) => {
-                                if (!isBuilderPreview) {
-                                    return;
-                                }
+                {displayProducts.length > 0 ? (
+                    <Swiper
+                        modules={[Navigation, Autoplay]}
+                        navigation={{
+                            prevEl: `.${prevNavClass}`,
+                            nextEl: `.${nextNavClass}`,
+                        }}
+                        autoplay={{
+                            delay: 2800,
+                            disableOnInteraction: false,
+                            pauseOnMouseEnter: true,
+                        }}
+                        loop={displayProducts.length > 1}
+                        spaceBetween={12}
+                        slidesPerView={2}
+                        breakpoints={{
+                            480: { slidesPerView: 2 },
+                            640: { slidesPerView: 2.1 },
+                            860: { slidesPerView: 3.1 },
+                            1180: { slidesPerView: 4.1 },
+                            1460: { slidesPerView: 5.1 },
+                        }}
+                        className="best-sellers-swiper pb-4"
+                    >
+                        {displayProducts.map((product, index) => (
+                            <SwiperSlide
+                                key={product.id || `${product.name}-${index}`}
+                                className="h-auto"
+                                onClick={(event) => {
+                                    if (!isBuilderPreview) {
+                                        return;
+                                    }
 
-                                event.preventDefault();
-                                event.stopPropagation();
-                                notifyBuilderSelection(index);
-                            }}
-                        >
-                            <ProductCard
-                                product={product}
-                                autoPlay={isBuilderPreview}
-                                colorLookup={colorLookup}
-                                onAddToCart={handleAddToCart}
-                                allowAddToCart={!loading}
-                            />
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
-
-                {!loading && displayProducts.length === 0 ? (
-                    <p className="mt-3 text-sm text-zinc-500">No products are marked as Best Sellers.</p>
-                ) : null}
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    notifyBuilderSelection(index);
+                                }}
+                            >
+                                <ProductCard
+                                    product={product}
+                                    autoPlay={isBuilderPreview}
+                                    colorLookup={colorLookup}
+                                    onAddToCart={handleAddToCart}
+                                    allowAddToCart={!loading}
+                                />
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                ) : !loading ? (
+                    <p className="mt-3 text-sm text-zinc-500">No products are marked as Best Trending.</p>
+                ) : (
+                    <div className="h-48 flex items-center justify-center">
+                        <span className="text-sm text-zinc-400">Loading tracking collection...</span>
+                    </div>
+                )}
 
                 <ProductVariantModal
                     isOpen={Boolean(variantModalState?.product)}

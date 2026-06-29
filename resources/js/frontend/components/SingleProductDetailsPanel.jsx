@@ -105,6 +105,13 @@ export default function SingleProductDetailsPanel({
     const displaySizes = Array.isArray(product.sizes) && product.sizes.length > 0
         ? product.sizes
         : ['One Size'];
+    const selectedColorLabel = useMemo(() => {
+        const match = displayColors.find(
+            (color) => String(color.label || '').trim().toLowerCase() === String(selectedColor || '').trim().toLowerCase(),
+        );
+
+        return match?.label || String(selectedColor || '').trim() || 'Default';
+    }, [displayColors, selectedColor]);
 
     const resolvedSizeChartImages = useMemo(() => {
         const mapping = product?.color_variant_size_charts && typeof product.color_variant_size_charts === 'object'
@@ -220,6 +227,9 @@ export default function SingleProductDetailsPanel({
                             </button>
                         ))}
                     </div>
+                    <p className="mt-2 text-[0.8rem] uppercase tracking-[0.08em] text-zinc-700">
+                        Selected: <span className="font-semibold text-zinc-950">{selectedColorLabel}</span>
+                    </p>
                 </div>
 
                 <div>

@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\InventoryProductStockSyncService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
+use RuntimeException;
 
 class ApiProductController extends Controller
 {
+    public function __construct(private readonly InventoryProductStockSyncService $inventoryProductStockSyncService)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $query = Product::query()
@@ -34,282 +37,20 @@ class ApiProductController extends Controller
 
     public function sync(): JsonResponse
     {
-        $baseUrl    = rtrim((string) config('services.inventory.base_url'), '/');
-        $apiKey     = (string) config('services.inventory.canada_api_key');
-        $warehouseId = (int) config('services.inventory.canada_warehouse_id');
-        $verifySsl  = filter_var(config('services.inventory.verify_ssl', true), FILTER_VALIDATE_BOOL);
-        $caBundlePath = trim((string) config('services.inventory.ca_bundle_path', ''));
-
-        if ($baseUrl === '' || $apiKey === '') {
-            return response()->json(['message' => 'Inventory API configuration is missing.'], 500);
-        }
-
-        $httpOptions = [
-            'verify' => $caBundlePath !== '' ? $caBundlePath : $verifySsl,
-        ];
-
         try {
-            $response = Http::timeout(20)
-                ->withOptions($httpOptions)
-                ->acceptJson()
-                ->withHeaders(['X-API-Key' => $apiKey])
-                ->get($baseUrl . '/api/public/stocks', array_filter(['warehouse_id' => $warehouseId ?: null]));
-        } catch (ConnectionException $exception) {
+            $result = $this->inventoryProductStockSyncService->sync();
+        } catch (ConnectionException|RuntimeException $exception) {
             return response()->json([
-                'message' => str_contains($exception->getMessage(), 'cURL error 60')
-                    ? 'SSL certificate error. Set INVENTORY_API_VERIFY_SSL=false or configure CA bundle.'
-                    : 'Failed to connect to Inventory API.',
-            ], 502);
-        }
-
-        if (! $response->successful()) {
-            $upstream = $response->json();
-            return response()->json([
-                'message' => is_array($upstream)
-                    ? ($upstream['message'] ?? 'Inventory API returned an error.')
-                    : 'Inventory API returned an error.',
-            ], $response->status());
-        }
-
-        $payload = $response->json();
-        $stocks  = is_array($payload['data'] ?? null) ? $payload['data'] : (is_array($payload) ? $payload : []);
-
-        if (empty($stocks)) {
-            return response()->json(['message' => 'No products returned from Inventory API.', 'synced' => 0]);
-        }
-
-
-        $byName = [];
-        foreach ($stocks as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            $name = trim((string) ($row['product_name'] ?? $row['product']['name'] ?? ''));
-            $rawBarcode = $row['barcode'] ?? null;
-            if (is_array($rawBarcode)) {
-                $rawBarcode = implode('-', array_filter($rawBarcode, 'is_scalar')) ?: null;
-            }
-            $barcode = is_string($rawBarcode) && trim($rawBarcode) !== ''
-                ? trim($rawBarcode)
-                : null;
-
-            $price = $this->extractSellingPrice($row);
-            if ($name === '') {
-                continue;
-            }
-            $size = $this->normalizeVariantValue($row['size_variant']['size'] ?? ($row['size'] ?? ($row['product']['size'] ?? null)));
-            $color = $this->normalizeVariantValue($row['color_variant']['name'] ?? ($row['color'] ?? ($row['product']['color'] ?? null)));
-            $stock = (int) ($row['stocks'] ?? $row['available_stock'] ?? 0);
-
-            $coverImage = $row['cover_image_url'] ?? null;
-            if ($coverImage && ! str_starts_with($coverImage, 'http')) {
-                $coverImage = $baseUrl . '/' . ltrim($coverImage, '/');
-            }
-
-            $variantKey = mb_strtolower($name . '|' . ($color ?? 'uncategorized') . '|' . ($size ?? 'no-size'));
-
-            if (! isset($byName[$variantKey])) {
-                $byName[$variantKey] = [
-                    'sku' => $this->buildProductSku($row['product_id'] ?? null, $name, $color),
-                    'name' => $name,
-                    'price' => $price ?? 0.0,
-                    'stock' => 0,
-                    'cover_image' => $coverImage,
-                    'colors' => [],
-                    'size' => $size,
-                    'barcodes' => [],
-                    'product_ids' => [],
-                    'variants' => [],
-                ];
-            }
-
-            $byName[$variantKey]['stock'] += max(0, $stock);
-
-            if ($price !== null) {
-                $byName[$variantKey]['price'] = $price;
-            }
-
-            if (! $byName[$variantKey]['cover_image'] && $coverImage) {
-                $byName[$variantKey]['cover_image'] = $coverImage;
-            }
-
-            if ($barcode !== null) {
-                $byName[$variantKey]['barcodes'][] = $barcode;
-            }
-
-            if (! empty($row['product_id'])) {
-                $byName[$variantKey]['product_ids'][] = $row['product_id'];
-            }
-
-            if ($color !== null) {
-                $byName[$variantKey]['colors'][] = $color;
-            }
-
-            if ($size !== null && ($byName[$variantKey]['size'] === null || $byName[$variantKey]['size'] === '')) {
-                $byName[$variantKey]['size'] = $size;
-            }
-
-            $byName[$variantKey]['variants'][] = [
-                'color' => $color,
-                'size' => $size,
-                'price' => $price ?? 0.0,
-                'stock' => $stock,
-                'barcode' => $barcode,
-                'product_id' => $row['product_id'] ?? null,
-            ];
-        }
-
-        $rows = [];
-        foreach ($byName as $item) {
-            $colors = array_values(array_unique(array_filter($item['colors'])));
-            $size = $item['size'];
-            $barcodes = array_values(array_unique(array_filter($item['barcodes'])));
-            $productIds = array_values(array_unique(array_filter($item['product_ids'])));
-
-            $rows[] = [
-                'name' => $item['name'],
-                'sku' => $item['sku'],
-                'size' => $size,
-                'size_variants' => $size !== null ? [$size] : [],
-                'color' => json_encode($colors, JSON_UNESCAPED_SLASHES),
-                'available_products' => [
-                    'product_name' => $item['name'],
-                    'product_ids' => $productIds,
-                    'barcodes' => $barcodes,
-                    'colors' => $colors,
-                    'sizes' => $size !== null ? [$size] : [],
-                    'size_variants' => $size !== null ? [$size] : [],
-                    'size' => $size,
-                    'variants' => $item['variants'],
-                    'warehouse_name' => config('services.inventory.canada_warehouse_name', 'Canada Warehouse'),
-                    'variant_count' => max(count($colors), $size !== null ? 1 : 0, count($barcodes), 1),
-                ],
-                'barcode' => $barcodes[0] ?? null,
-                'description' => null,
-                'price' => $item['price'],
-                'cover_image' => $item['cover_image'],
-                'stock' => $item['stock'],
-                'updated_at' => now()->toDateTimeString(),
-                'created_at' => now()->toDateTimeString(),
-            ];
-        }
-
-        $productColumns = array_flip(Schema::getColumnListing('products'));
-        $hasSkuColumn = isset($productColumns['sku']);
-        $hasNameColumn = isset($productColumns['name']);
-
-        if (! $hasSkuColumn && ! $hasNameColumn) {
-            return response()->json([
-                'message' => 'Products table must include at least sku or name column for sync.',
-            ], 500);
-        }
-
-        foreach ($rows as $row) {
-            $lookup = $hasSkuColumn
-                ? ['sku' => $row['sku']]
-                : ['name' => $row['name']];
-
-            $updateData = [
-                'name' => $row['name'],
-                'available_products' => $row['available_products'],
-                'barcode' => $row['barcode'],
-                'size' => $row['size'],
-                'color' => $row['color'],
-                'description' => $row['description'],
-                'price' => $row['price'],
-                'cover_image' => $row['cover_image'],
-                'stock' => $row['stock'],
-            ];
-
-            $updateData = array_filter(
-                $updateData,
-                fn (mixed $value, string $key): bool => isset($productColumns[$key]),
-                ARRAY_FILTER_USE_BOTH,
-            );
-
-            Product::query()->updateOrCreate(
-                $lookup,
-                $updateData,
-            );
+                'message' => $exception->getMessage(),
+            ], str_contains($exception->getMessage(), 'SSL certificate error') ? 502 : 500);
         }
 
         return response()->json([
-            'message' => 'Products fetched successfully.',
-            'products' => $rows,
-            'synced'  => count($rows),
+            'message' => 'Variant stock refreshed successfully.',
+            'synced' => $result['matched'],
+            'updated' => $result['updated'],
+            'skipped' => $result['skipped'],
         ]);
-    }
-
-    private function buildProductSku(mixed $productId, string $name, ?string $color = null): string
-    {
-        $baseLabel = trim($name . ' ' . ($color ?? ''));
-        $baseSku = $productId ? 'INV-' . $productId . ($color ? '-' . Str::slug($color) : '') : Str::slug($baseLabel);
-
-        return substr($baseSku !== '' ? $baseSku : uniqid('inv-', true), 0, 191);
-    }
-
-    private function normalizeVariantValue(mixed $value): ?string
-    {
-        if (! is_scalar($value)) {
-            return null;
-        }
-
-        $value = trim((string) $value);
-
-        return $value === '' ? null : $value;
-    }
-
-    private function extractSellingPrice(array $row): ?float
-    {
-        $candidates = [
-            $row['effective_selling_price'] ?? null,
-            $row['selling_price'] ?? null,
-            $row['stock_selling_price'] ?? null,
-            $row['sellingPrice'] ?? null,
-            $row['price'] ?? null,
-            $row['product']['selling_price'] ?? null,
-            $row['stock']['selling_price'] ?? null,
-            $row['size_variant']['selling_price'] ?? null,
-        ];
-
-        foreach ($candidates as $candidate) {
-            $price = $this->normalizeMoneyValue($candidate);
-            if ($price !== null) {
-                return $price;
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeMoneyValue(mixed $value): ?float
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_int($value) || is_float($value)) {
-            return round((float) $value, 2);
-        }
-
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $normalized = trim($value);
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = str_replace(',', '', $normalized);
-        $normalized = preg_replace('/[^0-9.\-]/', '', $normalized) ?? '';
-
-        if ($normalized === '' || ! is_numeric($normalized)) {
-            return null;
-        }
-
-        return round((float) $normalized, 2);
     }
 
     private function formatProduct(Product $product): array

@@ -351,7 +351,7 @@ function normalizeProducts(payload, colorNameLookup = {}, sizeNameLookup = {}, s
             sizes: extractSizeIds(item, sizeNameLookup, sizeIdByNameLookup),
             stockValue: getProductStock(item),
             grand_child_id: item?.grand_child_id != null ? String(item.grand_child_id) : '',
-            tag: item?.show_on_best_sellers ? 'Best Seller' : null,
+            tag: item?.show_on_best_sellers ? 'Trending' : null,
         };
     });
 
@@ -1009,6 +1009,10 @@ export default function ShopCatalogSection() {
                                 ? item.productIds
                                     .map((value) => Number(value))
                                     .filter((value) => Number.isInteger(value) && value > 0)
+                                : Array.isArray(item?.product_ids)
+                                    ? item.product_ids
+                                        .map((value) => Number(value))
+                                        .filter((value) => Number.isInteger(value) && value > 0)
                                 : [],
                         }))
                         : [],

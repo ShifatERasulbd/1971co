@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\AuthenticatePublicApiKey;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserType;
 
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->statefulApi();
         $middleware->alias([
+            'public-api-key' => AuthenticatePublicApiKey::class,
             'super-admin' => EnsureSuperAdmin::class,
             'user-type' => EnsureUserType::class,
         ]);

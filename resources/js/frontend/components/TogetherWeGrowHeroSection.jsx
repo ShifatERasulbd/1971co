@@ -23,7 +23,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
                             <div key={index}>
                                 {line.includes('GARMENT\'S WORKERS\' CHILDREN') ? (
                                     <>
-                                        SUPPORTS <em className="italic">GARMENT'S WORKERS' CHILDREN</em>
+                                       $0.50 FROM EVERY PURCHASE YOU MAKE SUPPORTS GARMENT'S WORKERS' CHILDREN
                                     </>
                                 ) : (
                                     line

@@ -75,6 +75,7 @@ const EditOrder = lazyWithRetry(() => import('@/pages/Order/editOrder'), 'edit-o
 const Settings = lazyWithRetry(() => import('@/pages/Settings/settings'), 'settings');
 const AddSettings = lazyWithRetry(() => import('@/pages/Settings/addSettings'), 'add-settings');
 const EditSettings = lazyWithRetry(() => import('@/pages/Settings/editSettings'), 'edit-settings');
+const PublicApiKeys = lazyWithRetry(() => import('@/pages/PublicApiKeys/publicApiKeys'), 'public-api-keys');
 
 
 
@@ -140,6 +141,7 @@ export default function App() {
                             <Route path="settings" element={<Settings />} />
                             <Route path="settings/add" element={<AddSettings />} />
                             <Route path="settings/:id/edit" element={<EditSettings />} />
+                            <Route path="public-api-keys" element={<PublicApiKeys />} />
 
                            
 

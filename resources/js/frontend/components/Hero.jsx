@@ -378,7 +378,7 @@ export default function Hero() {
   }, [heroVideo, isVideoFallback, heroImage, isLoading]);
 
   return (
-    <section className={`${timelessFontClass} hero-section relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-white`}>
+    <section className={`${timelessFontClass} hero-section relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-zinc-900`}>
       <style>{`
         @keyframes scaleInText {
           0% {
@@ -397,21 +397,11 @@ export default function Hero() {
           animation: scaleInText 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         .hero-title-accent {
-          color: #FFB88C;
+          color: #111827;
         }
         .hero-title-shade {
           border-radius: 12px;
           padding: 0.04em 0.2em;
-          background: linear-gradient(
-            180deg,
-            rgba(0, 0, 0, 0.2) 0%,
-            rgba(0, 0, 0, 0.52) 100%
-          );
-          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
-        }
-        .hero-copy-shade {
-          border-radius: 12px;
-          padding: 0.45rem 0.7rem;
           background: linear-gradient(
             180deg,
             rgba(0, 0, 0, 0.2) 0%,
@@ -446,9 +436,9 @@ export default function Hero() {
       `}</style>
 
       {renderBackground}
-      <div className="hero-shell mx-auto flex min-h-[calc(100vh-90px)] w-full max-w-[1920px] items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
+      <div className="hero-shell mx-auto flex min-h-[calc(100vh-90px)] w-full max-w-[1920px] items-end justify-start px-5 py-10 sm:px-8 lg:px-12">
         <div
-          className={`hero-content relative mx-auto flex w-full max-w-[760px] flex-col items-center space-y-3 text-center ${
+          className={`hero-content relative flex w-full max-w-[760px] flex-col items-start space-y-3 text-left ${
             isBuilderPreview && !isLoading ? 'rounded-md border border-dashed border-white/55 p-3' : ''
           }`}
           style={{ transform: `translate(${responsiveTextOffsetX}%, ${responsiveTextOffsetY}%)` }}
@@ -473,9 +463,9 @@ export default function Hero() {
             </>
           ) : (
             <>
-              <div className="hero-copy-shade">
+              <div>
                 <h1
-                  className={`hero-title ${sectionTypography.heroTitle} !font-semibold text-[#FFB88C] drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${
+                  className={`hero-title ${sectionTypography.heroTitle} !font-semibold text-zinc-900 ${
                     isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                   }`}
                   style={{
@@ -488,7 +478,7 @@ export default function Hero() {
                   {titleLines.map((line, index) => (
                     <span
                       key={`${line}-${index}`}
-                      className={`block ${index === 0 ? 'font-bold text-white' : index === 1 ? 'hero-title-accent' : ''}`}
+                      className={`block ${index === 0 ? 'font-bold text-zinc-900' : index === 1 ? 'hero-title-accent' : 'text-zinc-900'}`}
                     >
                       {Array.from(line).map((char, charIndex) => (
                         <span
@@ -504,7 +494,7 @@ export default function Hero() {
                 </h1>
 
                 <p
-                  className={`hero-description ${sectionTypography.heroDescription} font-semibold text-[#FFB88C] ${
+                  className={`hero-description ${sectionTypography.heroDescription} font-semibold text-zinc-900 ${
                     isBuilderPreview ? 'cursor-move rounded border border-dashed border-white/45 px-2' : ''
                   }`}
                   aria-label={fullDescription}
@@ -552,15 +542,15 @@ export default function Hero() {
               ) : null}
 
               {slidesCount > 1 ? (
-                <div className="pointer-events-none flex justify-center pt-1">
-                  <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 backdrop-blur-sm">
+                <div className="pointer-events-none flex justify-start pt-1">
+                  <div className="pointer-events-auto flex items-center gap-2 px-1 py-1">
                     {Array.from({ length: slidesCount }).map((_, index) => (
                       <button
                         key={`hero-dot-${index}`}
                         type="button"
                         aria-label={`Go to slide ${index + 1}`}
                         className={`size-2 rounded-full ${
-                          index === currentSlide ? 'bg-white' : 'bg-white/40'
+                          index === currentSlide ? 'bg-zinc-900' : 'bg-zinc-900/35'
                         }`}
                         onClick={() => typeof goToSlide === 'function' && goToSlide(index)}
                       />

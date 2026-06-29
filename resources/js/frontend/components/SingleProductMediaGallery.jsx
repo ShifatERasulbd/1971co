@@ -13,10 +13,6 @@ export default function SingleProductMediaGallery({
     const [isVideoReady, setIsVideoReady] = useState(false);
     const videoRef = useRef(null);
 
-    // Gallery Hover Magnifier State
-    const [zoomStyle, setZoomStyle] = useState({ display: 'none' });
-    const [hoveredIndex, setHoveredIndex] = useState(null);
-
     // Modal Control State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImage, setModalImage] = useState('');
@@ -26,37 +22,6 @@ export default function SingleProductMediaGallery({
     }, [primaryVideo]);
 
     if (!primaryVideo && !activeImage) return null;
-
-    const handleMouseMove = (e, hoveredImage, index) => {
-        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-        
-        // 1. Precise cursor location relative to the currently hovered box
-        const x = e.clientX - left;
-        const y = e.clientY - top;
-
-        // 2. Normalize to a 0-1 ratio decimal
-        const xRatio = Math.max(0, Math.min(1, x / width));
-        const yRatio = Math.max(0, Math.min(1, y / height));
-
-        // 3. Zoom focal point offset correction math
-        const zoomFactor = 2.5; // Matches 250% size
-        const xOffset = (xRatio * zoomFactor - xRatio) * (100 / (zoomFactor - 1));
-        const yOffset = (yRatio * zoomFactor - yRatio) * (100 / (zoomFactor - 1));
-
-        setHoveredIndex(index);
-        setZoomStyle({
-            display: 'block',
-            backgroundImage: `url(${hoveredImage})`,
-            backgroundPosition: `${xOffset}% ${yOffset}%`,
-            backgroundSize: '250%',
-            backgroundRepeat: 'no-repeat',
-        });
-    };
-
-    const handleMouseLeave = () => {
-        setZoomStyle({ display: 'none' });
-        setHoveredIndex(null);
-    };
 
     const handleImageClick = (image) => {
         onSelectImage(image);
@@ -133,8 +98,6 @@ export default function SingleProductMediaGallery({
                             <button
                                 type="button"
                                 onClick={() => handleImageClick(image)}
-                                onMouseMove={(e) => handleMouseMove(e, image, index)}
-                                onMouseLeave={handleMouseLeave}
                                 className={`w-full overflow-hidden border transition-all duration-200 cursor-zoom-in ${
                                     isCurrentlyActive
                                         ? 'border-zinc-900'
@@ -148,13 +111,6 @@ export default function SingleProductMediaGallery({
                                 />
                             </button>
 
-                            {/* LOCALIZED ZOOM PORTAL */}
-                            {zoomStyle.display !== 'none' && hoveredIndex === index && (
-                                <div
-                                    style={zoomStyle}
-                                    className={`absolute top-0 z-50 hidden md:block w-full h-full border border-zinc-200 bg-white shadow-xl rounded-sm pointer-events-none ${alignmentClass}`}
-                                />
-                            )}
                         </div>
                     );
                 })}

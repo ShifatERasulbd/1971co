@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Menu, Search, ShoppingCart, UserRound, X, Plus, UserCircle2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { useCart } from '../context/CartContext';
@@ -37,6 +37,7 @@ const utilityIcons = [
 ];
 
 export default function Header() {
+    const location = useLocation();
     const navigate = useNavigate();
     const { itemCount, openCartDrawer } = useCart();
     const [categories, setCategories] = useState([]);
@@ -149,6 +150,24 @@ export default function Header() {
         if (typeof openCartDrawer === 'function') {
             openCartDrawer();
         }
+    }
+
+    function handleLogoClick(event) {
+        event.preventDefault();
+
+        closeShopMenuImmediately();
+        closeMobileMenu();
+        closeSearch();
+
+        if (location.pathname !== '/') {
+            navigate('/');
+            window.setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 40);
+            return;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     useEffect(() => {
@@ -296,7 +315,7 @@ export default function Header() {
                 };
             })
             : [
-                { label: 'Best Sellers', href: '#best-sellers', isRoute: false },
+                { label: 'Trending', href: '#best-sellers', isRoute: false },
                 { label: 'Shop', href: '/shop', isRoute: true, isShop: true },
             ];
 
@@ -510,14 +529,17 @@ export default function Header() {
                                         onMouseLeave={closeShopMenuWithDelay}
                                         role="menu"
                                     >
-                                        <div className="border border-zinc-200 bg-white px-4 py-8 shadow-[0_18px_60px_rgba(0,0,0,0.08)] sm:px-6 lg:px-10">
-                                            <div className="mx-auto flex w-full max-w-[1920px] items-start gap-8 xl:gap-10">
+                                        <div className="border border-zinc-200 bg-white px-4 py-7 shadow-[0_18px_60px_rgba(0,0,0,0.08)] sm:px-6 lg:px-10">
+                                            <div className="mx-auto flex w-full max-w-[1920px] items-start gap-10 xl:gap-14">
                                                 <div className="min-w-0 flex-1 overflow-x-auto">
-                                                    <div className="grid min-w-[720px] grid-flow-col auto-cols-fr gap-8">
+                                                    <div className="grid min-w-[860px] grid-flow-col auto-cols-[minmax(180px,200px)] gap-12 lg:gap-16">
                                                         {shopChildColumns.length > 0 ? (
                                                             shopChildColumns.map((column) => (
-                                                                <div key={column.title} className="space-y-4">
-                                                                    <h3 className="text-[0.72rem] uppercase tracking-[0.18em] text-zinc-400">
+                                                                <div
+                                                                    key={column.title}
+                                                                    className="px-2 py-2"
+                                                                >
+                                                                    <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                                                                         <Link
                                                                             to={column.href}
                                                                             className="transition-colors hover:text-zinc-700"
@@ -527,7 +549,7 @@ export default function Header() {
                                                                         </Link>
                                                                     </h3>
 
-                                                                    <ul className="space-y-2 text-[0.88rem] leading-6 text-zinc-600">
+                                                                    <ul className="mt-5 space-y-2 text-[0.98rem] font-medium uppercase leading-7 tracking-[0.01em] text-zinc-600">
                                                                         {column.items.map((megaItem) => (
                                                                             <li key={`${column.title}-${megaItem.label}`}>
                                                                                 <Link
@@ -552,11 +574,11 @@ export default function Header() {
 
                                                 {/* Mega Menu Spotlight Image — only rendered when an image is configured in Settings */}
                                                 {shopMegaMenuImage ? (
-                                                <div className="flex justify-center">
+                                                <div className="flex w-[260px] flex-none justify-center">
                                                     <figure className="w-full max-w-[260px] text-center">
                                                         <Link
                                                             to={shopMegaMenuHref}
-                                                            className="block overflow-hidden bg-zinc-100 p-3"
+                                                            className="block overflow-hidden border border-zinc-200 bg-zinc-100 p-3"
                                                             onClick={closeShopMenuImmediately}
                                                         >
                                                             <img
@@ -602,6 +624,7 @@ export default function Header() {
                 {/* Logo Area */}
                 <Link
                     to="/"
+                    onClick={handleLogoClick}
                     className="site-header-brand absolute left-1/2 -translate-x-1/2 flex min-w-0 items-center transition-opacity hover:opacity-80 xl:relative xl:left-auto xl:translate-x-0 xl:col-start-2 xl:justify-self-center"
                     aria-label="Home"
                 >

@@ -89,6 +89,220 @@
         font-family: 'Montserrat', sans-serif;
     }
 
+    .section-header-cta-glow {
+        position: relative;
+        display: inline-block;
+        overflow: hidden;
+        animation: sectionHeaderCtaTextPulse 2.8s ease-in-out infinite;
+    }
+
+    .section-header-cta-glow::after {
+        content: '';
+        position: absolute;
+        inset: -0.14em -0.35em;
+        pointer-events: none;
+        background: linear-gradient(
+            112deg,
+            rgba(255, 255, 255, 0) 32%,
+            rgba(255, 255, 255, 0.88) 50%,
+            rgba(255, 255, 255, 0) 68%
+        );
+        transform: translateX(-165%);
+        animation: sectionHeaderCtaShimmer 3.2s linear infinite;
+    }
+
+    @keyframes sectionHeaderCtaTextPulse {
+        0%,
+        100% {
+            text-shadow: 0 0 0 rgba(255, 255, 255, 0);
+        }
+        45% {
+            text-shadow:
+                0 0 0.42rem rgba(255, 255, 255, 0.7),
+                0 0 0.95rem rgba(255, 255, 255, 0.45);
+        }
+    }
+
+    @keyframes sectionHeaderCtaShimmer {
+        0% {
+            transform: translateX(-165%);
+        }
+        100% {
+            transform: translateX(175%);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .section-header-cta-glow,
+        .section-header-cta-glow::after {
+            animation: none !important;
+        }
+    }
+
+    .book-page-frame {
+        perspective: 1600px;
+        transform-style: preserve-3d;
+    }
+
+    .book-page-out-next {
+        transform-origin: left center;
+        animation: bookPageOutNext 720ms cubic-bezier(0.24, 0.72, 0.2, 1) forwards;
+        will-change: transform, opacity;
+    }
+
+    .book-page-in-next {
+        transform-origin: right center;
+        animation: bookPageInNext 720ms cubic-bezier(0.24, 0.72, 0.2, 1) forwards;
+        will-change: transform, opacity;
+    }
+
+    .book-page-out-prev {
+        transform-origin: right center;
+        animation: bookPageOutPrev 720ms cubic-bezier(0.24, 0.72, 0.2, 1) forwards;
+        will-change: transform, opacity;
+    }
+
+    .book-page-in-prev {
+        transform-origin: left center;
+        animation: bookPageInPrev 720ms cubic-bezier(0.24, 0.72, 0.2, 1) forwards;
+        will-change: transform, opacity;
+    }
+
+    @keyframes bookPageOutNext {
+        0% {
+            opacity: 1;
+            transform: rotateY(0deg) scale(1);
+            filter: brightness(1);
+        }
+        100% {
+            opacity: 0;
+            transform: rotateY(-66deg) scale(0.97);
+            filter: brightness(0.7);
+        }
+    }
+
+    @keyframes bookPageInNext {
+        0% {
+            opacity: 0;
+            transform: rotateY(66deg) scale(0.97);
+            filter: brightness(0.7);
+        }
+        100% {
+            opacity: 1;
+            transform: rotateY(0deg) scale(1);
+            filter: brightness(1);
+        }
+    }
+
+    @keyframes bookPageOutPrev {
+        0% {
+            opacity: 1;
+            transform: rotateY(0deg) scale(1);
+            filter: brightness(1);
+        }
+        100% {
+            opacity: 0;
+            transform: rotateY(66deg) scale(0.97);
+            filter: brightness(0.7);
+        }
+    }
+
+    @keyframes bookPageInPrev {
+        0% {
+            opacity: 0;
+            transform: rotateY(-66deg) scale(0.97);
+            filter: brightness(0.7);
+        }
+        100% {
+            opacity: 1;
+            transform: rotateY(0deg) scale(1);
+            filter: brightness(1);
+        }
+    }
+
+    @media (max-width: 1023px) {
+        .book-page-frame {
+            perspective: 1100px;
+        }
+
+        .book-page-out-next {
+            animation: bookPageOutNextMobile 560ms cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
+        }
+
+        .book-page-in-next {
+            animation: bookPageInNextMobile 560ms cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
+        }
+
+        .book-page-out-prev {
+            animation: bookPageOutPrevMobile 560ms cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
+        }
+
+        .book-page-in-prev {
+            animation: bookPageInPrevMobile 560ms cubic-bezier(0.2, 0.74, 0.24, 1) forwards;
+        }
+
+        @keyframes bookPageOutNextMobile {
+            0% {
+                opacity: 1;
+                transform: rotateY(0deg) scale(1);
+                filter: brightness(1);
+            }
+            100% {
+                opacity: 0;
+                transform: rotateY(-40deg) scale(0.985);
+                filter: brightness(0.78);
+            }
+        }
+
+        @keyframes bookPageInNextMobile {
+            0% {
+                opacity: 0;
+                transform: rotateY(40deg) scale(0.985);
+                filter: brightness(0.78);
+            }
+            100% {
+                opacity: 1;
+                transform: rotateY(0deg) scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        @keyframes bookPageOutPrevMobile {
+            0% {
+                opacity: 1;
+                transform: rotateY(0deg) scale(1);
+                filter: brightness(1);
+            }
+            100% {
+                opacity: 0;
+                transform: rotateY(40deg) scale(0.985);
+                filter: brightness(0.78);
+            }
+        }
+
+        @keyframes bookPageInPrevMobile {
+            0% {
+                opacity: 0;
+                transform: rotateY(-40deg) scale(0.985);
+                filter: brightness(0.78);
+            }
+            100% {
+                opacity: 1;
+                transform: rotateY(0deg) scale(1);
+                filter: brightness(1);
+            }
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .book-page-out-next,
+        .book-page-in-next,
+        .book-page-out-prev,
+        .book-page-in-prev {
+            animation: none !important;
+        }
+    }
+
     .scrollbar-hidden {
         -ms-overflow-style: none;
         scrollbar-width: none;

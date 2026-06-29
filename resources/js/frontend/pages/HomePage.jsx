@@ -7,6 +7,8 @@ const CollectionsSection = lazy(() => import('../components/CollectionsSection.j
 const BestSellersSection = lazy(() => import('../components/BestSellersSection.jsx'));
 const FeaturesSection = lazy(() => import('../components/FeaturesSection.jsx'));
 const OurStorySection = lazy(() => import('../components/OurStorySection.jsx'));
+const ProductDividerSection = lazy(() => import('../components/ProductDivider.jsx'));
+const HomeBackgroundImageSection = lazy(() => import('../components/HomeBackgroundImageSection.jsx'));
 
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
 
@@ -60,18 +62,22 @@ function LazySection({ children, heightClass, variant = 'generic', defer = true 
 const sectionRegistry = {
     hero: { height: 'h-[520px]', variant: 'hero', component: Hero },
     collections: { height: 'h-[560px]', variant: 'catalog', component: CollectionsSection },
+    'product-divider': { height: 'h-[520px]', variant: 'generic', component: ProductDividerSection },
+    'home-background-image': { height: 'h-[520px] sm:h-[620px] lg:h-screen', variant: 'hero', component: HomeBackgroundImageSection },
     'best-sellers': { height: 'h-[520px]', variant: 'catalog', component: BestSellersSection },
-    features: { height: 'h-[80px]', variant: 'generic', component: FeaturesSection },
     'our-story': { height: 'h-[580px]', variant: 'split', component: OurStorySection },
+    
     newsletter: { height: 'h-[220px]', variant: 'newsletter', component: NewsletterSection },
 };
 
 const defaultSectionOrder = [
     'hero',
     'collections',
+    'product-divider',
+    'home-background-image',
     'best-sellers',
-    'features',
     'our-story',
+   
     'newsletter',
 ];
 
@@ -97,22 +103,9 @@ export default function HomePage() {
     });
     const [sectionOrder, setSectionOrder] = useState(() => normalizeSectionOrder(defaultSectionOrder));
     const [bestSellersConfig, setBestSellersConfig] = useState({
-        title: 'Best Sellers',
+        title: 'Trending',
         position: 3,
     });
-
-    function applyBestSellersPosition(order, position) {
-        const next = Array.isArray(order) ? [...order] : [...defaultSectionOrder];
-        const currentIndex = next.indexOf('best-sellers');
-        if (currentIndex < 0) {
-            return next;
-        }
-
-        next.splice(currentIndex, 1);
-        const targetIndex = Math.max(0, Math.min(next.length, Number(position || 3) - 1));
-        next.splice(targetIndex, 0, 'best-sellers');
-        return next;
-    }
 
     useEffect(() => {
         let ignore = false;
@@ -138,7 +131,6 @@ export default function HomePage() {
                 };
 
                 setBestSellersConfig(normalized);
-                setSectionOrder((previous) => applyBestSellersPosition(previous, normalized.position));
             } catch {
                 // Keep default config when endpoint is unavailable.
             }
@@ -182,7 +174,6 @@ export default function HomePage() {
                 };
 
                 setBestSellersConfig(normalized);
-                setSectionOrder((previous) => applyBestSellersPosition(previous, normalized.position));
                 return;
             }
 

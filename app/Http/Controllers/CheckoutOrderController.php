@@ -144,6 +144,31 @@ class CheckoutOrderController extends Controller
         ]);
     }
 
+    public function publicShow(Request $request, string $orderNumber): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:255',
+        ]);
+
+        $normalizedEmail = strtolower(trim($validated['email']));
+
+        $order = CheckoutOrder::query()
+            ->where('order_number', $orderNumber)
+            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+            ->first();
+
+        if (! $order) {
+            return response()->json([
+                'message' => 'Order not found for the provided order number and email.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'order' => $this->formatPublicOrder($order),
+        ]);
+    }
+
     public function update(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
     {
         $previousStatus = (string) $checkoutOrder->status;
@@ -575,5 +600,151 @@ class CheckoutOrderController extends Controller
         }
 
         return null;
+    }
+
+    protected function formatPublicOrder(CheckoutOrder $order): array
+    {
+        return [
+            'order_number' => (string) $order->order_number,
+            'status' => (string) $order->status,
+            'first_name' => (string) $order->first_name,
+            'last_name' => (string) $order->last_name,
+            'email' => (string) $order->email,
+            'phone' => $order->phone,
+            'address_line_1' => (string) $order->address_line_1,
+            'address_line_2' => $order->address_line_2,
+            'city' => (string) $order->city,
+            'state' => $order->state,
+            'postal_code' => $order->postal_code,
+            'country' => $order->country,
+            'notes' => $order->notes,
+            'items_count' => (int) $order->items_count,
+            'items' => $order->items,
+            'subtotal' => (float) $order->subtotal,
+            'shipping' => (float) $order->shipping,
+            'total' => (float) $order->total,
+            'courier_service' => $order->courier_service,
+            'courier_reference' => $order->courier_reference,
+            'courier_sync_status' => $order->courier_sync_status,
+            'ups_tracking_number' => $order->ups_tracking_number,
+            'shipstation_order_id' => $order->shipstation_order_id,
+            'created_at' => $order->created_at,
+            'updated_at' => $order->updated_at,
+        ];
+    }
+
+    public function externalShow(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $user = $request->user();
+
+        // Ensure the request is authenticated and token has the required ability.
+        if (! $user || ! $user->tokenCan('orders:read-external')) {
+            abort(403, 'Unauthorized. Missing required token ability.');
+        }
+
+        // Return the order data structure
+        return response()->json([
+            'success' => true,
+            'order'   => $checkoutOrder,
+        ]);
+    }
+
+    public function externalIndex(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->tokenCan('orders:read-external')) {
+            abort(403, 'Unauthorized. Missing required token ability.');
+        }
+
+        $validated = $request->validate([
+            'since_id' => 'nullable|integer|min:0',
+            'per_page' => 'nullable|integer|min:1|max:200',
+            'status' => 'nullable|string',
+        ]);
+
+        $query = CheckoutOrder::query()->orderBy('id');
+
+        if (! empty($validated['since_id'])) {
+            $query->where('id', '>', (int) $validated['since_id']);
+        }
+
+        if (! empty($validated['status'])) {
+            $query->where('status', (string) $validated['status']);
+        }
+
+        $orders = $query
+            ->limit((int) ($validated['per_page'] ?? 100))
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $orders->count(),
+            'orders' => $orders->map(fn (CheckoutOrder $order) => $this->formatExternalOrder($order))->values(),
+        ]);
+    }
+
+    public function publicExternalIndex(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'since_id' => 'nullable|integer|min:0',
+            'per_page' => 'nullable|integer|min:1|max:200',
+            'status' => 'nullable|string',
+        ]);
+
+        $query = CheckoutOrder::query()->orderBy('id');
+
+        if (! empty($validated['since_id'])) {
+            $query->where('id', '>', (int) $validated['since_id']);
+        }
+
+        if (! empty($validated['status'])) {
+            $query->where('status', (string) $validated['status']);
+        }
+
+        $orders = $query
+            ->limit((int) ($validated['per_page'] ?? 100))
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $orders->count(),
+            'orders' => $orders->map(fn (CheckoutOrder $order) => $this->formatExternalOrder($order))->values(),
+        ]);
+    }
+
+    public function publicExternalShow(CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'order' => $this->formatExternalOrder($checkoutOrder),
+        ]);
+    }
+
+    protected function formatExternalOrder(CheckoutOrder $order): array
+    {
+        return [
+            'id' => (int) $order->id,
+            'order_number' => (string) $order->order_number,
+            'status' => (string) $order->status,
+            'first_name' => (string) $order->first_name,
+            'last_name' => (string) $order->last_name,
+            'email' => (string) $order->email,
+            'phone' => $order->phone,
+            'address_line_1' => (string) $order->address_line_1,
+            'address_line_2' => $order->address_line_2,
+            'city' => (string) $order->city,
+            'state' => $order->state,
+            'postal_code' => $order->postal_code,
+            'country' => $order->country,
+            'notes' => $order->notes,
+            'items_count' => (int) $order->items_count,
+            'items' => $order->items,
+            'subtotal' => (float) $order->subtotal,
+            'shipping' => (float) $order->shipping,
+            'total' => (float) $order->total,
+            'created_at' => $order->created_at,
+            'updated_at' => $order->updated_at,
+        ];
     }
 }

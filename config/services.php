@@ -76,4 +76,8 @@ return [
         'packaging_code' => env('UPS_PACKAGING_CODE', '02'),
     ],
 
+    'public_orders' => [
+        'api_key' => env('PUBLIC_ORDERS_API_KEY'),
+    ],
+
 ];

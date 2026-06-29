@@ -12,10 +12,13 @@ use App\Http\Controllers\AboutGivingBackController;
 use App\Http\Controllers\AboutMissionController;
 use App\Http\Controllers\AboutStoryController;
 use App\Http\Controllers\CommunityPageSectionController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\GrandChildController;
 use App\Http\Controllers\HeroController;
+use App\Http\Controllers\HomeBackgroundSectionController;
 use App\Http\Controllers\OurStorySectionController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PublicApiKeyController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SubCategoryController;
@@ -38,6 +41,8 @@ Route::get('/public/colors', [ColorController::class, 'index']);
 Route::get('/public/collections', [CollectionController::class, 'publicIndex']);
 Route::get('/public/hero', [HeroController::class, 'publicIndex']);
 Route::get('/public/heroes', [HeroController::class, 'publicList']);
+Route::get('/public/features', [FeatureController::class, 'publicIndex']);
+Route::get('/public/home-background-section', [HomeBackgroundSectionController::class, 'publicIndex']);
 Route::get('/public/our-story', [OurStorySectionController::class, 'publicIndex']);
 Route::get('/public/products', [ProductController::class, 'publicIndex']);
 Route::get('/public/shop-products', [ProductController::class, 'publicShopIndex']);
@@ -51,6 +56,11 @@ Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
 Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
 Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
+Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
+Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(function () {
+	Route::get('/', [CheckoutOrderController::class, 'publicExternalIndex']);
+	Route::get('/{checkoutOrder}', [CheckoutOrderController::class, 'publicExternalShow']);
+});
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 Route::post('/shipping/orders', [ShipStationController::class, 'storeOrder']);
@@ -75,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/heroes', [HeroController::class, 'index']);
 	Route::post('/heroes', [HeroController::class, 'store']);
 	Route::put('/heroes/{hero}', [HeroController::class, 'update']);
+	Route::apiResource('/features', FeatureController::class);
 	Route::get('/about-hero', [AboutHeroController::class, 'index']);
 	Route::post('/about-hero', [AboutHeroController::class, 'update']);
 	Route::get('/about-story', [AboutStoryController::class, 'index']);
@@ -95,6 +106,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 	Route::get('/our-story', [OurStorySectionController::class, 'index']);
 	Route::post('/our-story', [OurStorySectionController::class, 'update']);
+	Route::get('/home-background-section', [HomeBackgroundSectionController::class, 'index']);
+	Route::post('/home-background-section', [HomeBackgroundSectionController::class, 'update']);
 
 	Route::apiResource('/categories', CategoryController::class);
 	Route::apiResource('/sub-categories', SubCategoryController::class);
@@ -123,5 +136,17 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::delete('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'destroy']);
 	Route::post('/orders/bulk-update', [CheckoutOrderController::class, 'bulkUpdate']);
 	Route::post('/orders/bulk-delete', [CheckoutOrderController::class, 'bulkDelete']);
+
+	// Public API Key Management
+	Route::get('/public-api-keys', [PublicApiKeyController::class, 'index']);
+	Route::post('/public-api-keys', [PublicApiKeyController::class, 'store']);
+	Route::delete('/public-api-keys/{publicApiKey}', [PublicApiKeyController::class, 'destroy']);
 	});
+	
+});
+
+
+Route::middleware('auth:sanctum')->prefix('external')->group(function () {
+	Route::get('/orders-feed', [CheckoutOrderController::class, 'externalIndex']);
+    Route::get('/orders/{checkoutOrder}', [CheckoutOrderController::class, 'externalShow']);
 });

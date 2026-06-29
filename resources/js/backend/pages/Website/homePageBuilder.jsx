@@ -8,6 +8,7 @@ import FeaturesEditorDrawer from '@/components/website/FeaturesEditorDrawer';
 import CollectionsEditorDrawer from '@/components/website/CollectionsEditorDrawer';
 import OurStoryEditorDrawer from '@/components/website/OurStoryEditorDrawer';
 import BestSellersEditorDrawer from '@/components/website/BestSellersEditorDrawer';
+import HomeBackgroundEditorDrawer from '@/components/website/HomeBackgroundEditorDrawer';
 import HomePagePreviewCard from '@/components/website/HomePagePreviewCard';
 import HomePageSectionsCard from '@/components/website/HomePageSectionsCard';
 import { homeSections } from '@/components/website/homePageBuilderData';
@@ -22,6 +23,10 @@ import { createHero, fetchHeroes, updateHero } from '@/pages/Hero/api';
 import { fetchCollections, updateCollections } from '@/pages/Website/collectionsApi';
 import { fetchProducts } from '@/pages/Product/api';
 import { fetchOurStory, updateOurStory } from '@/pages/Website/ourStoryApi';
+import {
+    fetchHomeBackgroundSection,
+    updateHomeBackgroundSection,
+} from '@/pages/Website/homeBackgroundApi';
 import {
     fetchBestSellersSectionSettings,
     updateBestSellersSectionSettings,
@@ -123,6 +128,23 @@ const defaultOurStoryDraft = {
     show_text: true,
 };
 
+const defaultHomeBackgroundDraft = {
+    items: [
+        {
+            id: 1,
+            image: '/uploads/heroes/images/hero1.webp',
+            title: 'Built For Everyday Confidence',
+            description:
+                'Elevated essentials with clean cuts, durable fabrics, and a refined streetwear silhouette.',
+            button_text: 'Explore The Drop',
+            button_url: '/shop',
+            show_button: true,
+            sort_order: 0,
+            image_file: null,
+        },
+    ],
+};
+
 function moveItemByKeys(items, sourceKey, targetKey, keySelector) {
     const sourceIndex = items.findIndex((item) => keySelector(item) === sourceKey);
     const targetIndex = items.findIndex((item) => keySelector(item) === targetKey);
@@ -145,6 +167,7 @@ export default function HomePageBuilder() {
     const [isFeaturesDrawerOpen, setIsFeaturesDrawerOpen] = useState(false);
     const [isCollectionsDrawerOpen, setIsCollectionsDrawerOpen] = useState(false);
     const [isOurStoryDrawerOpen, setIsOurStoryDrawerOpen] = useState(false);
+    const [isHomeBackgroundDrawerOpen, setIsHomeBackgroundDrawerOpen] = useState(false);
     const [isBestSellersDrawerOpen, setIsBestSellersDrawerOpen] = useState(false);
     const [activeFeatureItemIndex, setActiveFeatureItemIndex] = useState(null);
     const [activeCollectionItemIndex, setActiveCollectionItemIndex] = useState(null);
@@ -156,16 +179,19 @@ export default function HomePageBuilder() {
     const [collectionsDraft, setCollectionsDraft] = useState(defaultCollectionsDraft);
     const [collectionProductOptions, setCollectionProductOptions] = useState([]);
     const [ourStoryDraft, setOurStoryDraft] = useState(defaultOurStoryDraft);
+    const [homeBackgroundDraft, setHomeBackgroundDraft] = useState(defaultHomeBackgroundDraft);
     const [heroUploadFiles, setHeroUploadFiles] = useState({ image: null, video: null });
     const [ourStoryUploadFiles, setOurStoryUploadFiles] = useState({
         story_image: null,
         story_logo: null,
     });
+    const [homeBackgroundUploadFiles, setHomeBackgroundUploadFiles] = useState({});
     const [activeHeroId, setActiveHeroId] = useState(null);
     const [isSavingHero, setIsSavingHero] = useState(false);
     const [isSavingFeatures, setIsSavingFeatures] = useState(false);
     const [isSavingCollections, setIsSavingCollections] = useState(false);
     const [isSavingOurStory, setIsSavingOurStory] = useState(false);
+    const [isSavingHomeBackground, setIsSavingHomeBackground] = useState(false);
     const [bestSellersDraft, setBestSellersDraft] = useState({
         title: 'Best Sellers',
         position: 3,
@@ -269,6 +295,50 @@ export default function HomePageBuilder() {
     useEffect(() => {
         let ignore = false;
 
+        async function loadHomeBackgroundDraft() {
+            try {
+                const payload = await fetchHomeBackgroundSection();
+                if (!payload || ignore) {
+                    return;
+                }
+
+                setHomeBackgroundDraft((previous) => ({
+                    ...previous,
+                    items:
+                        Array.isArray(payload.items) && payload.items.length > 0
+                            ? payload.items.map((item, index) => ({
+                                  id: item.id || index + 1,
+                                  image: item.image || '/uploads/heroes/images/hero1.webp',
+                                  title: item.title || '',
+                                  description: item.description || '',
+                                  button_text: item.button_text || 'Explore The Drop',
+                                  button_url: item.button_url || '/shop',
+                                  show_button:
+                                      typeof item.show_button === 'boolean'
+                                          ? item.show_button
+                                          : true,
+                                  sort_order: Number.isInteger(item.sort_order)
+                                      ? item.sort_order
+                                      : index,
+                                  image_file: null,
+                              }))
+                            : previous.items,
+                }));
+            } catch {
+                // Keep default draft when background section fails to load.
+            }
+        }
+
+        loadHomeBackgroundDraft();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
         async function loadOurStoryDraft() {
             try {
                 const payload = await fetchOurStory();
@@ -343,10 +413,14 @@ export default function HomePageBuilder() {
                                   name: item.name || previous.items[index]?.name || '',
                                   slug: item.slug || previous.items[index]?.slug || '',
                                   image: item.image || previous.items[index]?.image || '',
-                                  productIds: Array.isArray(item.productIds)
-                                      ? item.productIds
+                                                                    productIds: Array.isArray(item.productIds)
+                                                                            ? item.productIds
                                             .map((value) => Number(value))
                                             .filter((value) => Number.isInteger(value) && value > 0)
+                                                                            : Array.isArray(item.product_ids)
+                                                                                ? item.product_ids
+                                                                                            .map((value) => Number(value))
+                                                                                            .filter((value) => Number.isInteger(value) && value > 0)
                                       : previous.items[index]?.productIds || [],
                               }))
                             : previous.items,
@@ -563,6 +637,25 @@ export default function HomePageBuilder() {
         publishOurStoryDraft();
     }, [publishOurStoryDraft]);
 
+    const publishHomeBackgroundDraft = useCallback(() => {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) {
+            return;
+        }
+
+        target.postMessage(
+            {
+                type: 'TIMLESS_PAGE_BUILDER_HOME_BACKGROUND_PREVIEW_UPDATE',
+                payload: homeBackgroundDraft,
+            },
+            window.location.origin
+        );
+    }, [homeBackgroundDraft]);
+
+    useEffect(() => {
+        publishHomeBackgroundDraft();
+    }, [publishHomeBackgroundDraft]);
+
     const navigatePreviewToSection = useCallback((sectionKey) => {
         const target = iframeRef.current?.contentWindow;
         if (!target) {
@@ -598,6 +691,7 @@ export default function HomePageBuilder() {
                     setIsFeaturesDrawerOpen(false);
                     setIsCollectionsDrawerOpen(false);
                     setIsOurStoryDrawerOpen(false);
+                    setIsHomeBackgroundDrawerOpen(false);
                     setIsBestSellersDrawerOpen(false);
                 }
                 return;
@@ -619,6 +713,7 @@ export default function HomePageBuilder() {
                 setIsHeroDrawerOpen(false);
                 setIsCollectionsDrawerOpen(false);
                 setIsOurStoryDrawerOpen(false);
+                setIsHomeBackgroundDrawerOpen(false);
                 setIsBestSellersDrawerOpen(false);
                 return;
             }
@@ -639,6 +734,7 @@ export default function HomePageBuilder() {
                 setIsHeroDrawerOpen(false);
                 setIsFeaturesDrawerOpen(false);
                 setIsOurStoryDrawerOpen(false);
+                setIsHomeBackgroundDrawerOpen(false);
                 setIsBestSellersDrawerOpen(false);
                 return;
             }
@@ -649,6 +745,18 @@ export default function HomePageBuilder() {
                 setIsHeroDrawerOpen(false);
                 setIsFeaturesDrawerOpen(false);
                 setIsCollectionsDrawerOpen(false);
+                setIsHomeBackgroundDrawerOpen(false);
+                setIsBestSellersDrawerOpen(false);
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_HOME_BACKGROUND_SECTION_SELECTED') {
+                setSelectedSectionKey('home-background-image');
+                setIsHomeBackgroundDrawerOpen(true);
+                setIsHeroDrawerOpen(false);
+                setIsFeaturesDrawerOpen(false);
+                setIsCollectionsDrawerOpen(false);
+                setIsOurStoryDrawerOpen(false);
                 setIsBestSellersDrawerOpen(false);
                 return;
             }
@@ -670,6 +778,7 @@ export default function HomePageBuilder() {
                 setIsFeaturesDrawerOpen(false);
                 setIsCollectionsDrawerOpen(false);
                 setIsOurStoryDrawerOpen(false);
+                setIsHomeBackgroundDrawerOpen(false);
                 return;
             }
 
@@ -707,6 +816,19 @@ export default function HomePageBuilder() {
                         {
                             type: 'TIMLESS_PAGE_BUILDER_OUR_STORY_PREVIEW_UPDATE',
                             payload: ourStoryDraft,
+                        },
+                        window.location.origin
+                    );
+                }
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_REQUEST_HOME_BACKGROUND_PREVIEW') {
+                if (event.source && typeof event.source.postMessage === 'function') {
+                    event.source.postMessage(
+                        {
+                            type: 'TIMLESS_PAGE_BUILDER_HOME_BACKGROUND_PREVIEW_UPDATE',
+                            payload: homeBackgroundDraft,
                         },
                         window.location.origin
                     );
@@ -760,7 +882,7 @@ export default function HomePageBuilder() {
         return () => {
             window.removeEventListener('message', handlePreviewMessage);
         };
-    }, [collectionsDraft, ourStoryDraft]);
+    }, [collectionsDraft, homeBackgroundDraft, ourStoryDraft]);
 
     function handleEditSection(section) {
         setSelectedSectionKey(section.key);
@@ -770,6 +892,7 @@ export default function HomePageBuilder() {
             setIsFeaturesDrawerOpen(false);
             setIsCollectionsDrawerOpen(false);
             setIsOurStoryDrawerOpen(false);
+            setIsHomeBackgroundDrawerOpen(false);
             setIsBestSellersDrawerOpen(false);
             return;
         }
@@ -780,6 +903,7 @@ export default function HomePageBuilder() {
             setIsHeroDrawerOpen(false);
             setIsCollectionsDrawerOpen(false);
             setIsOurStoryDrawerOpen(false);
+            setIsHomeBackgroundDrawerOpen(false);
             setIsBestSellersDrawerOpen(false);
             return;
         }
@@ -790,6 +914,7 @@ export default function HomePageBuilder() {
             setIsHeroDrawerOpen(false);
             setIsFeaturesDrawerOpen(false);
             setIsOurStoryDrawerOpen(false);
+            setIsHomeBackgroundDrawerOpen(false);
             setIsBestSellersDrawerOpen(false);
             return;
         }
@@ -801,6 +926,17 @@ export default function HomePageBuilder() {
             setIsFeaturesDrawerOpen(false);
             setIsCollectionsDrawerOpen(false);
             setIsOurStoryDrawerOpen(false);
+            setIsHomeBackgroundDrawerOpen(false);
+            return;
+        }
+
+        if (section.key === 'home-background-image') {
+            setIsHomeBackgroundDrawerOpen(true);
+            setIsHeroDrawerOpen(false);
+            setIsFeaturesDrawerOpen(false);
+            setIsCollectionsDrawerOpen(false);
+            setIsOurStoryDrawerOpen(false);
+            setIsBestSellersDrawerOpen(false);
             return;
         }
 
@@ -809,6 +945,7 @@ export default function HomePageBuilder() {
             setIsHeroDrawerOpen(false);
             setIsFeaturesDrawerOpen(false);
             setIsCollectionsDrawerOpen(false);
+            setIsHomeBackgroundDrawerOpen(false);
             setIsBestSellersDrawerOpen(false);
             return;
         }
@@ -817,6 +954,7 @@ export default function HomePageBuilder() {
         setIsFeaturesDrawerOpen(false);
         setIsCollectionsDrawerOpen(false);
         setIsOurStoryDrawerOpen(false);
+        setIsHomeBackgroundDrawerOpen(false);
         setIsBestSellersDrawerOpen(false);
     }
 
@@ -1083,6 +1221,155 @@ export default function HomePageBuilder() {
         };
     }
 
+    function handleHomeBackgroundItemChange(index, field, value) {
+        setHomeBackgroundDraft((previous) => ({
+            ...previous,
+            items: previous.items.map((item, itemIndex) =>
+                itemIndex === index
+                    ? {
+                          ...item,
+                          [field]: value,
+                      }
+                    : item
+            ),
+        }));
+    }
+
+    function handleHomeBackgroundImageUpload(index, file) {
+        setHomeBackgroundUploadFiles((previous) => ({
+            ...previous,
+            [index]: file,
+        }));
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setHomeBackgroundDraft((previous) => ({
+                    ...previous,
+                    items: previous.items.map((item, itemIndex) =>
+                        itemIndex === index
+                            ? {
+                                  ...item,
+                                  image: reader.result,
+                                  image_file: file,
+                              }
+                            : item
+                    ),
+                }));
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleAddHomeBackgroundItem() {
+        setHomeBackgroundDraft((previous) => ({
+            ...previous,
+            items: [
+                ...previous.items,
+                {
+                    id: previous.items.length + 1,
+                    image: '/uploads/heroes/images/hero1.webp',
+                    title: 'New slide title',
+                    description: 'Add your slide description.',
+                    button_text: 'Explore The Drop',
+                    button_url: '/shop',
+                    show_button: true,
+                    sort_order: previous.items.length,
+                    image_file: null,
+                },
+            ],
+        }));
+    }
+
+    function handleRemoveHomeBackgroundItem(index) {
+        setHomeBackgroundDraft((previous) => {
+            if (previous.items.length <= 1) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                items: previous.items
+                    .filter((_, itemIndex) => itemIndex !== index)
+                    .map((item, itemIndex) => ({
+                        ...item,
+                        sort_order: itemIndex,
+                    })),
+            };
+        });
+
+        setHomeBackgroundUploadFiles((previous) => {
+            const next = { ...previous };
+            delete next[index];
+
+            const remapped = {};
+            Object.entries(next).forEach(([key, value]) => {
+                const numericKey = Number(key);
+                remapped[numericKey > index ? numericKey - 1 : numericKey] = value;
+            });
+
+            return remapped;
+        });
+    }
+
+    async function handleSaveHomeBackgroundToDatabase() {
+        setIsSavingHomeBackground(true);
+
+        try {
+            const payload = {
+                items: homeBackgroundDraft.items.map((item, index) => ({
+                    id: item.id || index + 1,
+                    image: item.image || '',
+                    title: item.title || '',
+                    description: item.description || '',
+                    button_text: item.button_text || 'Explore The Drop',
+                    button_url: item.button_url || '/shop',
+                    show_button: Boolean(item.show_button),
+                    sort_order: index,
+                    image_file: homeBackgroundUploadFiles[index] || item.image_file || null,
+                })),
+            };
+
+            const saved = await updateHomeBackgroundSection(payload);
+            if (saved) {
+                setHomeBackgroundDraft((previous) => ({
+                    ...previous,
+                    items:
+                        Array.isArray(saved.items) && saved.items.length > 0
+                            ? saved.items.map((item, index) => ({
+                                  id: item.id || index + 1,
+                                  image: item.image || '/uploads/heroes/images/hero1.webp',
+                                  title: item.title || '',
+                                  description: item.description || '',
+                                  button_text: item.button_text || 'Explore The Drop',
+                                  button_url: item.button_url || '/shop',
+                                  show_button:
+                                      typeof item.show_button === 'boolean'
+                                          ? item.show_button
+                                          : true,
+                                  sort_order: Number.isInteger(item.sort_order)
+                                      ? item.sort_order
+                                      : index,
+                                  image_file: null,
+                              }))
+                            : previous.items,
+                }));
+            }
+
+            setHomeBackgroundUploadFiles({});
+
+            toast.success('Home background image saved to database.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Failed to save home background image.', {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsSavingHomeBackground(false);
+        }
+    }
+
     async function handleSaveCollectionsToDatabase() {
         setIsSavingCollections(true);
 
@@ -1100,6 +1387,10 @@ export default function HomePageBuilder() {
                         ? item.productIds
                               .map((value) => Number(value))
                               .filter((value) => Number.isInteger(value) && value > 0)
+                        : Array.isArray(item.product_ids)
+                            ? item.product_ids
+                                  .map((value) => Number(value))
+                                  .filter((value) => Number.isInteger(value) && value > 0)
                         : [],
                 })),
             };
@@ -1123,6 +1414,10 @@ export default function HomePageBuilder() {
                             ? item.productIds
                                   .map((value) => Number(value))
                                   .filter((value) => Number.isInteger(value) && value > 0)
+                            : Array.isArray(item.product_ids)
+                                ? item.product_ids
+                                      .map((value) => Number(value))
+                                      .filter((value) => Number.isInteger(value) && value > 0)
                             : previous.items[index]?.productIds || [],
                     })),
                 }));
@@ -1357,6 +1652,7 @@ export default function HomePageBuilder() {
                         publishFeaturesDraft();
                         publishCollectionsDraft();
                         publishOurStoryDraft();
+                        publishHomeBackgroundDraft();
                     }}
                 />
             </div>
@@ -1413,6 +1709,18 @@ export default function HomePageBuilder() {
                 onUploadLogo={handleOurStoryAssetUpload('story_logo')}
                 onSave={handleSaveOurStoryToDatabase}
                 isSaving={isSavingOurStory}
+            />
+
+            <HomeBackgroundEditorDrawer
+                open={isHomeBackgroundDrawerOpen}
+                onOpenChange={setIsHomeBackgroundDrawerOpen}
+                value={homeBackgroundDraft}
+                onUploadImage={handleHomeBackgroundImageUpload}
+                onAddItem={handleAddHomeBackgroundItem}
+                onRemoveItem={handleRemoveHomeBackgroundItem}
+                onChangeItem={handleHomeBackgroundItemChange}
+                onSave={handleSaveHomeBackgroundToDatabase}
+                isSaving={isSavingHomeBackground}
             />
 
             <BestSellersEditorDrawer

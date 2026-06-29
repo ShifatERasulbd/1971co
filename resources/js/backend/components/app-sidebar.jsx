@@ -56,6 +56,7 @@ const orderItems = [
 
 const SettingsItems = [
     { title: 'Settings', icon: Settings, path: '/admin/settings' },
+    { title: 'Public API Keys', icon: Settings, path: '/admin/public-api-keys' },
 ];
 
 
