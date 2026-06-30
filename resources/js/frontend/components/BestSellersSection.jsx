@@ -158,79 +158,71 @@ function collectVariantImages(product) {
     return images;
 }
 
-function groupProductsByName(products) {
-    if (!Array.isArray(products)) return [];
-    
-    const grouped = new Map();
+function isTruthyFlag(value) {
+    if (value === true || value === 1) return true;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+    }
+    return false;
+}
 
-    products.forEach((product, index) => {
-        const name = String(product?.name || '').trim();
-        const key = name.toLowerCase() || `unnamed-${product?.id ?? index}`;
-        const existing = grouped.get(key);
+function buildTrendingDisplayProducts(products) {
+    if (!Array.isArray(products)) return [];
+
+    const expanded = [];
+
+    products.forEach((product, productIndex) => {
         const productColors = normalizeProductColors(product?.color);
-        const productSizes = [
-            ...normalizeProductSizes(product?.sizes),
-            ...normalizeProductSizes(product?.size_variants),
-            ...normalizeProductSizes(product?.size_variant?.size),
-            ...normalizeProductSizes(product?.size),
-            ...((Array.isArray(product?.variant_rows)
-                ? product.variant_rows.map((row) => row?.size)
-                : []).flatMap((value) => normalizeProductSizes(value))),
-        ];
-        const productImageCandidates = collectVariantImages(product);
-        const directVariantImages =
+        const productColorSet = new Set(productColors.map((item) => String(item || '').trim()).filter(Boolean));
+        const variantRows = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+        const trendingColorSet = new Set();
+
+        variantRows.forEach((row) => {
+            if (!row || typeof row !== 'object') return;
+            if (!isTruthyFlag(row.show_on_best_sellers)) return;
+
+            const colorKey = String(row.color || '').trim();
+            if (!colorKey) return;
+
+            if (productColorSet.size === 0 || productColorSet.has(colorKey)) {
+                trendingColorSet.add(colorKey);
+            }
+        });
+
+        const colorVariantImages =
             product?.color_variant_images && typeof product.color_variant_images === 'object'
                 ? product.color_variant_images
                 : {};
 
-        if (!existing) {
-            const next = {
-                ...product,
-                color: [...productColors],
-                sizes: [...new Set(productSizes)],
-                image_gallery: [],
-                color_variant_images: {},
-            };
+        const imageCandidates = collectVariantImages(product);
 
-            grouped.set(key, next);
+        if (trendingColorSet.size > 0) {
+            [...trendingColorSet].forEach((colorKey, colorIndex) => {
+                const selectedImages = Array.isArray(colorVariantImages[colorKey])
+                    ? colorVariantImages[colorKey].filter(Boolean)
+                    : [];
+
+                const nextGallery = selectedImages.length > 0 ? selectedImages : imageCandidates;
+
+                expanded.push({
+                    ...product,
+                    ui_variant_key: `${product?.id || productIndex}-trending-${colorKey}-${colorIndex}`,
+                    color: [colorKey],
+                    image_gallery: [...new Set(nextGallery)],
+                    cover_image: selectedImages[0] || product?.cover_image || imageCandidates[0] || fallbackImage,
+                    color_variant_images: {
+                        [colorKey]: selectedImages.length > 0 ? selectedImages : nextGallery,
+                    },
+                    trending_color: colorKey,
+                });
+            });
+
+            return;
         }
-
-        const target = grouped.get(key);
-        const mergedColors = new Set(normalizeProductColors(target.color));
-        productColors.forEach((color) => mergedColors.add(color));
-        target.color = [...mergedColors];
-
-        const mergedSizes = new Set(normalizeProductSizes(target.sizes));
-        productSizes.forEach((size) => mergedSizes.add(size));
-        target.sizes = [...mergedSizes];
-
-        const mergedGallery = new Set(Array.isArray(target.image_gallery) ? target.image_gallery.filter(Boolean) : []);
-        productImageCandidates.forEach((image) => mergedGallery.add(image));
-        target.image_gallery = [...mergedGallery];
-
-        if (!target.cover_image && product?.cover_image) {
-            target.cover_image = product.cover_image;
-        }
-
-        const variantMap = {
-            ...(target.color_variant_images && typeof target.color_variant_images === 'object' ? target.color_variant_images : {}),
-        };
-
-        productColors.forEach((color) => {
-            const mappedImages = Array.isArray(directVariantImages[color]) ? directVariantImages[color].filter(Boolean) : [];
-            const fallbackImages = mappedImages.length > 0 ? mappedImages : productImageCandidates;
-            const merged = new Set(Array.isArray(variantMap[color]) ? variantMap[color].filter(Boolean) : []);
-
-            fallbackImages.forEach((image) => merged.add(image));
-            if (merged.size > 0) {
-                variantMap[color] = [...merged];
-            }
-        });    
-
-        target.color_variant_images = variantMap;
     });
 
-    return [...grouped.values()];
+    return expanded;
 }
 
 function ColorSwatch({ color, active, onClick, colorLookup }) {
@@ -638,7 +630,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
     }, [isBuilderPreview]);
 
     // Derived collection purely from live fetched state
-    const displayProducts = loading ? [] : groupProductsByName(products);
+    const displayProducts = loading ? [] : buildTrendingDisplayProducts(products);
 
     function handleAddToCart(product, options = {}) {
         setVariantModalState({
@@ -691,7 +683,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                         </button>
                         <Link
                             to="/shop"
-                            className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-zinc-500 transition-colors hover:text-zinc-900`}
+                            className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-black transition-colors hover:text-zinc-900`}
                         >
                             Shop All
                         </Link>
@@ -724,7 +716,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                     >
                         {displayProducts.map((product, index) => (
                             <SwiperSlide
-                                key={product.id || `${product.name}-${index}`}
+                                key={product.ui_variant_key || product.id || `${product.name}-${index}`}
                                 className="h-auto"
                                 onClick={(event) => {
                                     if (!isBuilderPreview) {

@@ -95,6 +95,7 @@ export default function AddProduct() {
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
+    const [colorTrendingMap, setColorTrendingMap] = useState({});
     const [variantRows, setVariantRows] = useState([]);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
@@ -298,13 +299,14 @@ export default function AddProduct() {
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
                         price: pickVariantNumberValue(existing?.price, form.price),
+                        show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
                 });
             });
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, colorTrendingMap]);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
@@ -428,6 +430,15 @@ export default function AddProduct() {
 
     const handleRemoveColor = (colorToRemove) => {
         setSelectedColors((previous) => previous.filter((color) => color !== colorToRemove));
+        setColorTrendingMap((previous) => {
+            if (!Object.prototype.hasOwnProperty.call(previous, colorToRemove)) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
         setColorVariantImageMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
@@ -485,6 +496,26 @@ export default function AddProduct() {
     const handleVariantRowChange = (rowKey, field, value) => {
         setVariantRows((previous) =>
             previous.map((row) => (row.key === rowKey ? { ...row, [field]: value } : row)),
+        );
+    };
+
+    const handleColorTrendingChange = (color, checked) => {
+        const normalizedColor = String(color || '').trim();
+        if (!normalizedColor) {
+            return;
+        }
+
+        setColorTrendingMap((previous) => ({
+            ...previous,
+            [normalizedColor]: Boolean(checked),
+        }));
+
+        setVariantRows((previous) =>
+            previous.map((row) => (
+                String(row.color || '').trim() === normalizedColor
+                    ? { ...row, show_on_best_sellers: Boolean(checked) }
+                    : row
+            )),
         );
     };
 
@@ -581,6 +612,7 @@ export default function AddProduct() {
                     sizeSelectValue={sizeSelectValue}
                     selectedColors={selectedColors}
                     selectedSizes={selectedSizes}
+                    colorTrendingMap={colorTrendingMap}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
                     colorVariantVideoMap={colorVariantVideoMap}
@@ -592,6 +624,7 @@ export default function AddProduct() {
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
+                    onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}
                     onGalleryFilesChange={handleGalleryFilesChange}

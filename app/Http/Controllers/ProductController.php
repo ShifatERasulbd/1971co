@@ -63,12 +63,32 @@ class ProductController extends Controller
         }
 
         $products = Product::select($columns)
-            ->where('show_on_best_sellers', true)
             ->orderByRaw('position IS NULL')
             ->orderBy('position')
             ->orderByDesc('created_at')
-            ->limit(12)
-            ->get();
+            ->get()
+            ->filter(function (Product $product): bool {
+                $rows = is_array($product->variant_rows) ? $product->variant_rows : [];
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+
+                    $variantTrending = filter_var(
+                        $row['show_on_best_sellers'] ?? false,
+                        FILTER_VALIDATE_BOOLEAN,
+                        FILTER_NULL_ON_FAILURE,
+                    );
+
+                    if ($variantTrending === true) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->values()
+            ->take(24);
 
         return response()->json($products);
     }
@@ -168,6 +188,7 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -319,6 +340,7 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -768,6 +790,11 @@ class ProductController extends Controller
                 'sku' => (string) ($row['sku'] ?? ''),
                 'stock' => $row['stock'] ?? '',
                 'price' => $row['price'] ?? '',
+                'show_on_best_sellers' => filter_var(
+                    $row['show_on_best_sellers'] ?? false,
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE,
+                ) === true,
             ];
         }, $variantRows));
     }

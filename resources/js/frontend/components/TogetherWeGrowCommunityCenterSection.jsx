@@ -48,7 +48,7 @@ export default function TogetherWeGrowCommunityCenterSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-[#ececec] px-4 py-12 sm:px-6 sm:py-16 lg:px-10 lg:py-20`}>
             <div className="mx-auto w-full max-w-[1920px]">
-                <p className="text-[0.7rem] font-bold uppercase tracking-[0.25em] text-zinc-900">
+                <p className="text-[1.2rem] font-bold uppercase tracking-[0.25em] text-zinc-900">
                     {contentTitle}
                 </p>
 

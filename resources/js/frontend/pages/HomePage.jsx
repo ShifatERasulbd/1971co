@@ -126,7 +126,7 @@ export default function HomePage() {
                 }
 
                 const normalized = {
-                    title: String(payload.title || 'Best Sellers').trim() || 'Best Sellers',
+                    title: String(payload.title || 'Trending').trim() || 'Trending',
                     position: Math.max(1, Math.min(6, Number(payload.position) || 3)),
                 };
 
@@ -169,7 +169,7 @@ export default function HomePage() {
             if (data.type === 'TIMLESS_PAGE_BUILDER_BEST_SELLERS_SECTION_CONFIG_UPDATE') {
                 const payload = data.payload || {};
                 const normalized = {
-                    title: String(payload.title || 'Best Sellers').trim() || 'Best Sellers',
+                    title: String(payload.title || 'Trending').trim() || 'Trending',
                     position: Math.max(1, Math.min(6, Number(payload.position) || 3)),
                 };
 
@@ -220,7 +220,7 @@ export default function HomePage() {
                             defer={!isBuilderPreview && sectionKey !== 'hero'}
                         >
                             {sectionKey === 'best-sellers' ? (
-                                <Component sectionTitle={bestSellersConfig.title} />
+                                <Component sectionTitle="Trending" />
                             ) : (
                                 <Component />
                             )}

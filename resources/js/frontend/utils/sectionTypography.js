@@ -20,16 +20,16 @@ export const sectionTypography = {
     heroDescription: 'max-w-[680px] leading-7',
 
     heroPrimaryButton:
-        'inline-flex min-w-[138px] items-center justify-center border border-white bg-white px-7 py-3.5 text-[0.9rem] font-semibold uppercase tracking-[0.08em] text-zinc-900 transition-colors hover:bg-zinc-100',
+        'inline-flex min-w-[138px] items-center justify-center border border-white bg-white px-7 py-3.5 text-[1.2rem] font-semibold uppercase tracking-[0.08em] text-zinc-900 transition-colors hover:bg-zinc-100',
     
         heroSecondaryButton:
-        'inline-flex min-w-[168px] items-center justify-center border border-white/90 bg-transparent px-7 py-3.5 text-[0.9rem] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white/10',
+        'inline-flex min-w-[168px] items-center justify-center border border-white/90 bg-transparent px-7 py-3.5 text-[1.2rem] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-white/10',
    
         footerBrandPrimary: 'text-[2.2rem] font-black leading-none tracking-[-0.02em]',
    
         footerBrandSecondary: 'text-[1.7rem] font-light leading-none',
    
-        footerHeading: 'mb-4 text-[0.7rem] font-bold uppercase tracking-[0.18em]',
+        footerHeading: 'mb-4 text-[1.2rem] font-bold uppercase tracking-[0.18em]',
    
         footerLink: 'text-[0.85rem]',
    

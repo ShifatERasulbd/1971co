@@ -300,8 +300,10 @@ export default function Header() {
                     ? '/shop'
                     : categorySlug === 'new-arrivals'
                     ? '/new-arrivals'
+                    : categorySlug === 'trending'
+                    ? '/trending'
                     : categorySlug === 'best-sellers'
-                    ? '/best-sellers'
+                    ? '/trending'
                     : `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`;
                 return {
                     id: category?.id,
@@ -315,7 +317,7 @@ export default function Header() {
                 };
             })
             : [
-                { label: 'Trending', href: '#best-sellers', isRoute: false },
+                { label: 'Trending', href: '/trending', isRoute: true },
                 { label: 'Shop', href: '/shop', isRoute: true, isShop: true },
             ];
 
@@ -587,7 +589,7 @@ export default function Header() {
                                                                 className="h-[256px] w-full object-cover object-center"
                                                             />
                                                         </Link>
-                                                        <figcaption className="mt-3 text-[0.7rem] uppercase tracking-[0.08em] text-zinc-500">
+                                                        <figcaption className="mt-3 text-[1.2rem] uppercase tracking-[0.08em] text-zinc-500">
                                                             {shopMegaMenuCaption}
                                                         </figcaption>
                                                     </figure>

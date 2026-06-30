@@ -28,6 +28,7 @@ export default function AddForm({
     sizeSelectValue = '',
     selectedColors = [],
     selectedSizes = [],
+    colorTrendingMap = {},
     variantRows = [],
     colorVariantImageMap = {},
     colorVariantVideoMap = {},
@@ -41,6 +42,7 @@ export default function AddForm({
     onAddSize,
     onRemoveSize,
     onVariantRowChange,
+    onColorTrendingChange,
     onColorVariantImagesChange,
     onColorVariantVideosChange,
     onColorVariantSizeChartsChange,
@@ -596,7 +598,7 @@ export default function AddForm({
                                         className="h-4 w-4"
                                     />
                                     <Label htmlFor="product-best-sellers" className="cursor-pointer">
-                                        Show on Best Sellers
+                                        Show on Home Page
                                     </Label>
                                 </div>
 
@@ -753,6 +755,7 @@ export default function AddForm({
                                                         <th className="py-2 pr-2">SKU</th>
                                                         <th className="py-2 pr-2">Stock</th>
                                                         <th className="py-2">Price</th>
+                                                        <th className="py-2 pl-2">Trending</th>
                                                         <th className="py-2 pl-2">Color Images</th>
                                                         <th className="py-2 pl-2">Color Videos</th>
                                                         <th className="py-2 pl-2">Size Charts</th>
@@ -788,6 +791,25 @@ export default function AddForm({
                                                                     onChange={(event) => onVariantRowChange?.(row.key, 'price', event.target.value)}
                                                                     disabled={isSubmitting}
                                                                 />
+                                                            </td>
+                                                            <td className="py-2 pl-2 align-top">
+                                                                {firstColorRowKeys[row.key] ? (
+                                                                    <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1">
+                                                                        <Input
+                                                                            id={`variant-trending-${row.key}`}
+                                                                            type="checkbox"
+                                                                            checked={Boolean(colorTrendingMap[row.color])}
+                                                                            onChange={(event) => onColorTrendingChange?.(row.color, event.target.checked)}
+                                                                            disabled={isSubmitting}
+                                                                            className="h-4 w-4"
+                                                                        />
+                                                                        <Label htmlFor={`variant-trending-${row.key}`} className="cursor-pointer text-xs text-muted-foreground">
+                                                                            Trending
+                                                                        </Label>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} trend flag</p>
+                                                                )}
                                                             </td>
                                                             <td className="py-2 pl-2 align-top">
                                                                 {firstColorRowKeys[row.key] ? (

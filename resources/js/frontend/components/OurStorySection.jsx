@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
 
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
@@ -16,9 +17,18 @@ const FALLBACK_STORY_DATA = {
     show_text: true,
 };
 
+function toAbsoluteImageUrl(path) {
+    if (!path || typeof path !== 'string') return '';
+    const trimmed = path.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `/${trimmed.replace(/^\/+/, '')}`;
+}
+
 export default function OurStorySection() {
     const [dbData, setDbData] = useState(null);
     const [previewOverride, setPreviewOverride] = useState(null);
+    const sectionRef = useRef(null);
     const [isBuilderPreview] = useState(() => {
         try {
             return window.self !== window.top;
@@ -26,6 +36,7 @@ export default function OurStorySection() {
             return false;
         }
     });
+    const isInView = useInView(sectionRef, { amount: 0.35, once: false });
 
     useEffect(() => {
         let ignore = false;
@@ -45,12 +56,11 @@ export default function OurStorySection() {
                     setDbData(payload);
                 }
             } catch {
-                // Keep fallback.
+                // Keep fallback content.
             }
         }
 
         loadOurStory();
-
         return () => {
             ignore = true;
         };
@@ -84,7 +94,7 @@ export default function OurStorySection() {
                 {
                     type: 'TIMLESS_PAGE_BUILDER_REQUEST_OUR_STORY_PREVIEW',
                 },
-                window.location.origin
+                window.location.origin,
             );
         }
 
@@ -95,16 +105,42 @@ export default function OurStorySection() {
 
     const displayData = useMemo(() => {
         const base = dbData || FALLBACK_STORY_DATA;
-        if (!previewOverride) {
-            return base;
-        }
-        return { ...base, ...previewOverride };
+        return previewOverride ? { ...base, ...previewOverride } : base;
     }, [dbData, previewOverride]);
 
     const showImage = Boolean(displayData.show_image);
     const showText = Boolean(displayData.show_text);
-    const storyImage = displayData.story_image || FALLBACK_STORY_DATA.story_image;
+    const storyImage = toAbsoluteImageUrl(displayData.story_image || FALLBACK_STORY_DATA.story_image);
     const storyLogo = displayData.story_logo || '';
+
+    const splitSectionVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.18,
+                delayChildren: 0.08,
+            },
+        },
+    };
+
+    const leftPanelVariants = {
+        hidden: { opacity: 0, x: -90 },
+        visible: {
+            opacity: 1,
+            x: 0,
+            transition: { type: 'spring', stiffness: 70, damping: 16, mass: 0.9 },
+        },
+    };
+
+    const rightPanelVariants = {
+        hidden: { opacity: 0, x: 90 },
+        visible: {
+            opacity: 1,
+            x: 0,
+            transition: { type: 'spring', stiffness: 70, damping: 16, mass: 0.9 },
+        },
+    };
 
     function handleSectionSelect(event) {
         if (!isBuilderPreview) {
@@ -119,7 +155,7 @@ export default function OurStorySection() {
                 {
                     type: 'TIMLESS_PAGE_BUILDER_OUR_STORY_SECTION_SELECTED',
                 },
-                window.location.origin
+                window.location.origin,
             );
         }
     }
@@ -128,25 +164,34 @@ export default function OurStorySection() {
 
     return (
         <section className={`${timelessFontClass} w-full overflow-hidden`} onClick={handleSectionSelect}>
-            <div className={`grid min-h-[580px] grid-cols-1 ${columnClass}`}>
-
+            <motion.div
+                ref={sectionRef}
+                className={`grid min-h-[580px] grid-cols-1 ${columnClass}`}
+                variants={splitSectionVariants}
+                initial="hidden"
+                animate={isInView ? 'visible' : 'hidden'}
+            >
                 {showImage ? (
-                    <div className="relative min-h-[380px] lg:min-h-0">
+                    <motion.div className="relative min-h-[380px] overflow-hidden lg:min-h-0" variants={leftPanelVariants}>
                         <img
                             src={storyImage}
                             alt="1971Co - our story"
                             className="absolute inset-0 h-full w-full object-cover object-[40%_20%]"
+                            loading="lazy"
+                            onError={(event) => {
+                                event.currentTarget.src = FALLBACK_STORY_DATA.story_image;
+                            }}
                         />
-                    </div>
+                    </motion.div>
                 ) : null}
 
                 {showText ? (
-                    <div
+                    <motion.div
                         className="flex items-center px-10 py-14 sm:px-14 lg:px-20 xl:px-28"
                         style={{ backgroundColor: displayData.background_color || '#c8b89a' }}
+                        variants={rightPanelVariants}
                     >
                         <div className="max-w-[480px]">
-
                             {storyLogo ? (
                                 <div className="mb-4">
                                     <img
@@ -190,10 +235,9 @@ export default function OurStorySection() {
                                 About 1971Co
                             </Link>
                         </div>
-                    </div>
+                    </motion.div>
                 ) : null}
-
-            </div>
+            </motion.div>
         </section>
     );
 }

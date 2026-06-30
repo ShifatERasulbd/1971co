@@ -133,6 +133,7 @@ export default function EditProduct() {
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
+    const [colorTrendingMap, setColorTrendingMap] = useState({});
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -478,15 +479,55 @@ export default function EditProduct() {
                             size: String(row?.size || '').trim(),
                             stock: row?.stock ?? '',
                             price: row?.price ?? '',
+                            show_on_best_sellers: Boolean(row?.show_on_best_sellers),
                         }));
 
+                        const nextTrendingMap = {};
+                        nextRows.forEach((row) => {
+                            const colorKey = String(row.color || '').trim();
+                            if (!colorKey) {
+                                return;
+                            }
+
+                            if (!Object.prototype.hasOwnProperty.call(nextTrendingMap, colorKey)) {
+                                nextTrendingMap[colorKey] = false;
+                            }
+
+                            if (row.show_on_best_sellers === true) {
+                                nextTrendingMap[colorKey] = true;
+                            }
+                        });
+
                         setVariantRows(nextRows);
+                        setColorTrendingMap(nextTrendingMap);
                         setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
                         setSelectedSizes([...new Set(nextRows.map((row) => row.size).filter(Boolean))]);
                     } else if (fallbackVariants.length > 0) {
-                        setVariantRows(fallbackVariants);
-                        setSelectedColors([...new Set(fallbackVariants.map((row) => row.color).filter(Boolean))]);
-                        setSelectedSizes([...new Set(fallbackVariants.map((row) => row.size).filter(Boolean))]);
+                        const nextRows = fallbackVariants.map((row) => ({
+                            ...row,
+                            show_on_best_sellers: Boolean(row?.show_on_best_sellers),
+                        }));
+
+                        const nextTrendingMap = {};
+                        nextRows.forEach((row) => {
+                            const colorKey = String(row.color || '').trim();
+                            if (!colorKey) {
+                                return;
+                            }
+
+                            if (!Object.prototype.hasOwnProperty.call(nextTrendingMap, colorKey)) {
+                                nextTrendingMap[colorKey] = false;
+                            }
+
+                            if (row.show_on_best_sellers === true) {
+                                nextTrendingMap[colorKey] = true;
+                            }
+                        });
+
+                        setColorTrendingMap(nextTrendingMap);
+                        setVariantRows(nextRows);
+                        setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
+                        setSelectedSizes([...new Set(nextRows.map((row) => row.size).filter(Boolean))]);
                     } else {
                         const fallbackColorValues = parseSelectionValues(data?.color);
                         const fallbackSizeValues = parseSelectionValues(data?.size);
@@ -498,9 +539,15 @@ export default function EditProduct() {
                             size: data?.size || '',
                             stock: data?.stock ?? '',
                             price: data?.price ?? '',
+                            show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                         };
 
                         setVariantRows([singleRow]);
+                        setColorTrendingMap(
+                            singleRow.color
+                                ? { [String(singleRow.color).trim()]: Boolean(singleRow.show_on_best_sellers) }
+                                : {},
+                        );
                         setSelectedColors(
                             fallbackColorValues.length > 0
                                 ? fallbackColorValues
@@ -598,6 +645,21 @@ export default function EditProduct() {
             return next;
         });
 
+        setColorTrendingMap((previous) => {
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([colorKey, isTrending]) => {
+                const colorId = resolveColorId(colorKey);
+                if (!colorId) {
+                    return;
+                }
+
+                next[colorId] = Boolean(isTrending);
+            });
+
+            return next;
+        });
+
         setForm((previous) => ({
             ...previous,
             color: normalizeIdList(parseSelectionValues(previous.color), resolveColorId).join(', '),
@@ -637,13 +699,14 @@ export default function EditProduct() {
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
                         price: pickVariantNumberValue(existing?.price, form.price),
+                        show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
                 });
             });
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit, colorLabelById, sizeLabelById]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
 
     useEffect(() => {
         const validValues = new Set(galleryPreviewItems.map((item) => item.value));
@@ -776,6 +839,15 @@ export default function EditProduct() {
 
     const handleRemoveColor = (colorToRemove) => {
         setSelectedColors((previous) => previous.filter((color) => color !== colorToRemove));
+        setColorTrendingMap((previous) => {
+            if (!Object.prototype.hasOwnProperty.call(previous, colorToRemove)) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
         setColorVariantImageMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
@@ -955,6 +1027,26 @@ export default function EditProduct() {
         });
     };
 
+    const handleColorTrendingChange = (color, checked) => {
+        const normalizedColor = String(color || '').trim();
+        if (!normalizedColor) {
+            return;
+        }
+
+        setColorTrendingMap((previous) => ({
+            ...previous,
+            [normalizedColor]: Boolean(checked),
+        }));
+
+        setVariantRows((previous) =>
+            previous.map((row) => (
+                String(row.color || '').trim() === normalizedColor
+                    ? { ...row, show_on_best_sellers: Boolean(checked) }
+                    : row
+            )),
+        );
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -1066,6 +1158,7 @@ export default function EditProduct() {
                     sizeSelectValue={sizeSelectValue}
                     selectedColors={selectedColors}
                     selectedSizes={selectedSizes}
+                    colorTrendingMap={colorTrendingMap}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
                     colorVariantVideoMap={colorVariantVideoMap}
@@ -1080,6 +1173,7 @@ export default function EditProduct() {
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
                     onVariantRowChange={handleVariantRowChange}
+                    onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}
                     onColorVariantSizeChartsChange={handleColorVariantSizeChartsChange}

@@ -286,7 +286,7 @@ export default function CollectionsSection() {
                     )}
                     <Link
                         to="/shop"
-                        className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-zinc-500 transition-colors hover:text-zinc-900`}
+                        className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-black transition-colors hover:text-zinc-900`}
                         onClick={(event) => isBuilderPreview && event.preventDefault()}
                     >
                         View All

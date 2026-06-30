@@ -5,7 +5,7 @@ import { timelessFontClass } from '../utils/typography';
 
 export default function TogetherWeGrowHeroSection({ sectionData }) {
     const contentTitle = sectionData?.contentTitle || 'Together We Grow';
-    const heading = sectionData?.heading || '$0.50 FROM EVERY PURCHASE YOU MAKE SUPPORTS GARMENT\'S WORKERS\' CHILDREN';
+    const heading = sectionData?.heading || '$0.50 \'S WORKERS\' CHILDREN';
     const description = sectionData?.sectionDescription || 'Every purchase makes a difference. We donate $0.50 from every order to support workers\' children in our community — helping create brighter futures through care, education, and opportunity.';
     const buttonText = sectionData?.buttonText || 'Let\'s Make a Purchase';
     const buttonUrl = sectionData?.buttonUrl || '/shop';
@@ -13,7 +13,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-10 lg:py-20`}>
             <div className="mx-auto w-full max-w-[1920px]">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.25em] text-black">
+                <p className="text-[1.65rem] font-bold uppercase tracking-[0.25em] text-black">
                     {contentTitle}
                 </p>
 
@@ -39,7 +39,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
 
                         <Link
                             to={buttonUrl}
-                            className="mt-8 inline-flex items-center gap-3 bg-black px-6 py-4 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-zinc-800"
+                            className="mt-8 inline-flex items-center gap-3 bg-black px-6 py-4 text-[1.2rem] font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-zinc-800"
                         >
                             {buttonText}
                             <div className="flex size-4 items-center justify-center bg-white text-black">

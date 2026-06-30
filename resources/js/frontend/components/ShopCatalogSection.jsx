@@ -499,11 +499,21 @@ function isBestSellerProduct(product) {
         return false;
     }
 
-    if (product.show_on_best_sellers === true) {
-        return true;
+    const variantRows = Array.isArray(product.variant_rows) ? product.variant_rows : [];
+    const normalizedSeedColor = normalizeQueryValue(String(product.variant_seed_color || ''));
+
+    if (variantRows.length > 0) {
+        if (normalizedSeedColor) {
+            return variantRows.some((row) => (
+                normalizeQueryValue(String(row?.color || '')) === normalizedSeedColor
+                && (row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1)
+            ));
+        }
+
+        return variantRows.some((row) => row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1);
     }
 
-    return Number(product.show_on_best_sellers) === 1;
+    return false;
 }
 
 function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {} }) {
@@ -522,9 +532,21 @@ function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {}
     );
 }
 
-function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart }) {
+function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart, seedColorOnly = false }) {
     const navigate = useNavigate();
-    const colors = useMemo(() => normalizeProductColors(product.color), [product.color]);
+    const colors = useMemo(() => {
+        const normalized = normalizeProductColors(product.color);
+        if (!seedColorOnly) {
+            return normalized;
+        }
+
+        const seededColor = String(product?.variant_seed_color || '').trim();
+        if (!seededColor) {
+            return normalized;
+        }
+
+        return normalized.includes(seededColor) ? [seededColor] : [seededColor];
+    }, [product.color, product?.variant_seed_color, seedColorOnly]);
 
     const galleryImages = useMemo(() => {
         const rawGallery = Array.isArray(product.image_gallery) ? product.image_gallery : [];
@@ -805,6 +827,7 @@ function ShopProductsGrid({
     products = [],
     colorLookup = {},
     colorNameLookup = {},
+    seedColorOnly = false,
     currentPage = 1,
     totalPages = 1,
     totalResults = 0,
@@ -836,7 +859,7 @@ function ShopProductsGrid({
             {visibleProducts.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} />
+                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} seedColorOnly={seedColorOnly} />
                     ))}
                 </div>
             ) : (
@@ -916,12 +939,13 @@ export default function ShopCatalogSection() {
 
     const isBestSellersView = useMemo(() => {
         const pathName = String(location.pathname || '').toLowerCase();
-        if (pathName === '/best-sellers') {
+        if (pathName === '/best-sellers' || pathName === '/trending') {
             return true;
         }
 
         const params = new URLSearchParams(location.search);
-        return normalizeQueryValue(params.get('category')) === 'best-sellers';
+        const category = normalizeQueryValue(params.get('category'));
+        return category === 'best-sellers' || category === 'trending';
     }, [location.pathname, location.search]);
 
     useEffect(() => {
@@ -1099,7 +1123,7 @@ export default function ShopCatalogSection() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const pathName = String(location.pathname || '').toLowerCase();
-        const categoryValueFromPath = pathName === '/best-sellers' ? 'best-sellers' : '';
+        const categoryValueFromPath = pathName === '/best-sellers' || pathName === '/trending' ? 'best-sellers' : '';
         const pathSegments = pathName.split('/').filter(Boolean);
         const isSearchPath = pathSegments.length >= 2 && pathSegments[0] === 'search';
         const searchPathToken = isSearchPath
@@ -1111,7 +1135,7 @@ export default function ShopCatalogSection() {
                 }
             })()
             : '';
-        const isShopPathSegment = !['collection', 'best-sellers', 'shop', 'search'].includes(pathSegments[0]);
+        const isShopPathSegment = !['collection', 'best-sellers', 'trending', 'shop', 'search'].includes(pathSegments[0]);
         const subCategoryValueFromPath = pathSegments.length >= 1 && isShopPathSegment ? pathSegments[0] : '';
         const grandChildValueFromPath = pathSegments.length >= 2 && isShopPathSegment ? pathSegments[1] : '';
         const categoryValue = categoryValueFromPath || params.get('category');
@@ -1367,6 +1391,7 @@ export default function ShopCatalogSection() {
                     products={paginatedProducts}
                     colorLookup={colorLookup}
                     colorNameLookup={colorNameLookup}
+                    seedColorOnly={isBestSellersView}
                     currentPage={safeCurrentPage}
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}
