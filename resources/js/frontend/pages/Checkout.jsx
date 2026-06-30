@@ -698,7 +698,7 @@ function CheckoutForm() {
                     </div>
 
                     <div className="mt-6">
-                        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Payment Details</h2>
+                        <h2 className="text-[0.92rem] font-semibold uppercase tracking-[0.16em] text-black">Payment Details</h2>
                         <div className="mt-3">
                             <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                 Card Information <span className="text-red-500">*</span>
@@ -710,7 +710,7 @@ function CheckoutForm() {
                     </div>
 
                     <div className="mt-4">
-                        <p className="mb-1.5 text-[0.72rem] text-black uppercase tracking-[0.16em]">
+                        <p className="mb-1.5 text-[0.92rem] font-semibold text-black uppercase tracking-[0.16em]">
                             We Accept
                         </p>
                         <div className="overflow-hidden border border-zinc-200 bg-white">

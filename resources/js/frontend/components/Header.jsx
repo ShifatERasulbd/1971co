@@ -576,8 +576,8 @@ export default function Header() {
 
                                                 {/* Mega Menu Spotlight Image — only rendered when an image is configured in Settings */}
                                                 {shopMegaMenuImage ? (
-                                                <div className="flex w-[460px] flex-none justify-center xl:w-[560px]">
-                                                    <figure className="w-full max-w-[560px] text-center">
+                                                <div className="flex w-[260px] flex-none justify-center">
+                                                    <figure className="w-full max-w-[260px] text-center">
                                                         <Link
                                                             to={shopMegaMenuHref}
                                                             className="block overflow-hidden border border-zinc-200 bg-zinc-100 p-3"
@@ -586,7 +586,7 @@ export default function Header() {
                                                             <img
                                                                 src={shopMegaMenuImage}
                                                                
-                                                                className="h-[280px] w-full object-cover object-center xl:h-[340px]"
+                                                                className="h-[256px] w-full object-cover object-center"
                                                             />
                                                         </Link>
                                                         

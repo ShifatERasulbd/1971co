@@ -39,7 +39,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
 
                         <Link
                             to={buttonUrl}
-                            className="mt-8 inline-flex items-center gap-3 bg-black px-6 py-4 text-[1.2rem] font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-zinc-800"
+                            className="mt-8 inline-flex items-center gap-3 bg-black px-6 py-4 text-[0.9rem] font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-zinc-800"
                         >
                             {buttonText}
                             <div className="flex size-4 items-center justify-center bg-white text-black">
