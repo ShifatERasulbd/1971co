@@ -117,7 +117,7 @@ export default function About1971Section() {
                         </h2>
 
                         <div
-                            className="story-rich-text mt-8 space-y-5 text-[0.95rem] leading-[1.7] text-slate-700 sm:text-[1rem]"
+                            className="story-rich-text mt-8 space-y-6 text-[1.08rem] leading-[1.85] text-slate-700 sm:text-[1.15rem]"
                             dangerouslySetInnerHTML={{
                                 __html: displayStoryData.description_html || defaultAboutStoryData.description_html,
                             }}

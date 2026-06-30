@@ -134,20 +134,11 @@ export default function GivingBackSection() {
                             {displayData.title || defaultGivingBackData.title}
                         </h2>
 
-                        <div className="mt-8 space-y-5 text-[0.95rem] leading-[1.7] text-slate-700 sm:text-[1rem]">
+                        <div className="mt-8 space-y-6 text-[1.08rem] leading-[1.85] text-slate-700 sm:text-[1.15rem]">
                             {descriptionParagraphs.map((paragraph, index) => (
                                 <p key={`${paragraph.slice(0, 24)}-${index}`}>
                                     {paragraph}
                                 </p>
-                            ))}
-                        </div>
-
-                        <div className="mt-8 space-y-3 text-[0.95rem] font-medium text-zinc-900">
-                            {(Array.isArray(displayData.points) ? displayData.points : []).map((point, index) => (
-                                <div key={`${String(point || '').slice(0, 24)}-${index}`} className="flex items-start gap-3">
-                                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-zinc-900" />
-                                    <span>{point || `Point ${index + 1}`}</span>
-                                </div>
                             ))}
                         </div>
                     </div>
