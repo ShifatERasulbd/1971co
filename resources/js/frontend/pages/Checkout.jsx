@@ -114,9 +114,9 @@ function CheckoutForm() {
 
     if (items.length === 0) {
         return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
                     </h1>
                     <p className="mt-4 text-zinc-600">Your cart is empty. Add products before checkout.</p>
@@ -201,7 +201,7 @@ function CheckoutForm() {
     }
 
     function inputClass(field) {
-        return `h-11 w-full border px-3 text-[0.9rem] text-zinc-900 outline-none focus:border-zinc-900 transition-colors ${
+        return `font-monstrate h-11 w-full border px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900 transition-colors ${
             fieldErrors[field] ? 'border-red-400 bg-red-50' : 'border-zinc-200 bg-white hover:border-zinc-400'
         }`;
     }
@@ -429,11 +429,11 @@ function CheckoutForm() {
     }
 
     return (
-        <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+        <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1500px] gap-8 lg:grid-cols-[1.35fr_0.9fr] lg:gap-10">
                 <div className="bg-white p-5 shadow-sm sm:p-8">
                     <div className="border-b border-zinc-200 pb-5">
-                        <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                             Checkout
                         </h1>
                         <p className="mt-1 text-[0.85rem] text-zinc-400 uppercase tracking-[0.12em]">Complete your order</p>
@@ -587,14 +587,14 @@ function CheckoutForm() {
                                 onChange={(event) => updateField('notes', event.target.value)}
                                 placeholder="Special delivery instructions, gift messages, etc."
                                 rows={3}
-                                className="w-full resize-none border border-zinc-300 px-3 py-2.5 text-[0.9rem] text-zinc-900 outline-none focus:border-zinc-900"
+                                className="font-monstrate w-full resize-none border border-zinc-300 px-3 py-2.5 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
                             />
                         </div>
                     </div>
                 </div>
 
                 <aside className="bg-white p-5 shadow-sm sm:p-7">
-                    <h2 className="frontend-title-font text-[1.5rem] uppercase tracking-[0.05em] text-zinc-900">Order Summary</h2>
+                    <h2 className="font-monstrate text-[1.5rem] uppercase tracking-[0.05em] text-zinc-900">Order Summary</h2>
 
                     <div className="mt-4 rounded border border-zinc-200 p-3">
                         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Courier Service</p>
@@ -709,6 +709,19 @@ function CheckoutForm() {
                         </div>
                     </div>
 
+                    <div className="mt-4">
+                        <p className="mb-1.5 text-[0.72rem] text-black uppercase tracking-[0.16em]">
+                            We Accept
+                        </p>
+                        <div className="overflow-hidden border border-zinc-200 bg-white">
+                        <img
+                            src="/cardImage.png"
+                            alt="Accepted payment cards"
+                            className="h-10 w-full object-contain object-center px-2"
+                        />
+                        </div>
+                    </div>
+
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
@@ -768,9 +781,9 @@ export default function CheckoutPage() {
 
     if (isStripeLoading) {
         return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
                     </h1>
                     <p className="mt-4 text-zinc-600">Loading secure payment...</p>
@@ -781,9 +794,9 @@ export default function CheckoutPage() {
 
     if (!stripePromise) {
         return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
                     </h1>
                     <p className="mt-4 text-zinc-600">

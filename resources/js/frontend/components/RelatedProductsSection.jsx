@@ -171,17 +171,101 @@ function toAbsoluteImageUrl(path) {
     return `/${path.replace(/^\/+/, '')}`;
 }
 
+function normalizeImageKey(path) {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+
+    return path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').trim();
+}
+
+function resolveVariantImagesByColor(variantMap, colorValue) {
+    if (!variantMap || typeof variantMap !== 'object') {
+        return [];
+    }
+
+    const colorKey = String(colorValue || '').trim();
+    if (!colorKey) {
+        return [];
+    }
+
+    const direct = Array.isArray(variantMap[colorKey]) ? variantMap[colorKey].filter(Boolean) : [];
+    if (direct.length > 0) {
+        return direct;
+    }
+
+    const matchedEntry = Object.entries(variantMap).find(
+        ([key]) => String(key || '').trim().toLowerCase() === colorKey.toLowerCase(),
+    );
+
+    return Array.isArray(matchedEntry?.[1]) ? matchedEntry[1].filter(Boolean) : [];
+}
+
 function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
     const navigate = useNavigate();
-    const imageSource = toAbsoluteImageUrl(product?.cover_image || product?.image_gallery?.[0] || fallbackImage);
     const colors = normalizeProductColors(product?.color);
+    const colorVariantImages =
+        product?.color_variant_images && typeof product.color_variant_images === 'object'
+            ? product.color_variant_images
+            : {};
+
+    const galleryImages = useMemo(() => {
+        const rawGallery = Array.isArray(product?.image_gallery) ? product.image_gallery : [];
+        const allCandidates = [product?.cover_image, ...rawGallery].filter(Boolean);
+        const seen = new Set();
+        const deduped = [];
+
+        allCandidates.forEach((item) => {
+            const key = normalizeImageKey(item);
+            if (!key || seen.has(key)) {
+                return;
+            }
+
+            seen.add(key);
+            deduped.push(toAbsoluteImageUrl(item));
+        });
+
+        return deduped.length > 0 ? deduped : [fallbackImage];
+    }, [product?.cover_image, product?.image_gallery]);
+
+    const [selectedColor, setSelectedColor] = useState(() => String(colors[0] || '').trim() || null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    useEffect(() => {
+        const nextColor = String(colors[0] || '').trim() || null;
+        setSelectedColor(nextColor);
+        setCurrentImageIndex(0);
+    }, [product?.id, product?.color]);
+
+    useEffect(() => {
+        const selected = String(selectedColor || '').trim();
+        if (!selected) {
+            return;
+        }
+
+        const mappedImages = resolveVariantImagesByColor(colorVariantImages, selected);
+        if (mappedImages.length === 0) {
+            return;
+        }
+
+        const firstMapped = mappedImages[0];
+        const targetIndex = galleryImages.findIndex(
+            (image) => normalizeImageKey(image) === normalizeImageKey(firstMapped),
+        );
+
+        if (targetIndex >= 0) {
+            setCurrentImageIndex(targetIndex);
+        }
+    }, [selectedColor, colorVariantImages, galleryImages]);
+
+    const imageSource = galleryImages[currentImageIndex] || galleryImages[0] || fallbackImage;
     const displayPrice = useMemo(
         () => toPrice(product?.priceValue ?? product?.price),
         [product?.priceValue, product?.price],
     );
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
-    const preferredColor = String(colors[0] || '').trim();
+    const preferredColor = String(selectedColor || colors[0] || '').trim();
     const productLinkBase = productSlug
         ? `/product-details/${encodeURIComponent(productSlug)}`
         : `/product-details/${encodeURIComponent(productName)}`;
@@ -194,9 +278,16 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
         event.stopPropagation();
 
         onAddToCart?.(product, {
+            selectedColor: preferredColor || null,
             quantity: 1,
             image: imageSource,
         });
+    }
+
+    function handleSelectColor(color, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectedColor(String(color || '').trim() || null);
     }
 
     function handleQuickView(event) {
@@ -256,19 +347,16 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
                             <ColorSwatch
                                 key={`${color}-${index}`}
                                 color={color}
-                                active={index === 0}
+                                active={String(color || '').trim().toLowerCase() === String(selectedColor || '').trim().toLowerCase()}
                                 colorLookup={colorLookup}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                }}
+                                onClick={(event) => handleSelectColor(color, event)}
                             />
                         ))}
                     </div>
                 ) : null}
 
                 <Link to={productLink} className="block">
-                    <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
+                    <h3 className={`font-monstrate ${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
                         {product.name}
                     </h3>
                 </Link>
@@ -345,24 +433,40 @@ export default function RelatedProductsSection({ products = [] }) {
 
     return (
         <section className={`${featuresFontClass} bg-[#f8f8f7] py-10 sm:py-14`}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes relatedLightWaveSweep {
+                    0%   { transform: translateX(-220%); }
+                    100% { transform: translateX(420%); }
+                }
+                .related-wave-outer, .related-wave-mid, .related-wave-core, .related-wave-hotspot {
+                    animation: relatedLightWaveSweep 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+            `}} />
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">
                 
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+                <div className="relative mb-6 flex flex-wrap items-center justify-between gap-3 pb-4 sm:mb-8">
                     <div>
                         <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
                             Related Products
                         </h2>
-                        <p className="mt-2 text-xs text-zinc-500 sm:text-sm">
+                        <p className="font-monstrate mt-2 text-xs text-zinc-500 sm:text-sm">
                             Top picks loved for their comfort, quality, and timeless style.
                         </p>
                     </div>
 
                     <Link
                         to="/shop"
-                        className={`${sectionTypography.sectionMetaLink} inline-flex items-center self-start border-b border-zinc-900 pb-0.5 text-zinc-500 transition-opacity hover:opacity-70`}
+                        className={`font-monstrate ${sectionTypography.sectionMetaLink} inline-flex items-center self-end `}
                     >
                         View all products
                     </Link>
+
+                    <div className="absolute bottom-0 left-0 h-[2px] w-full overflow-hidden bg-zinc-300">
+                        <div className="related-wave-outer absolute inset-y-0 w-[55%] bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[3px]" />
+                        <div className="related-wave-mid absolute inset-y-0 w-[35%] bg-gradient-to-r from-transparent via-white/80 to-transparent blur-[1.5px]" />
+                        <div className="related-wave-core absolute inset-y-0 w-[18%] bg-gradient-to-r from-transparent via-white to-transparent" />
+                        <div className="related-wave-hotspot absolute inset-y-0 w-[7%] bg-gradient-to-r from-transparent via-white to-transparent brightness-[2]" />
+                    </div>
                 </div>
 
                 <div className="relative">
