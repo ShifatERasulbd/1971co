@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Eye, Heart, PackageSearch, SlidersHorizontal, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -942,6 +942,19 @@ export default function ShopCatalogSection() {
     const [variantModalState, setVariantModalState] = useState(null);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [collectionItems, setCollectionItems] = useState([]);
+    const catalogTopRef = useRef(null);
+
+    function handlePageChange(page) {
+        setCurrentPage(page);
+
+        const target = catalogTopRef.current;
+        if (target && typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     const collectionSlug = useMemo(() => {
         const segments = String(location.pathname || '').split('/').filter(Boolean);
@@ -1392,7 +1405,7 @@ export default function ShopCatalogSection() {
     }
 
     return (
-        <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+        <section ref={catalogTopRef} className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1709px] gap-8 lg:grid-cols-[360px_1fr] lg:gap-10">
                 <div className="hidden lg:block">
                     <ShopSidebar
@@ -1426,7 +1439,7 @@ export default function ShopCatalogSection() {
                     currentPage={safeCurrentPage}
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}
-                    onPageChange={setCurrentPage}
+                    onPageChange={handlePageChange}
                     onAddToCart={handleAddToCart}
                     onOpenFilters={() => setIsMobileFiltersOpen(true)}
                 />
