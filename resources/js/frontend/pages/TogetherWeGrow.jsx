@@ -20,6 +20,8 @@ export default function TogetherWeGrowPage() {
 
     // Fetch community page sections from API
     useEffect(() => {
+        document.title = 'Together We Grow | 1971Co';
+
         fetch('/api/public/community-page-sections', {
             headers: {
                 'Accept': 'application/json',

@@ -52,6 +52,17 @@ export async function deleteGrandChild(id) {
 	});
 }
 
+export async function reorderGrandChilds(ids = []) {
+	return requestJson('/api/grand-childs/reorder', {
+		needsCsrf: true,
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ ids }),
+	});
+}
+
 export async function fetchCategoriesForDropdown() {
 	const payload = await requestJson('/api/categories');
 	return Array.isArray(payload) ? payload : [];

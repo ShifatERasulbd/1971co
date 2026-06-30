@@ -63,6 +63,8 @@ export default function AboutPage() {
         }
     });
     useEffect(() => {
+        document.title = 'About | 1971Co';
+
         function handleBuilderMessage(event) {
             if (event.origin !== window.location.origin) {
                 return;

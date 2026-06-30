@@ -5,15 +5,51 @@ namespace App\Http\Controllers;
 use App\Models\GrandChilds;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class GrandChildController extends Controller
 {
+    private function orderedGrandChildsQuery()
+    {
+        $query = GrandChilds::query()->with(['category', 'subCategory']);
+
+        if (Schema::hasColumn('grand_childs', 'position')) {
+            return $query->orderBy('position')->orderBy('id');
+        }
+
+        return $query->orderBy('id');
+    }
+
     public function index(): JsonResponse
     {
-        $grandChilds = GrandChilds::query()
-            ->with(['category', 'subCategory'])
-            ->orderBy('id')
-            ->get();
+        $grandChilds = $this->orderedGrandChildsQuery()->get();
+
+        return response()->json($grandChilds);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'exists:grand_childs,id'],
+        ]);
+
+        if (!Schema::hasColumn('grand_childs', 'position')) {
+            return response()->json([
+                'message' => 'Reordering is not available until the position column migration is applied.',
+            ], 422);
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $validated['ids'])));
+
+        DB::transaction(function () use ($ids) {
+            foreach ($ids as $index => $id) {
+                GrandChilds::query()->whereKey($id)->update(['position' => $index + 1]);
+            }
+        });
+
+        $grandChilds = $this->orderedGrandChildsQuery()->get();
 
         return response()->json($grandChilds);
     }

@@ -17,10 +17,13 @@ export default function GrandChildTable({
     onAdd,
     onEdit,
     onRequestDelete,
+    onReorder,
     deletingId,
+    isReordering,
     isLoading,
 }) {
     const [search, setSearch] = useState('');
+    const [draggingId, setDraggingId] = useState(null);
 
     const filtered = grandChilds.filter((item) => {
         const q = search.trim().toLowerCase();
@@ -93,9 +96,32 @@ export default function GrandChildTable({
                                 </TableRow>
                             )}
 
+                            {!isLoading && !isReordering && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-9 text-center text-[0.72rem] uppercase tracking-[0.08em] text-muted-foreground">
+                                        Drag and drop rows to reorder mega menu items.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+
                             {!isLoading &&
                                 filtered.map((item, index) => (
-                                    <TableRow key={item.id} className="hover:bg-muted/20">
+                                    <TableRow
+                                        key={item.id}
+                                        draggable={!isReordering}
+                                        onDragStart={() => setDraggingId(item.id)}
+                                        onDragOver={(event) => event.preventDefault()}
+                                        onDrop={(event) => {
+                                            event.preventDefault();
+                                            if (!draggingId || draggingId === item.id) {
+                                                return;
+                                            }
+                                            onReorder?.(draggingId, item.id);
+                                            setDraggingId(null);
+                                        }}
+                                        onDragEnd={() => setDraggingId(null)}
+                                        className={`hover:bg-muted/20 ${isReordering ? 'opacity-70' : 'cursor-move'} ${Number(draggingId) === Number(item.id) ? 'opacity-40' : ''}`}
+                                    >
                                         <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                                         <TableCell className="font-medium">{item.name}</TableCell>
                                         <TableCell className="max-w-[380px] truncate">{item.slug}</TableCell>
