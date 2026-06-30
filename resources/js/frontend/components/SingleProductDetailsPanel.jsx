@@ -206,7 +206,7 @@ export default function SingleProductDetailsPanel({
             
             <div className="mt-5 space-y-4">
                 <div>
-                    <h2 className="text-[0.75rem] tracking-[0.08em] text-zinc-800">Color Variations</h2>
+                    <h2 className="font-monstrate text-[0.75rem] tracking-[0.08em] text-zinc-800">Color Variations</h2>
                     <div className="mt-2.5 flex items-center gap-2.5">
                         {displayColors.map((color) => (
                             <button
@@ -227,13 +227,13 @@ export default function SingleProductDetailsPanel({
                             </button>
                         ))}
                     </div>
-                    <p className="mt-2 text-[0.8rem] uppercase tracking-[0.08em] text-zinc-700">
+                    <p className="font-monstrate mt-2 text-[0.8rem] uppercase tracking-[0.08em] text-zinc-700">
                         Selected: <span className="font-semibold text-zinc-950">{selectedColorLabel}</span>
                     </p>
                 </div>
 
                 <div>
-                    <h2 className="text-[0.75rem] tracking-[0.08em] text-zinc-800">Size Variations</h2>
+                    <h2 className="font-monstrate text-[0.75rem] tracking-[0.08em] text-zinc-800">Size Variations</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                         {displaySizes.map((size) => (
                             <button
@@ -258,7 +258,7 @@ export default function SingleProductDetailsPanel({
                                 setIsSizeChartModalOpen(true);
                             }
                         }}
-                        className={`mt-2.5 inline-flex items-center gap-2 text-[1rem] font-medium ${
+                        className={`font-monstrate mt-2.5 inline-flex items-center gap-2 text-[1rem] font-medium ${
                             resolvedSizeChartImages.length > 0
                                 ? 'cursor-pointer text-zinc-800 hover:text-zinc-900'
                                 : 'cursor-not-allowed text-zinc-400'
@@ -310,14 +310,14 @@ export default function SingleProductDetailsPanel({
                 {/* Clean Product Features Grid without Background Card Wrapper */}
                 {normalizedProductFeatures.length > 0 ? (
                     <div>
-                        <h3 className="text-[0.75rem] tracking-[0.08em] uppercase text-zinc-800">
+                        <h3 className="font-monstrate text-[0.75rem] tracking-[0.08em] uppercase text-zinc-800">
                             Product Features
                         </h3>
                         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                             {normalizedProductFeatures.map((feature, index) => {
                                 const Icon = resolveProductFeatureIcon(feature.icon);
                                 return (
-                                    <div key={`${feature.icon}-${index}`} className="flex items-start gap-2.5 text-[0.88rem] leading-5 text-zinc-700">
+                                    <div key={`${feature.icon}-${index}`} className="font-monstrate flex items-start gap-2.5 text-[0.88rem] leading-5 text-zinc-700">
                                         <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700">
                                             <Icon className="size-3.5" />
                                         </span>
@@ -339,7 +339,7 @@ export default function SingleProductDetailsPanel({
                                 <button
                                     type="button"
                                     onClick={() => toggleAccordionItem(item.key)}
-                                    className="flex w-full items-center justify-between py-4 text-left text-[0.96rem] font-medium text-zinc-800"
+                                    className="font-monstrate flex w-full items-center justify-between py-4 text-left text-[0.96rem] font-medium text-zinc-800"
                                     aria-expanded={isOpen}
                                 >
                                     <span>{item.title}</span>
@@ -349,11 +349,11 @@ export default function SingleProductDetailsPanel({
                                 {isOpen ? (
                                     hasContent ? (
                                         <div
-                                            className="pb-4 text-[0.95rem] leading-7 text-zinc-600"
+                                            className="font-monstrate pb-4 text-[0.95rem] leading-7 text-zinc-600"
                                             dangerouslySetInnerHTML={{ __html: item.content }}
                                         />
                                     ) : (
-                                        <p className="pb-4 text-[0.95rem] text-zinc-500">No details available.</p>
+                                        <p className="font-monstrate pb-4 text-[0.95rem] text-zinc-500">No details available.</p>
                                     )
                                 ) : null}
                             </div>

@@ -475,14 +475,14 @@ export default function ProductDividerSection({ sectionTitle = '' }) {
         async function load() {
             try {
                 const [resResult, colorResult] = await Promise.allSettled([
-                    fetch('/api/public/products', { headers: { Accept: 'application/json' } }),
+                    fetch('/api/public/shop-products', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/colors', { headers: { Accept: 'application/json' } })
                 ]);
 
                 let finalProducts = [];
                 if (resResult.status === 'fulfilled' && resResult.value.ok) {
                     const data = await resResult.value.json();
-                    finalProducts = normalizeProductList(data);
+                    finalProducts = normalizeProductList(data).filter(isBestSeller);
                 }
 
                 if (isBuilderPreview && finalProducts.length === 0) {

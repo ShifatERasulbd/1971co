@@ -18,7 +18,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
                 </p>
 
                 <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-0">
-                    <h1 className="max-w-[1100px] text-[2rem] font-black uppercase leading-[1.02] tracking-[-0.02em] text-black sm:text-[2.7rem] lg:col-span-12 lg:text-[5.2rem]">
+                    <h1 className="max-w-[1100px] text-[2rem]  sm:text-[2.7rem] lg:col-span-12 lg:text-[4.2rem]">
                         {heading.split('\n').map((line, index) => (
                             <div key={index}>
                                 {line.trim().startsWith('$0.50') ? (

@@ -339,13 +339,13 @@ export default function HomeBackgroundImageSection() {
 
                 <div className="relative z-10 mx-auto grid min-h-[560px] w-full max-w-[1700px] gap-8 px-5 py-10 sm:px-8 sm:py-12 lg:min-h-[700px] lg:grid-cols-[minmax(0,1fr)_minmax(560px,760px)] lg:items-center lg:gap-10 lg:px-14 lg:py-16">
                     <div className="max-w-[620px] lg:pr-4">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+                        <p className="font-monstrate text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-zinc-600">
                             {activeSlide.label || 'New Season'}
                         </p>
-                        <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.9] tracking-[0.01em] text-zinc-900 sm:text-[2.7rem] lg:text-[3.4rem]">
+                        <h2 className="font-monstrate mt-3 text-[2rem] font-black uppercase leading-[0.9] tracking-[0.01em] text-zinc-900 sm:text-[2.7rem] lg:text-[3.4rem]">
                             {activeSlide.title}
                         </h2>
-                        <p className="mt-4 max-w-[500px] text-[0.98rem] font-medium text-zinc-700 sm:text-[1.08rem]">
+                        <p className="font-monstrate mt-4 max-w-[500px] text-[0.98rem] font-medium text-zinc-700 sm:text-[1.08rem]">
                             {activeSlide.description}
                         </p>
 

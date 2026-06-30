@@ -147,19 +147,21 @@ class CheckoutOrderController extends Controller
     public function publicShow(Request $request, string $orderNumber): JsonResponse
     {
         $validated = $request->validate([
-            'email' => 'required|email|max:255',
+            'email' => 'nullable|email|max:255',
         ]);
 
-        $normalizedEmail = strtolower(trim($validated['email']));
+        $orderQuery = CheckoutOrder::query()->where('order_number', $orderNumber);
 
-        $order = CheckoutOrder::query()
-            ->where('order_number', $orderNumber)
-            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
-            ->first();
+        $normalizedEmail = strtolower(trim((string) ($validated['email'] ?? '')));
+        if ($normalizedEmail !== '') {
+            $orderQuery->whereRaw('LOWER(email) = ?', [$normalizedEmail]);
+        }
+
+        $order = $orderQuery->first();
 
         if (! $order) {
             return response()->json([
-                'message' => 'Order not found for the provided order number and email.',
+                'message' => 'Order not found for the provided order number.',
             ], 404);
         }
 

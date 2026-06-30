@@ -225,26 +225,7 @@ function buildTrendingDisplayProducts(products) {
     return expanded;
 }
 
-function ColorSwatch({ color, active, onClick, colorLookup }) {
-    const swatchColor = getSwatchColor(color, colorLookup);
-    const borderClass = getSwatchBorderClass(swatchColor);
 
-    return (
-        <button
-            type="button"
-            title={color}
-            onClick={onClick}
-            className={`inline-flex size-5 items-center justify-center rounded-full bg-white p-[2px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
-                active ? 'ring-1 ring-zinc-900/25' : borderClass
-            }`}
-        >
-            <span
-                className="block size-full rounded-full"
-                style={{ backgroundColor: swatchColor }}
-            />
-        </button>
-    );
-}
 
 function toAbsoluteImageUrl(path) {
     if (!path || typeof path !== 'string') {
@@ -365,9 +346,18 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
 
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
-    const productLink = productSlug
-        ? `/product-details/${encodeURIComponent(productSlug)}`
-        : `/product-details/${encodeURIComponent(productName)}`;
+    const productLink = useMemo(() => {
+        const base = productSlug
+            ? `/product-details/${encodeURIComponent(productSlug)}`
+            : `/product-details/${encodeURIComponent(productName)}`;
+
+        const colorValue = String(selectedColor || '').trim();
+        if (!colorValue) {
+            return base;
+        }
+
+        return `${base}/${encodeURIComponent(colorValue)}`;
+    }, [productSlug, productName, selectedColor]);
 
     function handleAddToCart(event) {
         event.preventDefault();
@@ -454,19 +444,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
             </Link>
 
             <div className="space-y-1 pt-3.5">
-                {colors.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {colors.slice(0, 6).map((c, i) => (
-                            <ColorSwatch
-                                key={`${c}-${i}`}
-                                color={c}
-                                active={selectedColor === c}
-                                colorLookup={colorLookup}
-                                onClick={(event) => handleSelectColor(c, event)}
-                            />
-                        ))}
-                    </div>
-                )}
+       
 
                 <Link to={productLink} className="block">
                     <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
@@ -661,8 +639,18 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
             style={{ backgroundColor: '#ffffff' }}
             onClick={() => notifyBuilderSelection(null)}
         >
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes lightWaveSweep {
+                    0%   { transform: translateX(-220%); }
+                    100% { transform: translateX(420%); }
+                }
+                .wave-outer, .wave-mid, .wave-core, .wave-hotspot {
+                    animation: lightWaveSweep 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+            `}} />
+
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+                <div className="relative mb-6 flex flex-wrap items-center justify-between gap-3 pb-4 sm:mb-8">
                     <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
                         {sectionTitle}
                     </h2>
@@ -687,6 +675,13 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                         >
                             Shop All
                         </Link>
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 h-[2px] w-full overflow-hidden bg-zinc-300">
+                        <div className="wave-outer absolute inset-y-0 w-[55%] bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[3px]" />
+                        <div className="wave-mid absolute inset-y-0 w-[35%] bg-gradient-to-r from-transparent via-white/80 to-transparent blur-[1.5px]" />
+                        <div className="wave-core absolute inset-y-0 w-[18%] bg-gradient-to-r from-transparent via-white to-transparent" />
+                        <div className="wave-hotspot absolute inset-y-0 w-[7%] bg-gradient-to-r from-transparent via-white to-transparent brightness-[2]" />
                     </div>
                 </div>
 
@@ -731,7 +726,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                                 <ProductCard
                                     product={product}
                                     autoPlay={isBuilderPreview}
-                                    colorLookup={colorLookup}
+                                   
                                     onAddToCart={handleAddToCart}
                                     allowAddToCart={!loading}
                                 />

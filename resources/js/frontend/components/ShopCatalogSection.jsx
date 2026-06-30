@@ -556,7 +556,7 @@ function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {}
     );
 }
 
-function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart, seedColorOnly = false }) {
+function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart, seedColorOnly = false, hideColorSwatches = false }) {
     const navigate = useNavigate();
     const colors = useMemo(() => {
         const normalized = normalizeProductColors(product.color);
@@ -771,7 +771,7 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
                     </div>
 
                     {product.tag ? (
-                        <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white">
+                        <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">
                             {product.tag}
                         </span>
                     ) : null}
@@ -818,7 +818,7 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
             </Link>
 
             <div className="space-y-1 p-4 pt-3.5">
-                {colors.length > 0 && (
+                {colors.length > 0 && !hideColorSwatches && (
                     <div className="flex flex-wrap items-center gap-2">
                         {colors.slice(0, 6).map((c, i) => (
                             <ColorSwatch
@@ -852,6 +852,7 @@ function ShopProductsGrid({
     colorLookup = {},
     colorNameLookup = {},
     seedColorOnly = false,
+    hideColorSwatches = false,
     currentPage = 1,
     totalPages = 1,
     totalResults = 0,
@@ -883,7 +884,7 @@ function ShopProductsGrid({
             {visibleProducts.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} seedColorOnly={seedColorOnly} />
+                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} seedColorOnly={seedColorOnly} hideColorSwatches={hideColorSwatches} />
                     ))}
                 </div>
             ) : (
@@ -971,6 +972,11 @@ export default function ShopCatalogSection() {
         const category = normalizeQueryValue(params.get('category'));
         return category === 'best-sellers' || category === 'trending';
     }, [location.pathname, location.search]);
+
+    const isTrendingPath = useMemo(() => {
+        const pathName = String(location.pathname || '').toLowerCase();
+        return pathName === '/trending';
+    }, [location.pathname]);
 
     useEffect(() => {
         let ignore = false;
@@ -1416,6 +1422,7 @@ export default function ShopCatalogSection() {
                     colorLookup={colorLookup}
                     colorNameLookup={colorNameLookup}
                     seedColorOnly={isBestSellersView}
+                    hideColorSwatches={isTrendingPath}
                     currentPage={safeCurrentPage}
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}

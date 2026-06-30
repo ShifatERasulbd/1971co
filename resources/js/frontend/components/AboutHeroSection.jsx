@@ -109,20 +109,17 @@ export default function AboutHeroSection() {
                 className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
             />
 
-            <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(5,10,22,0.82)_0%,rgba(8,12,20,0.58)_40%,rgba(6,10,18,0.86)_100%)]" />
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.52)_100%)]" />
-
-            <div className="mx-auto flex min-h-[320px] w-full max-w-[1920px] items-center justify-center px-6 py-14 sm:min-h-[420px] sm:px-8 lg:min-h-[540px] lg:px-12">
-                <div className="text-center">
-                    <p className="mb-6 text-[0.72rem] uppercase tracking-[0.26em] text-white/80 sm:text-[0.78rem]">
+            <div className="mx-auto flex min-h-[320px] w-full max-w-[1920px] items-end justify-start px-6 py-10 sm:min-h-[420px] sm:px-8 sm:py-12 lg:min-h-[540px] lg:px-12 lg:py-14">
+                <div className="max-w-[920px] text-left">
+                    <p className="font-monstrate mb-5 text-[0.72rem] uppercase tracking-[0.26em] text-blackhite sm:text-[0.78rem]">
                         {displayHeroData.section_title || 'Our Story'}
                     </p>
 
-                    <h1 className="font-serif text-[clamp(2.8rem,8vw,6.8rem)] uppercase leading-[0.92] tracking-[0.04em] text-white drop-shadow-[0_12px_32px_rgba(0,0,0,0.65)]">
+                    <h1 className="font-monstrate text-[clamp(2.8rem,8vw,6.8rem)] uppercase leading-[0.92] tracking-[0.04em] text-black">
                         {displayHeroData.title || defaultAboutHeroData.title}
                     </h1>
 
-                    <p className="mx-auto mt-6 max-w-[600px] text-[0.95rem] font-light leading-[1.6] text-white/85 sm:text-[1.02rem]">
+                    <p className="font-monstrate mt-6 max-w-[600px] text-[0.95rem] leading-[1.6] text-blackhite sm:text-[1.02rem]">
                         {displayHeroData.description || defaultAboutHeroData.description}
                     </p>
                 </div>

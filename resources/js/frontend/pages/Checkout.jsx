@@ -385,9 +385,42 @@ function CheckoutForm() {
                 return;
             }
 
+            const cachedInvoice = {
+                order_number: String(payload?.order_number || ''),
+                status: 'approved',
+                first_name: String(form.firstName || ''),
+                last_name: String(form.lastName || ''),
+                email: String(form.email || '').trim(),
+                phone: String(form.phone || ''),
+                address_line_1: String(form.address1 || ''),
+                address_line_2: String(form.address2 || ''),
+                city: String(form.city || ''),
+                state: String(form.state || ''),
+                postal_code: String(form.postalCode || ''),
+                country: String(form.country || ''),
+                notes: String(form.notes || ''),
+                items: normalizedItems,
+                items_count: normalizedItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0),
+                subtotal,
+                shipping,
+                total,
+                courier_service: selectedCourier,
+                courier_reference: String(payload?.courier_reference || ''),
+                created_at: new Date().toISOString(),
+            };
+
+            try {
+                sessionStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
+                localStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
+            } catch {
+                // Ignore storage failures and continue normal flow.
+            }
+
             clearCart();
             toast.success('Payment successful and order placed');
-            navigate(`/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}`);
+            navigate(
+                `/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}&email=${encodeURIComponent(String(form.email || '').trim())}`,
+            );
         } catch {
             toast.error('Unable to place order right now. Please try again.');
         } finally {
