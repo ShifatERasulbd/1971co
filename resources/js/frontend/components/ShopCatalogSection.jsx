@@ -293,6 +293,28 @@ function createVariantCardId(product, color, index) {
     return `${baseId}__${colorSlug || 'default'}__${index}`;
 }
 
+function isVariantTrending(product, seedColor = '') {
+    if (!product || typeof product !== 'object') {
+        return false;
+    }
+
+    const rows = Array.isArray(product.variant_rows) ? product.variant_rows : [];
+    if (rows.length === 0) {
+        return false;
+    }
+
+    const normalizedSeed = normalizeQueryValue(String(seedColor || ''));
+
+    if (normalizedSeed) {
+        return rows.some((row) => (
+            normalizeQueryValue(String(row?.color || '')) === normalizedSeed
+            && (row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1)
+        ));
+    }
+
+    return rows.some((row) => row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1);
+}
+
 function expandProductsByColorVariants(products) {
     if (!Array.isArray(products)) {
         return [];
@@ -304,6 +326,7 @@ function expandProductsByColorVariants(products) {
             return [{
                 ...product,
                 variant_seed_color: null,
+                tag: isVariantTrending(product) ? 'Trending' : null,
             }];
         }
 
@@ -312,6 +335,7 @@ function expandProductsByColorVariants(products) {
             id: createVariantCardId(product, color, colorIndex),
             variant_seed_color: color,
             base_product_id: product?.id ?? productIndex,
+            tag: isVariantTrending(product, color) ? 'Trending' : null,
         }));
     });
 }
@@ -351,7 +375,7 @@ function normalizeProducts(payload, colorNameLookup = {}, sizeNameLookup = {}, s
             sizes: extractSizeIds(item, sizeNameLookup, sizeIdByNameLookup),
             stockValue: getProductStock(item),
             grand_child_id: item?.grand_child_id != null ? String(item.grand_child_id) : '',
-            tag: item?.show_on_best_sellers ? 'Trending' : null,
+            tag: null,
         };
     });
 

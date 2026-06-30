@@ -48,7 +48,7 @@ export default function TogetherWeGrowCommunityCenterSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-[#ececec] px-4 py-12 sm:px-6 sm:py-16 lg:px-10 lg:py-20`}>
             <div className="mx-auto w-full max-w-[1920px]">
-                <p className="text-[1.2rem] font-bold uppercase tracking-[0.25em] text-zinc-900">
+                <p className="font-monstrate text-[1.2rem] uppercase tracking-[0.25em] text-zinc-900">
                     {contentTitle}
                 </p>
 
@@ -67,11 +67,11 @@ export default function TogetherWeGrowCommunityCenterSection({ sectionData }) {
                                         <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
                                     </div>
 
-                                    <h3 className="mt-4 text-[1.45rem] font-bold leading-[1.05] text-zinc-950 sm:text-[1.6rem]">
+                                    <h3 className="font-monstrate mt-4 text-[1.45rem] font-bold leading-[1.05] text-zinc-950 sm:text-[1.6rem]">
                                         {item.title || 'Community Program'}
                                     </h3>
 
-                                    <p className="mt-3 max-w-[30ch] text-[0.86rem] leading-[1.65] text-zinc-600 sm:text-[0.9rem]">
+                                    <p className="font-monstrate mt-3 max-w-[30ch] text-[0.86rem] leading-[1.65] text-zinc-600 sm:text-[0.9rem]">
                                         {item.description || 'Program details'}
                                     </p>
                                 </article>

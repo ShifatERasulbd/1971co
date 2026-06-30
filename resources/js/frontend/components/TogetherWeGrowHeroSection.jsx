@@ -13,7 +13,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
     return (
         <section className={`${timelessFontClass} bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-10 lg:py-20`}>
             <div className="mx-auto w-full max-w-[1920px]">
-                <p className="text-[1.65rem] font-bold uppercase tracking-[0.25em] text-black">
+                <p className="font-monstrate text-[1.2rem]  uppercase tracking-[0.25em] text-black">
                     {contentTitle}
                 </p>
 
@@ -33,7 +33,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
                     </h1>
 
                     <div className="max-w-[700px] pb-2 lg:col-start-8 lg:col-span-5 lg:ml-auto lg:max-w-[560px]">
-                        <p className="text-[0.95rem] leading-[1.8] text-zinc-600">
+                        <p className="font-monstrate text-[0.95rem] leading-[1.8] text-zinc-600">
                             {description}
                         </p>
 

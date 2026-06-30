@@ -134,7 +134,7 @@ export default function GivingBackSection() {
                             {displayData.title || defaultGivingBackData.title}
                         </h2>
 
-                        <div className="mt-8 space-y-6 text-[1.08rem] leading-[1.85] text-slate-700 sm:text-[1.15rem]">
+                        <div className="font-monstrate mt-8 space-y-6 text-[1.08rem] leading-[1.85] text-slate-700 sm:text-[1.15rem]">
                             {descriptionParagraphs.map((paragraph, index) => (
                                 <p key={`${paragraph.slice(0, 24)}-${index}`}>
                                     {paragraph}

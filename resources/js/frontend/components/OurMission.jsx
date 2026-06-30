@@ -120,7 +120,7 @@ export default function OurMission() {
                             {displayMissionData.title || defaultMissionData.title}
                         </h2>
 
-                        <p className="mt-4 max-w-[65ch] text-[1.08rem] leading-[1.85] text-zinc-700 sm:text-[1.15rem]">
+                        <p className="font-monstrate mt-4 max-w-[65ch] text-[1.08rem] leading-[1.85] text-zinc-700 sm:text-[1.15rem]">
                             {displayMissionData.description || defaultMissionData.description}
                         </p>
                     </div>
