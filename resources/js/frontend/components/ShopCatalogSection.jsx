@@ -315,12 +315,28 @@ function isVariantTrending(product, seedColor = '') {
     return rows.some((row) => row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1);
 }
 
+function isBundleLikeProduct(product) {
+    const name = String(product?.name || '').trim().toLowerCase();
+    const sku = String(product?.sku || '').trim().toLowerCase();
+
+    return name.includes('bundle') || sku.includes('bundle');
+}
+
 function expandProductsByColorVariants(products) {
     if (!Array.isArray(products)) {
         return [];
     }
 
     return products.flatMap((product, productIndex) => {
+        if (isBundleLikeProduct(product)) {
+            return [{
+                ...product,
+                variant_seed_color: null,
+                base_product_id: product?.id ?? productIndex,
+                tag: isVariantTrending(product) ? 'Trending' : null,
+            }];
+        }
+
         const colors = normalizeProductColors(product?.color);
         if (colors.length === 0) {
             return [{
