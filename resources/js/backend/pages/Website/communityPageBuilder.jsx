@@ -65,6 +65,12 @@ export default function CommunityPageBuilder() {
                         : Array.isArray(section.feature_items)
                           ? section.feature_items
                           : [],
+                                        canvasImage: section.canvasImage ?? section.canvas_image ?? '',
+                                        canvasImages: Array.isArray(section.canvasImages)
+                                                ? section.canvasImages
+                                                : Array.isArray(section.canvas_images)
+                                                    ? section.canvas_images
+                                                    : [],
                                         communityImage: section.communityImage ?? section.community_image ?? '',
                                         communityItems: Array.isArray(section.communityItems)
                                                 ? section.communityItems
@@ -149,6 +155,25 @@ export default function CommunityPageBuilder() {
 
                 setSelectedSectionKey(sectionKey);
                 setIsEditorOpen(true);
+                return;
+            }
+
+            if (data.type === 'TIMLESS_PAGE_BUILDER_TOGETHER_CANVAS_REORDER') {
+                const nextCanvasImages = Array.isArray(data?.payload?.canvasImages)
+                    ? data.payload.canvasImages
+                    : [];
+
+                setSections((previous) =>
+                    previous.map((section) =>
+                        section.key === 'canvas'
+                            ? {
+                                  ...section,
+                                  canvasImages: nextCanvasImages,
+                                  canvasImage: nextCanvasImages[0]?.src || '',
+                              }
+                            : section,
+                    ),
+                );
             }
         }
 

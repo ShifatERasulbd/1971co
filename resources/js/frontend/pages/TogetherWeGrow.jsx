@@ -54,6 +54,12 @@ export default function TogetherWeGrowPage() {
                             : Array.isArray(section.feature_items)
                               ? section.feature_items
                               : [],
+                                        canvasImage: section.canvasImage || section.canvas_image,
+                                        canvasImages: Array.isArray(section.canvasImages)
+                                                ? section.canvasImages
+                                                : Array.isArray(section.canvas_images)
+                                                    ? section.canvas_images
+                                                    : [],
                                                 communityImage: section.communityImage || section.community_image,
                                                 communityItems: Array.isArray(section.communityItems)
                                                         ? section.communityItems
@@ -121,6 +127,38 @@ export default function TogetherWeGrowPage() {
         };
     }, []);
 
+    function handleCanvasImagesReorder(nextItems) {
+        const normalized = Array.isArray(nextItems)
+            ? nextItems.map((item, index) => ({
+                  ...item,
+                  id: item?.id || `community-canvas-${index}`,
+                  src: item?.src || '',
+                  sort_order: index,
+              }))
+            : [];
+
+        setSectionsData((previous) => ({
+            ...previous,
+            canvas: {
+                ...(previous.canvas || {}),
+                canvasImages: normalized,
+                canvasImage: normalized[0]?.src || '',
+            },
+        }));
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+                {
+                    type: 'TIMLESS_PAGE_BUILDER_TOGETHER_CANVAS_REORDER',
+                    payload: {
+                        canvasImages: normalized,
+                    },
+                },
+                window.location.origin,
+            );
+        }
+    }
+
     const sectionNodes = useMemo(
         () => ({
             hero: <TogetherWeGrowHeroSection sectionData={sectionsData.hero} />,
@@ -141,7 +179,11 @@ export default function TogetherWeGrowPage() {
             ),
             canvas: (
                 <Suspense fallback={<SectionFallback minHeight="min-h-[420px]" />}>
-                    <TogetherWeGrowCanvas sectionData={sectionsData.canvas} />
+                    <TogetherWeGrowCanvas
+                        sectionData={sectionsData.canvas}
+                        isBuilderPreview={isBuilderPreview}
+                        onReorderImages={handleCanvasImagesReorder}
+                    />
                 </Suspense>
             ),
             newsletter: (

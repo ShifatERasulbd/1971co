@@ -20,6 +20,7 @@ const sectionHints = {
     features: 'Configure the impact features panel and cards section label.',
     'community-center': 'Configure community center heading and programs section details.',
     gallery: 'Configure the community gallery label and showcase heading.',
+    canvas: 'Upload multiple community canvas images shown in the live page.',
     newsletter: 'Configure the newsletter call-to-action content area.',
 };
 
@@ -184,6 +185,82 @@ function GalleryItemRow({ index, items, onRemove, onReorder, children }) {
     );
 }
 
+function CanvasItemRow({ index, items, onRemove, onReorder, onUpload, item }) {
+    const [, dropRef] = useDrop(
+        () => ({
+            accept: FEATURE_ITEM_TYPE,
+            hover: (dragged) => {
+                if (dragged.index === index) {
+                    return;
+                }
+
+                onReorder(dragged.index, index);
+                dragged.index = index;
+            },
+        }),
+        [index, onReorder],
+    );
+
+    const [{ isDragging }, dragRef] = useDrag(
+        () => ({
+            type: FEATURE_ITEM_TYPE,
+            item: { index },
+            collect: (monitor) => ({
+                isDragging: monitor.isDragging(),
+            }),
+        }),
+        [index],
+    );
+
+    return (
+        <div
+            ref={dropRef}
+            className={`rounded-md border border-border bg-muted/30 p-3 ${isDragging ? 'opacity-60' : 'opacity-100'}`}
+        >
+            <div className="mb-3 flex items-center justify-between">
+                <button
+                    type="button"
+                    ref={dragRef}
+                    className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                    <GripVertical className="size-4" />
+                    Canvas Image {index + 1}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    disabled={items.length <= 1}
+                    className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-red-600 disabled:opacity-40"
+                >
+                    <Trash2 className="size-3.5" />
+                    Remove
+                </button>
+            </div>
+
+            <div className="space-y-2">
+                <div className="space-y-1.5">
+                    <Label htmlFor={`canvas-item-file-${item.id || index}`}>Image</Label>
+                    <Input
+                        id={`canvas-item-file-${item.id || index}`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => onUpload(index, event)}
+                    />
+                </div>
+
+                {item.src ? (
+                    <img
+                        src={item.src}
+                        alt="Community canvas preview"
+                        className="h-28 w-full rounded-md border border-border bg-white object-cover"
+                    />
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
 export default function CommunitySectionEditorDrawer({
     open,
     onOpenChange,
@@ -217,7 +294,36 @@ export default function CommunitySectionEditorDrawer({
         return Array.isArray(section.galleryItems) ? section.galleryItems : [];
     }, [section]);
 
-    const handleSectionImageUpload = async (event, fieldName, successMessage) => {
+    const canvasItems = useMemo(() => {
+        if (!section || section.key !== 'canvas') {
+            return [];
+        }
+
+        if (Array.isArray(section.canvasImages) && section.canvasImages.length > 0) {
+            return section.canvasImages;
+        }
+
+        if (section.canvasImage) {
+            return [
+                {
+                    id: 'canvas-0',
+                    src: section.canvasImage,
+                },
+            ];
+        }
+
+        return [];
+    }, [section]);
+
+    const handleCanvasImageUpload = (event) =>
+        handleSectionImageUpload(
+            event,
+            'canvasImage',
+            'Community canvas image uploaded',
+            '/api/community-page-sections/upload-canvas-image',
+        );
+
+    const handleCanvasItemImageUpload = async (index, event) => {
         const file = event.target.files?.[0];
         if (!file) {
             return;
@@ -229,7 +335,80 @@ export default function CommunitySectionEditorDrawer({
         try {
             setIsUploadingImage(true);
 
-            const response = await fetch('/api/community-page-sections/upload-feature-image', {
+            const response = await fetch('/api/community-page-sections/upload-canvas-image', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload canvas image');
+            }
+
+            const payload = await response.json();
+            const next = canvasItems.map((item, itemIndex) =>
+                itemIndex === index
+                    ? {
+                          ...item,
+                          src: payload.url || payload.path || '',
+                      }
+                    : item,
+            );
+
+            onChangeField?.('canvasImages', next);
+            onChangeField?.('canvasImage', next[0]?.src || '');
+            toast.success('Community canvas image uploaded');
+        } catch {
+            toast.error('Failed to upload canvas image');
+        } finally {
+            setIsUploadingImage(false);
+            event.target.value = '';
+        }
+    };
+
+    const handleAddCanvasItem = () => {
+        const next = [
+            ...canvasItems,
+            {
+                id: `canvas-item-${Date.now()}`,
+                src: '',
+            },
+        ];
+
+        onChangeField?.('canvasImages', next);
+        onChangeField?.('canvasImage', next[0]?.src || '');
+    };
+
+    const handleCanvasItemReorder = (sourceIndex, targetIndex) => {
+        const next = moveFeatureItem(canvasItems, sourceIndex, targetIndex);
+        onChangeField?.('canvasImages', next);
+        onChangeField?.('canvasImage', next[0]?.src || '');
+    };
+
+    const handleRemoveCanvasItem = (index) => {
+        const next = canvasItems.filter((_, itemIndex) => itemIndex !== index);
+        const resolved = next.length > 0 ? next : canvasItems;
+
+        onChangeField?.('canvasImages', resolved);
+        onChangeField?.('canvasImage', resolved[0]?.src || '');
+    };
+
+    const handleSectionImageUpload = async (event, fieldName, successMessage, uploadUrl = '/api/community-page-sections/upload-feature-image') => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            setIsUploadingImage(true);
+
+            const response = await fetch(uploadUrl, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -426,7 +605,7 @@ export default function CommunitySectionEditorDrawer({
                     </div>
                 ) : (
                     <div className="space-y-5 px-4 pb-4">
-                        {section.key !== 'features' && section.key !== 'community-center' && section.key !== 'gallery' && (
+                        {section.key !== 'features' && section.key !== 'community-center' && section.key !== 'gallery' && section.key !== 'canvas' && (
                             <>
                                 <div className="space-y-2">
                                     <Label htmlFor="community-section-content-title">Content Title</Label>
@@ -494,6 +673,39 @@ export default function CommunitySectionEditorDrawer({
                                         placeholder="Button URL (e.g., /products, #gallery)"
                                     />
                                 </div>
+                            </>
+                        )}
+
+                        {section.key === 'canvas' && (
+                            <>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label>Canvas Images Repeater</Label>
+                                        <Button type="button" size="sm" variant="outline" onClick={handleAddCanvasItem}>
+                                            <Plus className="mr-1 size-3.5" />
+                                            Add Image
+                                        </Button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {canvasItems.map((item, index) => (
+                                            <CanvasItemRow
+                                                key={item.id || `canvas-item-${index}`}
+                                                index={index}
+                                                items={canvasItems}
+                                                item={item}
+                                                onRemove={() => handleRemoveCanvasItem(index)}
+                                                onReorder={handleCanvasItemReorder}
+                                                onUpload={handleCanvasItemImageUpload}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        {isUploadingImage ? 'Uploading image...' : 'Upload multiple images for the community canvas section.'}
+                                    </p>
+                                </div>
+
                             </>
                         )}
 

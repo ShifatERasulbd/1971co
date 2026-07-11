@@ -102,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/community-page-sections', [CommunityPageSectionController::class, 'index']);
 	Route::post('/community-page-sections', [CommunityPageSectionController::class, 'store']);
 	Route::post('/community-page-sections/upload-feature-image', [CommunityPageSectionController::class, 'uploadFeatureImage']);
+	Route::post('/community-page-sections/upload-canvas-image', [CommunityPageSectionController::class, 'uploadCanvasImage']);
 	Route::get('/community-page-sections/{key}', [CommunityPageSectionController::class, 'show']);
 	Route::delete('/community-page-sections/{key}', [CommunityPageSectionController::class, 'destroy']);
 
