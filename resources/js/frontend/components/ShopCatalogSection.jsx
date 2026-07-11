@@ -751,13 +751,13 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
     }
 
     return (
-        <article className="group overflow-hidden border border-zinc-200 bg-white">
+        <article className="group mx-auto w-full max-w-[315px] overflow-hidden border border-zinc-200 bg-white">
             <Link to={productLink} className="block">
-                <div className="relative overflow-hidden bg-zinc-100">
+                <div className="relative h-[400px] overflow-hidden bg-zinc-100">
                     <img
                         src={imageSrc}
                         alt={product.name}
-                        className="h-[250px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[320px]"
+                        className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                     />
 
                     <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">

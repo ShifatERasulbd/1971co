@@ -5,13 +5,15 @@ import TogetherWeGrowHeroSection from '../components/TogetherWeGrowHeroSection';
 const TogetherWeGrowFeaturesSection = lazy(() => import('../components/TogetherWeGrowFeaturesSection.jsx'));
 const TogetherWeGrowCommunityCenterSection = lazy(() => import('../components/TogetherWeGrowCommunityCenterSection.jsx'));
 const TogetherWeGrowGallerySection = lazy(() => import('../components/TogetherWeGrowGallerySection.jsx'));
+const TogetherWeGrowCanvas = lazy(() => import('../components/TogetherWeGrowCanvas.jsx'));
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
+
 
 function SectionFallback({ minHeight = 'min-h-[220px]' }) {
     return <div className={`${minHeight} animate-pulse bg-zinc-100`} aria-hidden="true" />;
 }
 
-const KNOWN_SECTION_KEYS = ['hero', 'features', 'community-center', 'gallery', 'newsletter'];
+const KNOWN_SECTION_KEYS = ['hero', 'features', 'community-center', 'gallery','canvas', 'newsletter'];
 
 export default function TogetherWeGrowPage() {
     const [sectionOrder, setSectionOrder] = useState(KNOWN_SECTION_KEYS);
@@ -132,9 +134,14 @@ export default function TogetherWeGrowPage() {
                     <TogetherWeGrowCommunityCenterSection sectionData={sectionsData['community-center']} />
                 </Suspense>
             ),
-            gallery: (
+             gallery: (
                 <Suspense fallback={<SectionFallback minHeight="min-h-[420px]" />}>
                     <TogetherWeGrowGallerySection sectionData={sectionsData.gallery} />
+                </Suspense>
+            ),
+            canvas: (
+                <Suspense fallback={<SectionFallback minHeight="min-h-[420px]" />}>
+                    <TogetherWeGrowCanvas sectionData={sectionsData.canvas} />
                 </Suspense>
             ),
             newsletter: (

@@ -303,13 +303,13 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
     }
 
     return (
-        <article className="group w-full cursor-pointer">
-            <div className="relative overflow-hidden bg-zinc-100">
+        <article className="group mx-auto w-full max-w-[315px] cursor-pointer">
+            <div className="relative h-[400px] overflow-hidden bg-zinc-100">
                 <Link to={productLink} className="block">
                 <img
                     src={imageSource}
                     alt={product.name}
-                    className="h-[320px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[360px] lg:h-[400px]"
+                    className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                 />
                 </Link>
 

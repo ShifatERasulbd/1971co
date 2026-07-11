@@ -377,7 +377,7 @@ export default function ProductVariantModal({
     const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
 
     return (
-        <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
             <button
                 type="button"
                 aria-label="Close product options"
@@ -385,7 +385,8 @@ export default function ProductVariantModal({
                 className="absolute inset-0"
             />
 
-            <div className="relative z-[1501] grid h-[min(96svh,900px)] w-full max-w-[980px] overflow-y-auto border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr] lg:overflow-hidden">
+            {/* MODAL CONTAINER - updated max-h for scrolling */}
+            <div className="relative z-[1501] grid h-[min(96svh,900px)] w-full max-w-[980px] overflow-hidden border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr]">
                 <button
                     type="button"
                     onClick={onClose}
@@ -395,7 +396,7 @@ export default function ProductVariantModal({
                     <X className="size-5" />
                 </button>
 
-                <div className="bg-zinc-100">
+                <div className="bg-zinc-100 lg:overflow-y-auto">
                     <img
                         src={mainImage}
                         alt={name}
@@ -418,7 +419,7 @@ export default function ProductVariantModal({
                     ) : null}
                 </div>
 
-                <div className="flex flex-col p-4 sm:p-6 lg:p-8">
+                <div className="flex min-h-0 flex-col overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <button
                         type="button"
                         onClick={onClose}

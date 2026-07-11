@@ -101,7 +101,7 @@ class AuthController extends Controller
             $user = User::where('email', $email)->first();
             if ($user) {
                 $token = Password::broker()->createToken($user);
-                $baseUrl = rtrim((string) config('app.url', ''), '/');
+                $baseUrl = rtrim((string) config('app.frontend_url', config('app.url', '')), '/');
                 $payload['reset_url'] = "{$baseUrl}/reset-password/{$token}?email=".urlencode($email);
             }
         }

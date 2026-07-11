@@ -1,13 +1,14 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useLocation } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
+import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 
 const AuthLoginForm = lazy(() => import('../components/AuthLoginForm.jsx'));
 const AuthRegisterForm = lazy(() => import('../components/AuthRegisterForm.jsx'));
 
-const authShowcaseImage = '/uploads/heroes/images/hero1.webp';
+const fallbackShowcaseImage = '/uploads/heroes/images/hero1.webp';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -15,6 +16,30 @@ export default function AuthPage() {
     const location = useLocation();
     const isRegister = location.pathname.toLowerCase() === '/register';
     const swapSides = false;
+    const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload() || {});
+
+    useEffect(() => {
+        const unsubscribe = onSettingsUpdated((payload) => {
+            setSiteSettings(payload || {});
+        });
+
+        setSiteSettings(getSettingsPayload() || {});
+
+        return unsubscribe;
+    }, []);
+
+    const authShowcaseImage = useMemo(() => {
+        const raw = String(siteSettings?.shop_menu_image || '').trim();
+        if (!raw) {
+            return fallbackShowcaseImage;
+        }
+
+        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+            return raw;
+        }
+
+        return `/${raw.replace(/^\/+/, '')}`;
+    }, [siteSettings]);
 
     return (
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

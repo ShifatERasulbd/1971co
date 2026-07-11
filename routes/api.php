@@ -25,6 +25,7 @@ use App\Http\Controllers\SubCategoryController;
 use App\Http\Controllers\Payment\StripeController;
 use App\Http\Controllers\ShipStationController;
 use App\Http\Controllers\UPSCourierController;
+use App\Http\Controllers\UsLocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -56,6 +57,9 @@ Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
 Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
+Route::get('/public/locations/states', [UsLocationController::class, 'states']);
+Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
+Route::get('/public/locations/postal-code', [UsLocationController::class, 'postalCodeByCityState']);
 Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(function () {
 	Route::get('/', [CheckoutOrderController::class, 'publicExternalIndex']);

@@ -98,6 +98,10 @@ function CheckoutForm() {
     const [quotedShipping, setQuotedShipping] = useState(null);
     const [isFetchingShipping, setIsFetchingShipping] = useState(false);
     const [shippingError, setShippingError] = useState('');
+    const [stateOptions, setStateOptions] = useState([]);
+    const [cityOptions, setCityOptions] = useState([]);
+    const [isLoadingStates, setIsLoadingStates] = useState(false);
+    const [isLoadingCities, setIsLoadingCities] = useState(false);
     const [form, setForm] = useState({
         first_name: '',
         last_name: '',
@@ -220,6 +224,101 @@ function CheckoutForm() {
     }
 
     useEffect(() => {
+        let ignore = false;
+
+        async function loadStates() {
+            setIsLoadingStates(true);
+
+            try {
+                const response = await fetch('/api/public/locations/states', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setStateOptions([]);
+                    }
+                    return;
+                }
+
+                const payload = await response.json().catch(() => []);
+                if (!ignore) {
+                    setStateOptions(Array.isArray(payload) ? payload : []);
+                }
+            } catch {
+                if (!ignore) {
+                    setStateOptions([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingStates(false);
+                }
+            }
+        }
+
+        loadStates();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        const selectedState = String(form.state || '').trim();
+
+        if (!selectedState) {
+            setCityOptions([]);
+            return;
+        }
+
+        let ignore = false;
+        const controller = new AbortController();
+
+        async function loadCities() {
+            setIsLoadingCities(true);
+
+            try {
+                const params = new URLSearchParams({ state: selectedState });
+                const response = await fetch(`/api/public/locations/cities?${params.toString()}`, {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setCityOptions([]);
+                    }
+                    return;
+                }
+
+                const payload = await response.json().catch(() => []);
+                if (!ignore) {
+                    setCityOptions(Array.isArray(payload) ? payload : []);
+                }
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+
+                if (!ignore) {
+                    setCityOptions([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingCities(false);
+                }
+            }
+        }
+
+        loadCities();
+
+        return () => {
+            ignore = true;
+            controller.abort();
+        };
+    }, [form.state]);
+
+    useEffect(() => {
         if (subtotal <= 0) {
             setQuotedShipping(0);
             setShippingError('');
@@ -279,6 +378,67 @@ function CheckoutForm() {
             clearTimeout(timer);
         };
     }, [form.city, form.country, form.postal_code, form.state, normalizedItems, selectedCourier, subtotal]);
+
+    useEffect(() => {
+        const city = String(form.city || '').trim();
+        const state = String(form.state || '').trim();
+        const postalCode = String(form.postal_code || '').trim();
+        const country = String(form.country || '').trim().toLowerCase();
+
+        if (!city || !state) {
+            return;
+        }
+
+        if (postalCode) {
+            return;
+        }
+
+        if (country && country !== 'us' && country !== 'usa' && country !== 'united states') {
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams({ city, state });
+                const response = await fetch(`/api/public/locations/postal-code?${params.toString()}`, {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json().catch(() => ({}));
+                const nextPostalCode = String(payload?.postal_code || '').trim();
+
+                if (!nextPostalCode) {
+                    return;
+                }
+
+                setForm((previous) => {
+                    if (String(previous.postal_code || '').trim()) {
+                        return previous;
+                    }
+
+                    return {
+                        ...previous,
+                        postal_code: nextPostalCode,
+                    };
+                });
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+            }
+        }, 300);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
+    }, [form.city, form.country, form.postal_code, form.state]);
 
     async function handlePlaceOrder() {
         if (isSubmitting) {
@@ -524,30 +684,82 @@ function CheckoutForm() {
                                 />
                                 {fieldErrors.address_line_2 ? <p className="mt-1 text-xs text-red-500">{fieldErrors.address_line_2}</p> : null}
                             </div>
+                             <div>
+                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                    State <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={form.state}
+                                    onChange={(event) => {
+                                        const nextState = event.target.value;
+                                        setForm((previous) => ({
+                                            ...previous,
+                                            state: nextState,
+                                            city: '',
+                                            postal_code: '',
+                                        }));
+
+                                        setFieldErrors((previous) => {
+                                            const next = { ...previous };
+                                            delete next.state;
+                                            delete next.city;
+                                            delete next.postal_code;
+                                            return next;
+                                        });
+                                    }}
+                                    className={inputClass('state')}
+                                    disabled={isLoadingStates}
+                                >
+                                    <option value="">{isLoadingStates ? 'Loading states...' : 'Select state'}</option>
+                                    {stateOptions.map((state) => (
+                                        <option key={state.state_code} value={state.state_code}>
+                                            {state.state_name} ({state.state_code})
+                                        </option>
+                                    ))}
+                                </select>
+                                {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
+                            </div>
+                           
                             <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     City <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                                <select
                                     value={form.city}
-                                    onChange={(event) => updateField('city', event.target.value)}
-                                    placeholder="New York"
+                                    onChange={(event) => {
+                                        const nextCity = event.target.value;
+                                        setForm((previous) => ({
+                                            ...previous,
+                                            city: nextCity,
+                                            postal_code: '',
+                                        }));
+
+                                        setFieldErrors((previous) => {
+                                            const next = { ...previous };
+                                            delete next.city;
+                                            delete next.postal_code;
+                                            return next;
+                                        });
+                                    }}
                                     className={inputClass('city')}
-                                />
+                                    disabled={!form.state || isLoadingCities}
+                                >
+                                    <option value="">
+                                        {!form.state
+                                            ? 'Select state first'
+                                            : isLoadingCities
+                                            ? 'Loading cities...'
+                                            : 'Select city'}
+                                    </option>
+                                    {cityOptions.map((city) => (
+                                        <option key={city} value={city}>
+                                            {city}
+                                        </option>
+                                    ))}
+                                </select>
                                 {fieldErrors.city ? <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p> : null}
                             </div>
-                            <div>
-                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
-                                    State <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    value={form.state}
-                                    onChange={(event) => updateField('state', event.target.value)}
-                                    placeholder="NY"
-                                    className={inputClass('state')}
-                                />
-                                {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
-                            </div>
+                          
                             <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     Postal Code <span className="text-red-500">*</span>
@@ -564,11 +776,12 @@ function CheckoutForm() {
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     Country <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                               <input
                                     value={form.country}
                                     onChange={(event) => updateField('country', event.target.value)}
                                     placeholder="United States"
                                     className={inputClass('country')}
+                                    readOnly // This makes the field non-editable
                                 />
                                 {fieldErrors.country ? <p className="mt-1 text-xs text-red-500">{fieldErrors.country}</p> : null}
                             </div>
