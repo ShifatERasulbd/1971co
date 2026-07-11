@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { timelessFontClass } from '../utils/typography';
+import CanvasModal from './CanvasModal';
 
 const galleryItems = [
     { id: 'community-1', src: '/uploads/about/giving-back/1781586266_about_giving_back_6a30d95a8dd5c4.14738819.webp', alt: 'Children participating in a classroom activity.' },
@@ -11,9 +12,7 @@ const galleryItems = [
     { id: 'community-7', src: '/uploads/about/mission/1781585355_about_mission_6a30d5cb0eab87.68288187.jpg', alt: 'Mentorship and care initiative.' },
     { id: 'community-8', src: '/uploads/our-story/images/1781584475_story_image_6a30d25bc69ac5.59079252.webp', alt: 'Shared community space and daily activities.' },
     { id: 'community-9', src: '/uploads/heroes/images/1780912831_image.webp', alt: 'A support event for garment workers families.' },
-    { id: 'community-10', src: '/uploads/about/hero/1781527310_about_hero_6a2ff30ec4c0d8.12870098.jpg', alt: 'Additional community event.' },
-    { id: 'community-11', src: '/uploads/heroes/images/1780912831_image.webp', alt: 'Extra image 1.' },
-    { id: 'community-12', src: '/uploads/our-story/images/1781584475_story_image_6a30d25bc69ac5.59079252.webp', alt: 'Extra image 2.' }
+    { id: 'community-10', src: '/uploads/about/hero/1781527310_about_hero_6a2ff30ec4c0d8.12870098.jpg', alt: 'Additional community event.' }
 ];
 
 function moveItem(items, sourceIndex, targetIndex) {
@@ -25,6 +24,8 @@ function moveItem(items, sourceIndex, targetIndex) {
 }
 
 export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = false, onReorderImages }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
     const normalizedItems = useMemo(() =>
         Array.isArray(sectionData?.canvasImages) && sectionData.canvasImages.length > 0
             ? sectionData.canvasImages.map((item, index) =>
@@ -62,9 +63,18 @@ export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = f
     const hasMore = items.length > 10;
     const remainingCount = items.length - 10;
 
+    const handleOpenModal = () => {
+        if (isBuilderPreview) {
+            return;
+        }
+
+        setIsModalOpen(true);
+    };
+
     return (
         <section className={`${timelessFontClass} bg-zinc-50 px-4 py-16 sm:px-6 lg:px-10`}>
             <div className="mx-auto w-full max-w-[1400px]">
+                {/* Header */}
                 <div className="mb-12">
                     <h2 className="text-[2rem] font-black uppercase tracking-[-0.02em] text-zinc-950 sm:text-[2.8rem]">
                         Community Canvas
@@ -72,9 +82,11 @@ export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = f
                     <div className="mt-2 h-1 w-20 bg-zinc-950" />
                 </div>
 
+                {/* Masonry Layout */}
                 <div className="columns-2 gap-4 md:columns-3 lg:columns-4 space-y-4">
                     {visibleItems.map((item, index) => {
                         const isLastVisible = index === 9 && hasMore;
+                        
                         return (
                             <div 
                                 key={item.id || index}
@@ -83,9 +95,10 @@ export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = f
                                 onDragOver={(e) => isBuilderPreview && e.preventDefault()}
                                 onDrop={() => isBuilderPreview && handleDropOnIndex(index)}
                                 onDragEnd={() => setDraggingIndex(null)}
-                                className={`group break-inside-avoid bg-white p-2 shadow-sm transition-all duration-300 hover:shadow-xl ${isBuilderPreview ? 'cursor-move' : ''} relative`}
+                                onClick={handleOpenModal}
+                                className={`group break-inside-avoid bg-white p-2 shadow-sm transition-all duration-300 hover:shadow-xl relative ${isLastVisible ? 'cursor-pointer' : ''} ${isBuilderPreview ? 'cursor-move' : ''}`}
                             >
-                               <div className="relative overflow-hidden">
+                                <div className="relative overflow-hidden">
                                     <img
                                         src={item.src}
                                         alt={item.alt || 'Gallery image'}
@@ -93,7 +106,7 @@ export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = f
                                         loading="lazy"
                                     />
                                     
-                                    {/* FIXED: Overlay is now always visible by default */}
+                                    {/* Static Overlay Counter (Always Activated) */}
                                     {isLastVisible && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px]">
                                             <span className="text-white font-black text-2xl tracking-wider">
@@ -107,6 +120,13 @@ export default function TogetherWeGrowCanvas({ sectionData, isBuilderPreview = f
                     })}
                 </div>
             </div>
+
+            {/* Lightbox Overlay Component */}
+            <CanvasModal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                items={items} 
+            />
         </section>
     );
 }

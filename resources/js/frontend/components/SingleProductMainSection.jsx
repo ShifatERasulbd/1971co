@@ -134,6 +134,87 @@ function resolveSizeDisplayName(value, sizeNameLookup = {}) {
     return sizeNameLookup[token] || token;
 }
 
+function normalizeVariantColorToken(value, colorRecords = []) {
+    const display = resolveColorDisplayName(value, colorRecords);
+    const sanitized = String(display || '')
+        .replace(/\[[^\]]*\]/g, ' ')
+        .replace(/\([^)]*\)/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+
+    return sanitized;
+}
+
+function normalizeVariantSizeToken(value, sizeNameLookup = {}) {
+    return String(resolveSizeDisplayName(value, sizeNameLookup) || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+}
+
+function resolveSelectedVariantSku(product, selectedColor, selectedSize, colorRecords = [], sizeNameLookup = {}) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (variants.length === 0) {
+        return String(product?.sku || '').trim();
+    }
+
+    const selectedColorToken = normalizeVariantColorToken(selectedColor, colorRecords);
+    const selectedSizeToken = normalizeVariantSizeToken(selectedSize, sizeNameLookup);
+
+    const scored = variants
+        .map((row) => {
+            const rowColors = parseOptionTokens(row?.color)
+                .map((item) => normalizeVariantColorToken(item, colorRecords))
+                .filter(Boolean);
+
+            const rowSizes = parseOptionTokens(row?.size)
+                .map((item) => normalizeVariantSizeToken(item, sizeNameLookup))
+                .filter(Boolean);
+
+            const colorMatch = selectedColorToken
+                ? rowColors.includes(selectedColorToken)
+                : rowColors.length === 0;
+
+            const sizeMatch = selectedSizeToken
+                ? rowSizes.includes(selectedSizeToken)
+                : rowSizes.length === 0;
+
+            let score = 0;
+            if (colorMatch) {
+                score += 2;
+            }
+            if (sizeMatch) {
+                score += 2;
+            }
+            if (!selectedColorToken && rowColors.length === 0) {
+                score += 1;
+            }
+            if (!selectedSizeToken && rowSizes.length === 0) {
+                score += 1;
+            }
+
+            return {
+                row,
+                score,
+                colorMatch,
+                sizeMatch,
+            };
+        })
+        .sort((a, b) => b.score - a.score);
+
+    const exact = scored.find((item) => item.colorMatch && item.sizeMatch && item.score >= 4);
+    const partial = scored.find((item) => item.colorMatch || item.sizeMatch);
+    const fallback = exact || partial || scored[0];
+
+    const variantSku = String(fallback?.row?.sku || '').trim();
+    if (variantSku) {
+        return variantSku;
+    }
+
+    return String(product?.sku || '').trim();
+}
+
 function normalizeSizes(product, sizeNameLookup = {}) {
     const directSizes = parseOptionTokens(product?.size);
     if (directSizes.length > 0) {
@@ -502,6 +583,10 @@ export default function SingleProductMainSection({ product, initialColor = '' })
     }, [filteredImages, selectedImage, imageList]);
 
     const primaryVideo = filteredVideos[0] || '';
+    const activeVariantSku = useMemo(
+        () => resolveSelectedVariantSku(product, selectedColor, selectedSize, colorRecords, sizeNameLookup),
+        [product, selectedColor, selectedSize, colorRecords, sizeNameLookup],
+    );
 
     return (
         <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
@@ -534,7 +619,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                                 id: product?.id,
                                 slug: product?.slug,
                                 name: String(product?.name || 'Untitled Product'),
-                                sku: String(product?.sku || 'N/A'),
+                                sku: activeVariantSku || String(product?.sku || 'N/A'),
                                 price: `$${Number(product?.price || 0).toFixed(2)}`,
                                 description: String(product?.description || 'No description available.'),
                                 fit: String(product?.fit || product?.long_description || ''),
