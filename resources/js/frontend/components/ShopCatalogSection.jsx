@@ -751,9 +751,9 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
     }
 
     return (
-        <article className="group mx-auto w-full max-w-[315px] overflow-hidden border border-zinc-200 bg-white">
+        <article className="group h-[500px] w-[310px] overflow-hidden border border-zinc-200 bg-white">
             <Link to={productLink} className="block">
-                <div className="relative h-[400px] overflow-hidden bg-zinc-100">
+                <div className="relative h-[400px] w-[310px] overflow-hidden bg-zinc-100">
                     <img
                         src={imageSrc}
                         alt={product.name}
@@ -833,7 +833,7 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
                 </div>
             </Link>
 
-            <div className="space-y-1 p-4 pt-3.5">
+            <div className="h-[100px] space-y-1 overflow-hidden p-4 pt-3.5">
                 {colors.length > 0 && !hideColorSwatches && (
                     <div className="flex flex-wrap items-center gap-2">
                         {colors.slice(0, 6).map((c, i) => (
@@ -864,7 +864,7 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
 }
 
 function ShopProductsGrid({
-    products = [],
+   products = [],
     colorLookup = {},
     colorNameLookup = {},
     seedColorOnly = false,
@@ -877,16 +877,16 @@ function ShopProductsGrid({
     onOpenFilters,
 }) {
     const visibleProducts = Array.isArray(products) ? products : [];
+    const PRODUCTS_PER_PAGE = 12; // Ensure this constant is defined
     const start = visibleProducts.length > 0 ? (currentPage - 1) * PRODUCTS_PER_PAGE + 1 : 0;
     const end = visibleProducts.length > 0 ? start + visibleProducts.length - 1 : 0;
 
     return (
         <div>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3  py-4">
-                <p className="text-[0.88rem]  tracking-[0.07em] text-slate-600">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 py-4">
+                <p className="text-[0.88rem] tracking-[0.07em] text-slate-600">
                     Showing {start}-{end} of {totalResults} results
                 </p>
-
                 <button
                     type="button"
                     onClick={() => onOpenFilters?.()}
@@ -898,20 +898,30 @@ function ShopProductsGrid({
             </div>
 
             {visibleProducts.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                <div
+                    className="grid justify-center gap-4"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, 310px)' }}
+                >
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} seedColorOnly={seedColorOnly} hideColorSwatches={hideColorSwatches} />
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            colorLookup={colorLookup}
+                            colorNameLookup={colorNameLookup}
+                            onAddToCart={onAddToCart}
+                            seedColorOnly={seedColorOnly}
+                            hideColorSwatches={hideColorSwatches}
+                        />
                     ))}
                 </div>
             ) : (
                 <div className="flex min-h-[420px] flex-col items-center justify-center rounded-md border border-zinc-200 bg-white text-center">
                     <PackageSearch className="mb-4 size-24 text-zinc-300" strokeWidth={1.5} />
                     <h3 className="text-[1.1rem] font-semibold uppercase tracking-[0.08em] text-zinc-700">No product found</h3>
-                    <p className="mt-2 text-sm text-zinc-500">Try changing filters or search keywords.</p>
                 </div>
             )}
 
-            {totalPages > 1 ? (
+            {totalPages > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-2">
                     {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
                         <button
@@ -928,10 +938,11 @@ function ShopProductsGrid({
                         </button>
                     ))}
                 </div>
-            ) : null}
+            )}
         </div>
     );
 }
+
 
 export default function ShopCatalogSection() {
     const { addToCart, openCartDrawer } = useCart();

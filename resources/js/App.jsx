@@ -101,7 +101,7 @@ function DocumentBrandingManager() {
         const pageLabel = resolvePageLabel(pathname);
         document.title = `${pageLabel} | ${BRAND_NAME}`;
 
-        const favicon = normalizeAssetPath(settings?.header_logo || '');
+        const favicon = normalizeAssetPath(settings?.favicon || settings?.header_logo || '');
         if (favicon) {
             const faviconLink = ensureFaviconLink();
             faviconLink.href = favicon;

@@ -30,11 +30,13 @@ export default function SettingsForm({
     isSubmitting = false,
     headerLogoPreview = '',
     footerLogoPreview = '',
+    faviconPreview = '',
     shopMenuImagePreview = '',
     socialIconPreviews = {},
     onChange,
     onHeaderLogoChange,
     onFooterLogoChange,
+    onFaviconChange,
     onShopMenuImageChange,
     onSocialChange,
     onSocialIconChange,
@@ -78,7 +80,7 @@ export default function SettingsForm({
                     </div>
 
                     {activeTab === 'logos' && (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                             <div className="space-y-2">
                                 <Label htmlFor="header-logo">Header Logo</Label>
                                 <Input
@@ -115,6 +117,25 @@ export default function SettingsForm({
                                     />
                                 )}
                                 {errors.footer_logo && <p className="text-xs text-destructive">{errors.footer_logo[0]}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="settings-favicon">Favicon</Label>
+                                <Input
+                                    id="settings-favicon"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp,image/avif,image/svg+xml,image/x-icon,.ico"
+                                    onChange={onFaviconChange}
+                                    disabled={isSubmitting}
+                                />
+                                {(faviconPreview || form.favicon) && (
+                                    <img
+                                        src={faviconPreview || form.favicon}
+                                        alt="Favicon"
+                                        className="h-24 w-full rounded border bg-muted object-contain"
+                                    />
+                                )}
+                                {errors.favicon && <p className="text-xs text-destructive">{errors.favicon[0]}</p>}
                             </div>
 
                             <div className="space-y-2">

@@ -8,6 +8,7 @@ import { createSetting } from './api';
 const initialForm = {
     header_logo: '',
     footer_logo: '',
+    favicon: '',
     shop_menu_image: '',
     email: '',
     location: '',
@@ -32,6 +33,7 @@ export default function AddSettings() {
     const [form, setForm] = useState(initialForm);
     const [headerLogoFile, setHeaderLogoFile] = useState(null);
     const [footerLogoFile, setFooterLogoFile] = useState(null);
+    const [faviconFile, setFaviconFile] = useState(null);
     const [shopMenuImageFile, setShopMenuImageFile] = useState(null);
     const [socialIconFiles, setSocialIconFiles] = useState({});
     const [errors, setErrors] = useState({});
@@ -40,6 +42,7 @@ export default function AddSettings() {
 
     const headerLogoPreview = useMemo(() => (headerLogoFile ? URL.createObjectURL(headerLogoFile) : ''), [headerLogoFile]);
     const footerLogoPreview = useMemo(() => (footerLogoFile ? URL.createObjectURL(footerLogoFile) : ''), [footerLogoFile]);
+    const faviconPreview = useMemo(() => (faviconFile ? URL.createObjectURL(faviconFile) : ''), [faviconFile]);
     const shopMenuImagePreview = useMemo(
         () => (shopMenuImageFile ? URL.createObjectURL(shopMenuImageFile) : ''),
         [shopMenuImageFile],
@@ -63,10 +66,11 @@ export default function AddSettings() {
         return () => {
             if (headerLogoPreview) URL.revokeObjectURL(headerLogoPreview);
             if (footerLogoPreview) URL.revokeObjectURL(footerLogoPreview);
+            if (faviconPreview) URL.revokeObjectURL(faviconPreview);
             if (shopMenuImagePreview) URL.revokeObjectURL(shopMenuImagePreview);
             Object.values(socialIconPreviews).forEach((url) => URL.revokeObjectURL(url));
         };
-    }, [headerLogoPreview, footerLogoPreview, shopMenuImagePreview, socialIconPreviews]);
+    }, [headerLogoPreview, footerLogoPreview, faviconPreview, shopMenuImagePreview, socialIconPreviews]);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -141,6 +145,7 @@ export default function AddSettings() {
                 },
                 header_logo_file: headerLogoFile,
                 footer_logo_file: footerLogoFile,
+                favicon_file: faviconFile,
                 shop_menu_image_file: shopMenuImageFile,
                 social_icon_files: socialIconFiles,
             });
@@ -173,11 +178,13 @@ export default function AddSettings() {
                     isSubmitting={isSubmitting}
                     headerLogoPreview={headerLogoPreview}
                     footerLogoPreview={footerLogoPreview}
+                    faviconPreview={faviconPreview}
                     shopMenuImagePreview={shopMenuImagePreview}
                     socialIconPreviews={socialIconPreviews}
                     onChange={handleChange}
                     onHeaderLogoChange={(event) => setHeaderLogoFile(event.target.files?.[0] || null)}
                     onFooterLogoChange={(event) => setFooterLogoFile(event.target.files?.[0] || null)}
+                    onFaviconChange={(event) => setFaviconFile(event.target.files?.[0] || null)}
                     onShopMenuImageChange={(event) => setShopMenuImageFile(event.target.files?.[0] || null)}
                     onSocialChange={handleSocialChange}
                     onSocialIconChange={(index, file) =>

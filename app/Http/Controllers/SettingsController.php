@@ -68,9 +68,11 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
             'footer_logo_existing' => 'nullable|string|max:2048',
+            'favicon_existing' => 'nullable|string|max:2048',
             'shop_menu_image_existing' => 'nullable|string|max:2048',
             'header_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
             'footer_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'favicon_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif,ico|max:4096',
             'shop_menu_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,avif|max:4096',
             'social_media' => 'nullable|array',
             'social_media.*.name' => 'nullable|string|max:255',
@@ -113,9 +115,11 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
             'footer_logo_existing' => 'nullable|string|max:2048',
+            'favicon_existing' => 'nullable|string|max:2048',
             'shop_menu_image_existing' => 'nullable|string|max:2048',
             'header_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
             'footer_logo_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'favicon_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif,ico|max:4096',
             'shop_menu_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp,avif|max:4096',
             'social_media' => 'nullable|array',
             'social_media.*.name' => 'nullable|string|max:255',
@@ -152,6 +156,7 @@ class SettingsController extends Controller
         if (is_array($payload)) {
             $this->deleteUploadedFile($payload['header_logo'] ?? null);
             $this->deleteUploadedFile($payload['footer_logo'] ?? null);
+            $this->deleteUploadedFile($payload['favicon'] ?? null);
             $this->deleteUploadedFile($payload['shop_menu_image'] ?? null);
 
             $socialMedia = is_array($payload['social_media'] ?? null) ? $payload['social_media'] : [];
@@ -185,6 +190,13 @@ class SettingsController extends Controller
             $this->deleteUploadedFile($existingPayload['footer_logo'] ?? null);
         }
 
+        $favicon = $validated['favicon_existing']
+            ?? ($existingPayload['favicon'] ?? '');
+        if ($request->hasFile('favicon_file')) {
+            $favicon = $this->storeUploadedFileToPublic($request->file('favicon_file'), 'uploads/settings/favicon');
+            $this->deleteUploadedFile($existingPayload['favicon'] ?? null);
+        }
+
         $shopMenuImage = $validated['shop_menu_image_existing']
             ?? ($existingPayload['shop_menu_image'] ?? '');
         if ($request->hasFile('shop_menu_image_file')) {
@@ -216,6 +228,7 @@ class SettingsController extends Controller
         return [
             'header_logo' => $headerLogo,
             'footer_logo' => $footerLogo,
+            'favicon' => $favicon,
             'shop_menu_image' => $shopMenuImage,
             'email' => (string) ($validated['email'] ?? ($existingPayload['email'] ?? '')),
             'location' => (string) ($validated['location'] ?? ($existingPayload['location'] ?? '')),
