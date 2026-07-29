@@ -7,9 +7,24 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 class GrandChildController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'grand_childs.index';
+
+    private function clearGrandChildCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->orderedGrandChildsQuery()->get()->toArray();
+        });
+    }
+
     private function orderedGrandChildsQuery()
     {
         $query = GrandChilds::query()->with(['category', 'subCategory']);
@@ -23,9 +38,7 @@ class GrandChildController extends Controller
 
     public function index(): JsonResponse
     {
-        $grandChilds = $this->orderedGrandChildsQuery()->get();
-
-        return response()->json($grandChilds);
+        return response()->json($this->cachedResponse());
     }
 
     public function reorder(Request $request): JsonResponse
@@ -50,7 +63,7 @@ class GrandChildController extends Controller
         });
 
         $grandChilds = $this->orderedGrandChildsQuery()->get();
-
+        $this->clearGrandChildCache();
         return response()->json($grandChilds);
     }
 
@@ -67,7 +80,7 @@ class GrandChildController extends Controller
         unset($validated['sub_category_id']);
 
         $grandChild = GrandChilds::query()->create($validated)->load(['category', 'subCategory']);
-
+        $this->clearGrandChildCache();
         return response()->json($grandChild, 201);
     }
 
@@ -89,13 +102,14 @@ class GrandChildController extends Controller
         unset($validated['sub_category_id']);
 
         $grandChild->update($validated);
-
+        $this->clearGrandChildCache();
         return response()->json($grandChild->fresh()->load(['category', 'subCategory']));
     }
 
     public function destroy(GrandChilds $grandChild): JsonResponse
     {
         $grandChild->delete();
+        $this->clearGrandChildCache();
 
         return response()->json(['message' => 'GrandChild deleted successfully']);
     }

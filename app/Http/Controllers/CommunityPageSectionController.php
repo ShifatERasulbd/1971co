@@ -8,9 +8,34 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 class CommunityPageSectionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'community_page_sections.index';
+
+    private function clearCommunityPageSectionsCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return CommunityPageSection::orderBy('created_at', 'asc')
+                ->get()
+                ->map(fn (CommunityPageSection $section) => $this->transformSectionForResponse($section))
+                ->values()
+                ->all();
+        });
+    }
+
+    public function index(): JsonResponse
+    {
+        return response()->json($this->cachedResponse());
+    }
+
+
     private function featureUploadsDirectory(): string
     {
         return public_path('uploads/community/features');
@@ -29,6 +54,7 @@ class CommunityPageSectionController extends Controller
         $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'webp');
         $filename = time() . '_' . uniqid('community_feature_', true) . '.' . $extension;
         $uploadedFile->move($directory, $filename);
+
 
         return 'uploads/community/features/' . $filename;
     }
@@ -113,20 +139,7 @@ class CommunityPageSectionController extends Controller
         return $data;
     }
 
-    /**
-     * Get all community page sections
-     */
-    public function index(): JsonResponse
-    {
-        $sections = CommunityPageSection::orderBy('created_at', 'asc')->get();
-
-        if ($sections->isEmpty()) {
-            // Return default sections if none exist in database
-            return response()->json($this->getDefaultSections());
-        }
-
-        return response()->json($sections->map(fn (CommunityPageSection $section) => $this->transformSectionForResponse($section)));
-    }
+    
 
     /**
      * Get all community page sections for public pages
@@ -241,7 +254,7 @@ class CommunityPageSectionController extends Controller
             ['key' => $request->input('key')],
             $updates
         );
-
+        $this->clearCommunityPageSectionsCache();
         return response()->json($this->transformSectionForResponse($section->fresh()), 200);
     }
 
@@ -306,6 +319,7 @@ class CommunityPageSectionController extends Controller
 
         $section->delete();
 
+        $this->clearCommunityPageSectionsCache();
         return response()->json(['message' => 'Section deleted'], 200);
     }
 

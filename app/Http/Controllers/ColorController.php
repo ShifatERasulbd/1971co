@@ -6,12 +6,27 @@ use App\Models\Color;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 
 class ColorController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'colors.index';
+
+    private function clearColorCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Color::orderBy('id')->get()->toArray();
+        });
+    }
+
     public function index(): JsonResponse
     {
-        return response()->json(Color::orderBy('id')->get());
+       return response()->json($this->cachedResponse());
     }
 
     public function store(Request $request): JsonResponse
@@ -25,6 +40,7 @@ class ColorController extends Controller
         $validated['color_code'] = strtoupper($validated['color_code']);
 
         $color = Color::create($validated);
+        $this->clearColorCache();
 
         return response()->json($color, 201);
     }
@@ -55,7 +71,8 @@ class ColorController extends Controller
         $validated['color_code'] = strtoupper($validated['color_code']);
 
         $color->update($validated);
-
+        $this->clearColorCache();
+        return response()->json($color->fresh());
         return response()->json($color->fresh());
     }
 
@@ -63,6 +80,7 @@ class ColorController extends Controller
     {
         $color->delete();
 
+        $this->clearColorCache();
         return response()->json(['message' => 'Color deleted successfully']);
     }
 }

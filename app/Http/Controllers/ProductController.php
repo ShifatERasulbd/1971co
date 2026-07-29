@@ -13,18 +13,32 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'products.index';
+
+    private function clearProductCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Product::orderByRaw('position IS NULL')
+                ->orderBy('position')
+                ->orderByDesc('updated_at')
+                ->get()
+                ->toArray();
+        });
+    }
+
     public function index(): JsonResponse
     {
-        $products = Product::query()
-            ->orderByRaw('position IS NULL')
-            ->orderBy('position')
-            ->orderByDesc('updated_at')
-            ->get();
        
-        return response()->json($products);
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -466,7 +480,7 @@ class ProductController extends Controller
             : array_values(array_filter([$product->size_chart_image]));
 
         $product->update($validated);
-
+        $this->clearProductCache();
         if (array_key_exists('image_gallery', $validated)) {
             $this->deleteRemovedUploadedFiles(
                 $oldGallery,
@@ -515,6 +529,7 @@ class ProductController extends Controller
             }
         } else {
             $product->delete();
+            $this->clearProductCache();
             $deletedCount = 1;
         }
 

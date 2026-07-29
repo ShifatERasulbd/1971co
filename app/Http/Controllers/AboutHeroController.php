@@ -6,9 +6,10 @@ use App\Models\AboutHeroSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-
+use Illuminate\Support\Facades\Cache;
 class AboutHeroController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'about_hero.index';
     private function ensureSection(): AboutHeroSection
     {
         $section = AboutHeroSection::query()->first();
@@ -23,6 +24,18 @@ class AboutHeroController extends Controller
         }
 
         return $section;
+    }
+
+    private function clearAboutHeroCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
     }
 
     private function resolveAssetUrl(?string $asset): ?string
@@ -92,9 +105,7 @@ class AboutHeroController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+       return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -129,6 +140,7 @@ class AboutHeroController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? '',
         ]);
+        $this->clearAboutHeroCache();
 
         return response()->json($this->toResponse($section->fresh()));
     }

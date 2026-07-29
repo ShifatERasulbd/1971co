@@ -6,9 +6,12 @@ use App\Models\AboutGivingBackSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class AboutGivingBackController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'about_giving_back.index';
+
     private function ensureSection(): AboutGivingBackSection
     {
         $section = AboutGivingBackSection::query()->first();
@@ -18,7 +21,7 @@ class AboutGivingBackController extends Controller
                 'image' => '/uploads/heroes/images/hero1.webp',
                 'section_title' => 'Giving Back',
                 'title' => 'Roots Run Deep.',
-                'description' => "Every 1971Co garment is crafted in Bangladesh-the birthplace of our heritage and the heart of our production. But our commitment goes beyond manufacturing.\n\nWe actively support community centers across Bangladesh, providing resources for education, skills training, and youth development programs. These centers serve as hubs for local communities, offering opportunities for growth and empowerment.\n\nWhen you wear 1971Co, you are not just wearing quality streetwear. You are supporting the communities that make our vision possible. Every purchase contributes to building stronger, more vibrant communities back home.",
+                'description' => "",
                 'points' => [
                     'Education Programs',
                     'Skills Training',
@@ -28,6 +31,18 @@ class AboutGivingBackController extends Controller
         }
 
         return $section;
+    }
+
+    private function clearAboutGivingBackCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
     }
 
     private function resolveAssetUrl(?string $asset): ?string
@@ -104,9 +119,7 @@ class AboutGivingBackController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -157,6 +170,7 @@ class AboutGivingBackController extends Controller
             'description' => $validated['description'] ?? '',
             'points' => $points,
         ]);
+        $this->clearAboutGivingBackCache();
 
         return response()->json($this->toResponse($section->fresh()));
     }

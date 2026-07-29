@@ -7,9 +7,25 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 
 class OurStorySectionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'our_story.index';
+
+    private function clearOurStoryCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
+    }
+
+
     private function ensureSection(): OurStorySection
     {
         $section = OurStorySection::query()->first();
@@ -104,9 +120,7 @@ class OurStorySectionController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -162,6 +176,7 @@ class OurStorySectionController extends Controller
             'show_text' => (bool) $validated['show_text'],
         ]);
 
+        $this->clearOurStoryCache();
         return response()->json($this->toResponse($section->fresh()));
     }
 }

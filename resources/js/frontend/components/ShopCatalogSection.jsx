@@ -751,117 +751,95 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
     }
 
     return (
-        <article className="group h-[500px] w-[310px] overflow-hidden border border-zinc-200 bg-white">
-            <Link to={productLink} className="block">
-                <div className="relative h-[400px] w-[310px] overflow-hidden bg-zinc-100">
-                    <img
-                        src={imageSrc}
-                        alt={product.name}
-                        className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                    />
+       <article className="group h-[520px] w-[310px] overflow-hidden border border-zinc-200 bg-white">
+    <Link to={productLink} className="block">
+        <div className="relative h-[400px] w-[310px] overflow-hidden bg-zinc-100">
+            <img
+                src={imageSrc}
+                alt={product.name}
+                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            />
 
-                    <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                        <button
-                            type="button"
-                            onClick={handleAddToCart}
-                            className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
-                        >
-                            Add to cart
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleWishlist}
-                            aria-label="Add to wishlist"
-                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                        >
-                            <Heart className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleQuickView}
-                            aria-label="Preview product"
-                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                        >
-                            <Eye className="size-4" />
-                        </button>
-                    </div>
-
-                    {product.tag ? (
-                        <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">
-                            {product.tag}
-                        </span>
-                    ) : null}
-
-                    {galleryImages.length > 1 ? (
-                        <>
-                            <button
-                                type="button"
-                                aria-label="Previous image"
-                                onClick={handlePrevImage}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
-                            >
-                                <ChevronLeft className="size-4" />
-                            </button>
-                            <button
-                                type="button"
-                                aria-label="Next image"
-                                onClick={handleNextImage}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
-                            >
-                                <ChevronRight className="size-4" />
-                            </button>
-
-                            {/* <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
-                                {galleryImages.map((_, index) => (
-                                    <button
-                                        key={`image-dot-${index}`}
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            setCurrentImageIndex(index);
-                                        }}
-                                        className={`size-1.5 rounded-full ${
-                                            currentImageIndex === index ? 'bg-white' : 'bg-white/50'
-                                        }`}
-                                        aria-label={`Go to image ${index + 1}`}
-                                    />
-                                ))}
-                            </div> */}
-                        </>
-                    ) : null}
-                </div>
-            </Link>
-
-            <div className="h-[100px] space-y-1 overflow-hidden p-4 pt-3.5">
-                {colors.length > 0 && !hideColorSwatches && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {colors.slice(0, 6).map((c, i) => (
-                            <ColorSwatch
-                                key={`${c}-${i}`}
-                                color={c}
-                                active={selectedColor === c}
-                                colorLookup={colorLookup}
-                                colorNameLookup={colorNameLookup}
-                                onClick={(event) => handleSelectColor(c, event)}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                  <Link to={productLink} className="block">
-                    <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
-                        {product.name}
-                    </h3>
-                </Link>
-
-                <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
-                    ${Number(product.priceValue).toFixed(2)}
-                </p>
+            {/* Hover CTA buttons */}
+            <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
+                >
+                    Add to cart
+                </button>
+                <button
+                    type="button"
+                    onClick={handleQuickView}
+                    aria-label="Preview product"
+                    className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                >
+                    <Eye className="size-4" />
+                </button>
             </div>
-        </article>
-    );
-}
+
+            {/* Product Tag */}
+            {product.tag ? (
+                <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">
+                    {product.tag}
+                </span>
+            ) : null}
+
+            {/* Gallery Navigation */}
+            {galleryImages.length > 1 ? (
+                <>
+                    <button
+                        type="button"
+                        aria-label="Previous image"
+                        onClick={handlePrevImage}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    >
+                        <ChevronLeft className="size-4" />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Next image"
+                        onClick={handleNextImage}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    >
+                        <ChevronRight className="size-4" />
+                    </button>
+                </>
+            ) : null}
+        </div>
+    </Link>
+
+    {/* Information Container - Reduced height to 120px to remove excess space under price */}
+    <div className="h-[120px] flex flex-col justify-start p-4 pt-3.5 space-y-2">
+        {colors.length > 0 && !hideColorSwatches && (
+            <div className="flex flex-wrap items-center gap-2">
+                {colors.slice(0, 6).map((c, i) => (
+                    <ColorSwatch
+                        key={`${c}-${i}`}
+                        color={c}
+                        active={selectedColor === c}
+                        colorLookup={colorLookup}
+                        colorNameLookup={colorNameLookup}
+                        onClick={(event) => handleSelectColor(c, event)}
+                    />
+                ))}
+            </div>
+        )}
+
+        <Link to={productLink} className="block">
+            <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
+                {product.name}
+            </h3>
+        </Link>
+
+        <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
+            ${Number(product.priceValue).toFixed(2)}
+        </p>
+    </div>
+</article>
+            );
+        }
 
 function ShopProductsGrid({
    products = [],

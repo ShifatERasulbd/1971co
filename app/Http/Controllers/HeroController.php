@@ -7,9 +7,29 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class HeroController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'heroes.index';
+
+    private function clearHeroCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Hero::query()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Hero $hero) => $this->toResponse($hero))
+                ->values()
+                ->all();
+        });
+    }
+
     private function ensureDefaultHero(): Hero
     {
         $hero = Hero::query()->orderBy('id')->first();
@@ -150,11 +170,7 @@ class HeroController extends Controller
 
     public function index(): JsonResponse
     {
-        $this->ensureDefaultHero();
-
-        $heroes = Hero::query()->orderBy('id')->get()->map(fn (Hero $hero) => $this->toResponse($hero));
-
-        return response()->json($heroes->values());
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -188,6 +204,7 @@ class HeroController extends Controller
         unset($validated['image_url'], $validated['video_url'], $validated['image_file'], $validated['video_file']);
 
         $hero = Hero::query()->create($validated);
+        $this->clearHeroCache();
 
         return response()->json($this->toResponse($hero), 201);
     }
@@ -214,6 +231,7 @@ class HeroController extends Controller
 
         $hero->update($validated);
 
+        $this->clearHeroCache();
         return response()->json($this->toResponse($hero->fresh()));
     }
 }

@@ -7,9 +7,24 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 
 class HomeBackgroundSectionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'home_background_section.index';
+
+    private function clearHomeBackgroundSectionCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
+    }
+
     private const DEFAULT_BACKGROUND_IMAGE = '/uploads/heroes/images/hero1.webp';
 
     private function defaultItem(): array
@@ -149,9 +164,7 @@ class HomeBackgroundSectionController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -226,6 +239,8 @@ class HomeBackgroundSectionController extends Controller
             'background_image' => $firstItemImage,
             'items' => $items,
         ]);
+
+        $this->clearHomeBackgroundSectionCache();
 
         return response()->json($this->toResponse($section->fresh()));
     }
