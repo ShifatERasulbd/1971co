@@ -13,9 +13,9 @@ import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytic
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
-const SingleProductPage = lazy(() => import('./frontend/pages/singleProduct.jsx'));
-const AboutPage = lazy(() => import('./frontend/pages/about.jsx'));
-const ContactPage = lazy(() => import('./frontend/pages/contact.jsx'));
+const SingleProductPage = lazy(() => import('./frontend/pages/SingleProduct.jsx'));
+const AboutPage = lazy(() => import('./frontend/pages/About.jsx'));
+const ContactPage = lazy(() => import('./frontend/pages/Contact.jsx'));
 const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
 const ResetPasswordPage = lazy(() => import('./frontend/pages/ResetPassword.jsx'));
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
