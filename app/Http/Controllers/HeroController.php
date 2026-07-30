@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Hero;
+use App\Support\ImageUploadOptimizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Cache;
 class HeroController extends Controller
 {
     private const INDEX_CACHE_KEY = 'heroes.index';
+
+    public function __construct(private readonly ImageUploadOptimizer $imageUploadOptimizer)
+    {
+    }
 
     private function clearHeroCache(): void
     {
@@ -84,6 +89,18 @@ class HeroController extends Controller
     }
 
     private function storeAssetInPublicDir(UploadedFile $uploadedFile, string $folder, string $prefix): string
+    {
+        return $this->imageUploadOptimizer->storeAsWebp(
+            $uploadedFile,
+            $folder,
+            $prefix,
+            2200,
+            2200,
+            82
+        );
+    }
+
+    private function storeVideoInPublicDir(UploadedFile $uploadedFile, string $folder, string $prefix): string
     {
         $directory = public_path($folder);
         File::ensureDirectoryExists($directory);
@@ -196,7 +213,7 @@ class HeroController extends Controller
         }
 
         if ($request->hasFile('video_file')) {
-            $validated['video'] = $this->storeAssetInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
         } else {
             $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
         }
@@ -222,7 +239,7 @@ class HeroController extends Controller
 
         if ($request->hasFile('video_file')) {
             $this->deleteAssetIfLocal($hero->video);
-            $validated['video'] = $this->storeAssetInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
         } elseif (array_key_exists('video_url', $validated)) {
             $validated['video'] = trim((string) $validated['video_url']) ?: null;
         }

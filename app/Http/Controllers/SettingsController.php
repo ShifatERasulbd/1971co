@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Settings;
+use App\Support\ImageUploadOptimizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\File;
 
 class SettingsController extends Controller
 {
+    public function __construct(private readonly ImageUploadOptimizer $imageUploadOptimizer)
+    {
+    }
+
     public function publicBestSellersSection(): JsonResponse
     {
         return response()->json($this->resolveBestSellersSectionConfig());
@@ -200,7 +205,14 @@ class SettingsController extends Controller
         $shopMenuImage = $validated['shop_menu_image_existing']
             ?? ($existingPayload['shop_menu_image'] ?? '');
         if ($request->hasFile('shop_menu_image_file')) {
-            $shopMenuImage = $this->storeUploadedFileToPublic($request->file('shop_menu_image_file'), 'uploads/category');
+            $shopMenuImage = $this->imageUploadOptimizer->storeAsWebp(
+                $request->file('shop_menu_image_file'),
+                'uploads/category',
+                'shop_menu_',
+                1400,
+                1400,
+                80
+            );
             $this->deleteUploadedFile($existingPayload['shop_menu_image'] ?? null);
         }
 

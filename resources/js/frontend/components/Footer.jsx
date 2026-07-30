@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
+import { buildOptimizedImageUrl } from '../utils/media';
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
@@ -143,6 +144,11 @@ export default function Footer() {
         [siteSettings],
     );
 
+    const optimizedCardImage = useMemo(
+        () => buildOptimizedImageUrl('/cardImage.png', { w: 520, q: 70 }),
+        []
+    );
+
     const socialFromSettings = useMemo(() => {
         const items = Array.isArray(siteSettings?.social_media) ? siteSettings.social_media : [];
 
@@ -245,8 +251,11 @@ export default function Footer() {
                             </form>
                             <div className="mb-5 overflow-hidden">
                                 <img
-                                    src="/cardImage.png"
+                                    src={optimizedCardImage || '/cardImage.png'}
                                     alt="Payment and card information"
+                                    loading="lazy"
+                                    decoding="async"
+                                    fetchPriority="low"
                                     className="h-20 w-full object-contain object-center p-3 sm:h-24"
                                 />
                             </div>
@@ -257,12 +266,11 @@ export default function Footer() {
                 </div>
             </div>
 
-            {/* Bottom bar */}
             <div className="border-t border-zinc-700">
                 <div className={`mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 ${sectionTypography.footerLegal} text-zinc-500 sm:flex-row sm:px-10 lg:px-16`}>
                     <span>© 2026 1971Co. All rights reserved.</span>
                 </div>
-            </div>
+                </div>
         </footer>
     );
 }

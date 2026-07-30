@@ -3,14 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Support\ImageUploadOptimizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 
 class CategoryController extends Controller
 {
     private const INDEX_CACHE_KEY = 'categories.index';
+
+    public function __construct(private readonly ImageUploadOptimizer $imageUploadOptimizer)
+    {
+    }
 
     private function toResponseArray(Category $category): array
     {
@@ -59,12 +63,17 @@ class CategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageDirectory = public_path('uploads/category');
-            File::ensureDirectoryExists($imageDirectory);
-            $imageName = time() . '_' . uniqid() . '_category.' . $image->getClientOriginalExtension();
-            $image->move($imageDirectory, $imageName);
-            $validated['image'] = 'uploads/category/' . $imageName;
+            $validated['image'] = ltrim(
+                $this->imageUploadOptimizer->storeAsWebp(
+                    $request->file('image'),
+                    'uploads/category',
+                    'category_',
+                    1600,
+                    1600,
+                    80
+                ),
+                '/'
+            );
         }
 
         $validated['show_homepage'] = $request->boolean('show_homepage');
@@ -106,12 +115,17 @@ class CategoryController extends Controller
                 }
             }
 
-            $image = $request->file('image');
-            $imageDirectory = public_path('uploads/category');
-            File::ensureDirectoryExists($imageDirectory);
-            $imageName = time() . '_' . uniqid() . '_category.' . $image->getClientOriginalExtension();
-            $image->move($imageDirectory, $imageName);
-            $validated['image'] = 'uploads/category/' . $imageName;
+            $validated['image'] = ltrim(
+                $this->imageUploadOptimizer->storeAsWebp(
+                    $request->file('image'),
+                    'uploads/category',
+                    'category_',
+                    1600,
+                    1600,
+                    80
+                ),
+                '/'
+            );
         }
 
         $validated['show_homepage'] = $request->boolean('show_homepage');

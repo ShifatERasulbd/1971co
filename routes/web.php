@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MediaController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/media/optimize', [MediaController::class, 'optimize']);
 
 Route::get('/', function () {
     return view('home');

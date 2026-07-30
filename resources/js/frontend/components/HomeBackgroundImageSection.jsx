@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { timelessFontClass } from '../utils/typography';
+import { buildOptimizedImageUrl } from '../utils/media';
 
 const DEFAULT_BACKGROUND_IMAGE = '/uploads/heroes/images/hero1.webp';
 const DEFAULT_ITEM = {
@@ -304,6 +305,14 @@ export default function HomeBackgroundImageSection() {
         Number.isInteger(pendingSlideIndex) && pendingSlideIndex >= 0
             ? slides[pendingSlideIndex]
             : null;
+    const activeSlideImage = useMemo(
+        () => buildOptimizedImageUrl(activeSlide?.image || DEFAULT_BACKGROUND_IMAGE, { w: 1280, q: 74 }),
+        [activeSlide?.image]
+    );
+    const pendingSlideImage = useMemo(
+        () => buildOptimizedImageUrl(pendingSlide?.image || DEFAULT_BACKGROUND_IMAGE, { w: 1280, q: 74 }),
+        [pendingSlide?.image]
+    );
 
     function handleSectionSelect(event) {
         if (!isBuilderPreview) {
@@ -394,7 +403,7 @@ export default function HomeBackgroundImageSection() {
                         <div className="relative overflow-hidden border border-zinc-200/80 bg-white shadow-[0_28px_65px_-30px_rgba(15,23,42,0.55)]">
                             <div className="book-page-frame relative aspect-[4/3] min-h-[300px] sm:min-h-[380px] lg:min-h-[500px]">
                                 <img
-                                    src={activeSlide.image || DEFAULT_BACKGROUND_IMAGE}
+                                    src={activeSlideImage || activeSlide.image || DEFAULT_BACKGROUND_IMAGE}
                                     alt="Background showcase"
                                     className={`absolute inset-0 h-full w-full object-cover ${
                                         isTurning
@@ -409,7 +418,7 @@ export default function HomeBackgroundImageSection() {
 
                                 {isTurning && pendingSlide ? (
                                     <img
-                                        src={pendingSlide.image || DEFAULT_BACKGROUND_IMAGE}
+                                        src={pendingSlideImage || pendingSlide.image || DEFAULT_BACKGROUND_IMAGE}
                                         alt="Background showcase"
                                         className={`absolute inset-0 h-full w-full object-cover ${
                                             turnDirection === 'next' ? 'book-page-in-next' : 'book-page-in-prev'

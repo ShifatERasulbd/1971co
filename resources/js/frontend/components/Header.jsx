@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { useCart } from '../context/CartContext';
+import { buildOptimizedImageUrl } from '../utils/media';
 import { timelessFontClass } from '../utils/typography';
 
 function normalizeMediaUrl(value = '') {
@@ -341,6 +342,10 @@ export default function Header() {
         () => normalizeMediaUrl(siteSettings?.shop_menu_image || ''),
         [siteSettings],
     );
+    const optimizedShopMegaMenuImage = useMemo(
+        () => buildOptimizedImageUrl(shopMegaMenuImage, { w: 960, q: 72 }),
+        [shopMegaMenuImage],
+    );
 
     const shopMegaMenuCaption = 'Shop New Arrivals';
 
@@ -577,7 +582,7 @@ export default function Header() {
                                                 </div>
 
                                                 {/* Mega Menu Spotlight Image — only rendered when an image is configured in Settings */}
-                                                {shopMegaMenuImage ? (
+                                                {isShopMegaMenuOpen && shopMegaMenuImage ? (
                                                 <div className="flex w-[420px] flex-none justify-center xl:w-[480px]">
                                                     <figure className="w-full max-w-[480px] text-center">
                                                         <Link
@@ -586,8 +591,11 @@ export default function Header() {
                                                             onClick={closeShopMenuImmediately}
                                                         >
                                                             <img
-                                                                src={shopMegaMenuImage}
+                                                                src={optimizedShopMegaMenuImage || shopMegaMenuImage}
                                                                 alt={shopMegaMenuCaption}
+                                                                loading="lazy"
+                                                                decoding="async"
+                                                                fetchPriority="low"
                                                                 className="h-[300px] w-full object-contain object-center xl:h-[340px]"
                                                             />
                                                         </Link>

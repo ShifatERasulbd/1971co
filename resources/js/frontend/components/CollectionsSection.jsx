@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
+import { buildOptimizedImageUrl } from '../utils/media';
 
 const GRID_COLUMNS_MAP = {
     1: 'lg:grid-cols-1',
@@ -29,6 +30,7 @@ function CollectionCardSkeleton() {
 function CollectionCard({ name, slug, image, isBuilderPreview, index }) {
     const routeSegment = String(slug || name || '').trim();
     const href = `/collection/${encodeURIComponent(routeSegment)}`;
+    const optimizedImage = buildOptimizedImageUrl(image, { w: 820, q: 72 });
 
     function handleSelectInBuilder(event) {
         if (!isBuilderPreview) return;
@@ -54,7 +56,7 @@ function CollectionCard({ name, slug, image, isBuilderPreview, index }) {
         >
             {image && (
                 <img
-                    src={image}
+                    src={optimizedImage || image}
                     alt={name}
                     loading="lazy"
                     decoding="async"
