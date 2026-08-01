@@ -602,6 +602,24 @@ export default function AddForm({
                                     </Label>
                                 </div>
 
+                                <div className="space-y-2">
+                                    <Label htmlFor="product-weight">
+                                        Product Weight (in LBS) <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Input
+                                        id="product-weight"
+                                        name="weight"
+                                        type="number"
+                                        min="0"
+                                        step="any" 
+                                        value={form.weight ?? ''}
+                                        onChange={onChange}
+                                        placeholder="0.00"
+                                        disabled={isSubmitting}
+                                    />
+                                    {errors.weight && <p className="text-xs text-destructive">{errors.weight[0]}</p>}
+                                </div>
+
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="product-color">Color</Label>
@@ -754,6 +772,7 @@ export default function AddForm({
                                                         <th className="py-2 pr-2">Size</th>
                                                         <th className="py-2 pr-2">SKU</th>
                                                         <th className="py-2 pr-2">Stock</th>
+                                                        <th className="py-2 pr-2">Weight<br /><span>(in Lbs)</span></th>
                                                         <th className="py-2">Price</th>
                                                         <th className="py-2 pl-2">Trending</th>
                                                         <th className="py-2 pl-2">Color Images</th>
@@ -779,6 +798,16 @@ export default function AddForm({
                                                                     min="0"
                                                                     value={row.stock ?? ''}
                                                                     onChange={(event) => onVariantRowChange?.(row.key, 'stock', event.target.value)}
+                                                                    disabled={isSubmitting}
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 pr-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={row.weight ?? ''}
+                                                                    onChange={(event) => onVariantRowChange?.(row.key, 'weight', event.target.value)}
                                                                     disabled={isSubmitting}
                                                                 />
                                                             </td>

@@ -205,6 +205,7 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.weight' => 'nullable|string|max:255',
             'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
@@ -359,6 +360,7 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.weight' => 'nullable|string|max:255',
             'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
@@ -810,6 +812,7 @@ class ProductController extends Controller
                 'sku' => (string) ($row['sku'] ?? ''),
                 'stock' => $row['stock'] ?? '',
                 'price' => $row['price'] ?? '',
+                'weight' => $row['weight'] ?? '',
                 'show_on_best_sellers' => filter_var(
                     $row['show_on_best_sellers'] ?? false,
                     FILTER_VALIDATE_BOOLEAN,

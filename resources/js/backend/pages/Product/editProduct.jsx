@@ -422,6 +422,7 @@ export default function EditProduct() {
                             : (variant?.color || ''),
                         size: variant?.size || '',
                         stock: variant?.stock ?? 0,
+                        weight: variant?.weight ?? '',
                         price: variant?.price ?? 0,
                     }));
 
@@ -480,6 +481,7 @@ export default function EditProduct() {
                             color: String(row?.color || '').trim(),
                             size: String(row?.size || '').trim(),
                             stock: row?.stock ?? '',
+                            weight: row?.weight ?? '',
                             price: row?.price ?? '',
                             show_on_best_sellers: Boolean(row?.show_on_best_sellers),
                         }));
@@ -540,6 +542,7 @@ export default function EditProduct() {
                             color: data?.color || '',
                             size: data?.size || '',
                             stock: data?.stock ?? '',
+                            weight: data?.weight ?? '',
                             price: data?.price ?? '',
                             show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                         };
@@ -700,6 +703,7 @@ export default function EditProduct() {
                         size,
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
+                        weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
                         show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
@@ -708,7 +712,7 @@ export default function EditProduct() {
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
 
     useEffect(() => {
         const validValues = new Set(galleryPreviewItems.map((item) => item.value));

@@ -55,6 +55,10 @@ function validateForm(form) {
         errors.stock = ['The stock field is required.'];
     }
 
+    if (!form.weight.trim()) {
+        errors.weight = ['The weight field is required.'];
+    }
+
     return errors;
 }
 
@@ -299,6 +303,7 @@ export default function AddProduct() {
                         size,
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
+                        weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
                         show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
@@ -307,7 +312,7 @@ export default function AddProduct() {
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, colorTrendingMap]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, colorTrendingMap]);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;

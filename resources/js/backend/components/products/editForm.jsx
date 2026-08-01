@@ -656,22 +656,7 @@ export default function EditForm({
                                     </Label>
                                 </div>
 
-                                  <div className="space-y-2">
-                                        <Label htmlFor="product-stock">
-                                            Product Weight(in LBS) <span className="text-destructive">*</span>
-                                        </Label>
-                                        <Input
-                                            id="product-weight"
-                                            name="weight"
-                                            type="number"
-                                            min="0"
-                                            value={form.weight ?? ''}
-                                            onChange={onChange}
-                                            placeholder="0"
-                                            disabled={isSubmitting}
-                                        />
-                                        {errors.weight && <p className="text-xs text-destructive">{errors.weight[0]}</p>}
-                                    </div>
+                                  
 
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -830,7 +815,7 @@ export default function EditForm({
                                                     <th className="py-2 pr-2">Size</th>
                                                     <th className="py-2 pr-2">SKU</th>
                                                     <th className="py-2 pr-2">Stock</th>
-                                                    <th className="py-2 pr-2">Price</th>
+                                                    <th className="py-2 pr-2">Weight<br /><span>(in Lbs)</span></th>
                                                     <th className="py-2">Trending</th>
                                                     <th className="py-2">Color Images</th>
                                                     <th className="py-2">Color Videos</th>
@@ -862,9 +847,10 @@ export default function EditForm({
                                                             <Input
                                                                 type="number"
                                                                 min="0"
+                                                                name='weight'
                                                                 step="0.01"
-                                                                value={row.price ?? ''}
-                                                                onChange={(event) => onVariantRowChange?.(row.key, 'price', event.target.value)}
+                                                                value={row.weight ?? ''}
+                                                                onChange={(event) => onVariantRowChange?.(row.key, 'weight', event.target.value)}
                                                                 disabled={isSubmitting}
                                                             />
                                                         </td>
