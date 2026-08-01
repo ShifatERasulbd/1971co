@@ -387,6 +387,11 @@ export default function ProductVariantModal({
         };
     }, [isOpen, onClose]);
 
+    const selectedVariantRow = useMemo(
+        () => resolveSelectedVariantRow(product, selectedColor, selectedSize),
+        [product, selectedColor, selectedSize],
+    );
+
     if (!isOpen || !product) {
         return null;
     }
@@ -397,10 +402,6 @@ export default function ProductVariantModal({
     const needsColor = colors.length > 0;
     const needsSize = sizes.length > 0;
     const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
-    const selectedVariantRow = useMemo(
-        () => resolveSelectedVariantRow(product, selectedColor, selectedSize),
-        [product, selectedColor, selectedSize],
-    );
 
     return (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>

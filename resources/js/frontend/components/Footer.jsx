@@ -250,13 +250,10 @@ export default function Footer() {
                                 </button>
                             </form>
                             <div className="mb-5 overflow-hidden">
-                                <img
-                                    src={optimizedCardImage || '/cardImage.png'}
-                                    alt="Payment and card information"
-                                    loading="lazy"
-                                    decoding="async"
-                                    fetchPriority="low"
-                                    className="h-20 w-full object-contain object-center p-3 sm:h-24"
+                               <img
+                                    src="/cardImage.png"
+                                    alt="Accepted payment cards"
+                                    className="h-10 w-full object-contain object-center px-2"
                                 />
                             </div>
                         </div>

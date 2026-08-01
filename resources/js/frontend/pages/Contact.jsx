@@ -80,9 +80,7 @@ export default function ContactPage() {
             <LazySection heightClass="h-[220px]" variant="newsletter" defer={!isBuilderPreview}>
                 <NewsletterSection />
             </LazySection>
-            <LazySection heightClass="h-[320px]" variant="instagram" defer={!isBuilderPreview}>
-                <InstagramSection />
-            </LazySection>
+            
         </>
     );
 }

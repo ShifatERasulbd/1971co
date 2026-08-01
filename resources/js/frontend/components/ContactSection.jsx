@@ -1,6 +1,6 @@
 import { featuresFontClass } from '../utils/typography';
 import ContactInformationPanel from './ContactInformationPanel.jsx';
-import ContactLocationCards from './ContactLocationCards.jsx';
+
 import ContactQuestionForm from './ContactQuestionForm.jsx';
 
 export default function ContactSection() {
@@ -12,7 +12,7 @@ export default function ContactSection() {
                     <ContactQuestionForm />
                 </div>
 
-                <ContactLocationCards />
+             
             </div>
         </section>
     );

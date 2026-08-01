@@ -1,32 +1,32 @@
-const offices = [
-    {
-        title: 'USA',
-        address: '70 Washington Square',
-        city: 'New York, NY 10012, USA',
-        phone: '(2) 123 -456 -789',
-        email: 'hello@timeless.ca',
-    },
-    {
-        title: 'Canada',
-        address: '70 Washington Square',
-        city: 'New York, NY 10012, USA',
-        phone: '(2) 123 -456 -789',
-        email: 'hello@timeless.ca',
-    },
-    {
-        title: 'Office',
-        address: '70 Washington Square',
-        city: 'New York, NY 10012, USA',
-        phone: '(2) 123 -456 -789',
-        email: 'hello@timeless.ca',
-    },
-];
+// const offices = [
+//     {
+//         title: 'USA',
+//         address: '70 Washington Square',
+//         city: 'New York, NY 10012, USA',
+//         phone: '(2) 123 -456 -789',
+//         email: 'hello@timeless.ca',
+//     },
+//     {
+//         title: 'Canada',
+//         address: '70 Washington Square',
+//         city: 'New York, NY 10012, USA',
+//         phone: '(2) 123 -456 -789',
+//         email: 'hello@timeless.ca',
+//     },
+//     {
+//         title: 'Office',
+//         address: '70 Washington Square',
+//         city: 'New York, NY 10012, USA',
+//         phone: '(2) 123 -456 -789',
+//         email: 'hello@timeless.ca',
+//     },
+// ];
 
 export default function ContactLocationCards() {
     return (
         <div className="mt-14 bg-white px-6 py-8 sm:px-10 sm:py-10 lg:mt-16 lg:px-14 lg:py-12">
             <div className="grid gap-10 md:grid-cols-3 md:gap-8">
-                {offices.map((office) => (
+                {/* {offices.map((office) => (
                     <article key={office.title} className="text-center text-zinc-500">
                         <h3 className="font-serif text-[1.8rem] uppercase tracking-[0.02em] text-zinc-900 sm:text-[2rem]">
                             {office.title}
@@ -40,7 +40,7 @@ export default function ContactLocationCards() {
                             <span className="block">{office.email}</span>
                         </p>
                     </article>
-                ))}
+                ))} */}
             </div>
         </div>
     );

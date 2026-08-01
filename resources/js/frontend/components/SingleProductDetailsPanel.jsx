@@ -298,13 +298,7 @@ export default function SingleProductDetailsPanel({
                         Add To Cart
                     </button>
 
-                    <button
-                        type="button"
-                        className="inline-flex size-[52px] shrink-0 items-center justify-center border border-zinc-300 text-[1.65rem] text-zinc-700 hover:border-zinc-600"
-                        aria-label="Add to wishlist"
-                    >
-                        &#9825;
-                    </button>
+                  
                 </div>
 
                 {/* Clean Product Features Grid without Background Card Wrapper */}

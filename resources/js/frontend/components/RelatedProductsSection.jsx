@@ -296,11 +296,7 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
         navigate(productLink);
     }
 
-    function handleWishlist(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toast.info('Wishlist will be available soon');
-    }
+ 
 
     return (
         <article className="group mx-auto w-full max-w-[315px] cursor-pointer">
@@ -321,14 +317,7 @@ function RelatedProductCard({ product, onAddToCart, colorLookup = {} }) {
                     >
                         Add to cart
                     </button>
-                    <button
-                        type="button"
-                        onClick={handleWishlist}
-                        aria-label="Add to wishlist"
-                        className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                    >
-                        <Heart className="size-4" />
-                    </button>
+                   
                     <button
                         type="button"
                         onClick={handleQuickView}

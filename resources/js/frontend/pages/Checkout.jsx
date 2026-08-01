@@ -92,6 +92,7 @@ function CheckoutForm() {
     const stripe = useStripe();
     const elements = useElements();
     const { items, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
+    const isCartEmpty = items.length === 0;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
     const selectedCourier = 'ups';
@@ -115,25 +116,6 @@ function CheckoutForm() {
         country: 'United States',
         notes: '',
     });
-
-    if (items.length === 0) {
-        return (
-            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
-                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
-                        Checkout
-                    </h1>
-                    <p className="mt-4 text-zinc-600">Your cart is empty. Add products before checkout.</p>
-                    <Link
-                        to="/shop"
-                        className="mt-6 inline-flex h-11 items-center justify-center bg-zinc-900 px-7 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black"
-                    >
-                        Go To Shop
-                    </Link>
-                </div>
-            </section>
-        );
-    }
 
     const hasCompleteShippingAddress = useMemo(() => Boolean(
         String(form.state || '').trim()
@@ -442,6 +424,25 @@ function CheckoutForm() {
             clearTimeout(timer);
         };
     }, [form.city, form.country, form.postal_code, form.state]);
+
+    if (isCartEmpty) {
+        return (
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        Checkout
+                    </h1>
+                    <p className="mt-4 text-zinc-600">Your cart is empty. Add products before checkout.</p>
+                    <Link
+                        to="/shop"
+                        className="mt-6 inline-flex h-11 items-center justify-center bg-zinc-900 px-7 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black"
+                    >
+                        Go To Shop
+                    </Link>
+                </div>
+            </section>
+        );
+    }
 
     async function handlePlaceOrder() {
         if (isSubmitting) {

@@ -744,12 +744,8 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
         navigate(productLink);
     }
 
-    function handleWishlist(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toast.info('Wishlist will be available soon');
-    }
-
+   
+    
     return (
        <article className="group h-[520px] w-[310px] overflow-hidden border border-zinc-200 bg-white">
     <Link to={productLink} className="block">

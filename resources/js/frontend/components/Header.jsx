@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 import { useCart } from '../context/CartContext';
-import { buildOptimizedImageUrl } from '../utils/media';
 import { timelessFontClass } from '../utils/typography';
 
 function normalizeMediaUrl(value = '') {
@@ -153,7 +152,7 @@ export default function Header() {
         }
     }
 
-    async function resolveAuthenticatedDashboard() {
+    async function isAuthenticatedUser() {
         try {
             const response = await fetch('/api/user', {
                 credentials: 'include',
@@ -164,17 +163,13 @@ export default function Header() {
             });
 
             if (!response.ok) {
-                return null;
+                return false;
             }
 
             const payload = await response.json().catch(() => null);
-            if (payload?.user_type === 'customer') {
-                return '/user/dashboard';
-            }
-
-            return '/admin/dashboard';
+            return Boolean(payload?.id);
         } catch {
-            return null;
+            return false;
         }
     }
 
@@ -185,10 +180,9 @@ export default function Header() {
         closeMobileMenu();
         closeSearch();
 
-        const dashboardPath = await resolveAuthenticatedDashboard();
-
-        if (dashboardPath) {
-            window.location.assign(dashboardPath);
+        const isAuthenticated = await isAuthenticatedUser();
+        if (isAuthenticated) {
+            window.location.assign('/user/dashboard');
             return;
         }
 
@@ -201,12 +195,6 @@ export default function Header() {
         closeShopMenuImmediately();
         closeMobileMenu();
         closeSearch();
-
-        const dashboardPath = await resolveAuthenticatedDashboard();
-        if (dashboardPath) {
-            window.location.assign(dashboardPath);
-            return;
-        }
 
         if (location.pathname !== '/') {
             navigate('/');
@@ -387,12 +375,14 @@ export default function Header() {
     );
 
     const shopMegaMenuImage = useMemo(
-        () => normalizeMediaUrl(siteSettings?.shop_menu_image || ''),
+        () =>
+            normalizeMediaUrl(
+                siteSettings?.shop_menu_image
+                || siteSettings?.shop_mega_menu_image
+                || siteSettings?.shopMegaMenuImage
+                || '',
+            ),
         [siteSettings],
-    );
-    const optimizedShopMegaMenuImage = useMemo(
-        () => buildOptimizedImageUrl(shopMegaMenuImage, { w: 960, q: 72 }),
-        [shopMegaMenuImage],
     );
 
     const shopMegaMenuCaption = 'Shop New Arrivals';
@@ -639,7 +629,7 @@ export default function Header() {
                                                             onClick={closeShopMenuImmediately}
                                                         >
                                                             <img
-                                                                src={optimizedShopMegaMenuImage || shopMegaMenuImage}
+                                                                src={shopMegaMenuImage}
                                                                 alt={shopMegaMenuCaption}
                                                                 loading="lazy"
                                                                 decoding="async"
