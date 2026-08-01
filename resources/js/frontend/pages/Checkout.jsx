@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useCart } from '../context/CartContext';
-import { calculateShippingCost, normalizeCountryCode } from '../utils/shipping';
+import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
 
 const fallbackImage = '/uploads/heroes/images/hero1.webp';
@@ -94,8 +94,8 @@ function CheckoutForm() {
     const { items, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
-    const [selectedCourier, setSelectedCourier] = useState('shipstation');
-    const [quotedShipping, setQuotedShipping] = useState(null);
+    const selectedCourier = 'ups';
+    const [quotedShipping, setQuotedShipping] = useState(0);
     const [isFetchingShipping, setIsFetchingShipping] = useState(false);
     const [shippingError, setShippingError] = useState('');
     const [stateOptions, setStateOptions] = useState([]);
@@ -135,16 +135,18 @@ function CheckoutForm() {
         );
     }
 
-    const shipping = useMemo(
-        () => {
-            if (selectedCourier === 'ups' && quotedShipping !== null) {
-                return quotedShipping;
-            }
+    const hasCompleteShippingAddress = useMemo(() => Boolean(
+        String(form.state || '').trim()
+        && String(form.city || '').trim()
+        && String(form.postal_code || '').trim()
+        && String(form.country || '').trim(),
+    ), [form.state, form.city, form.postal_code, form.country]);
 
-            return calculateShippingCost({ country: form.country, state: form.state }, subtotal);
-        },
-        [form.country, form.state, quotedShipping, selectedCourier, subtotal],
-    );
+    const shipping = useMemo(() => {
+        const value = Number(quotedShipping);
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }, [quotedShipping]);
+
     const total = subtotal + shipping;
 
     const normalizedItems = useMemo(
@@ -158,6 +160,7 @@ function CheckoutForm() {
                 image: item.image,
                 selectedColor: item.selectedColor,
                 selectedSize: item.selectedSize,
+                weight: item.weight,
             })),
         [items],
     );
@@ -325,8 +328,8 @@ function CheckoutForm() {
             return;
         }
 
-        if (selectedCourier !== 'ups') {
-            setQuotedShipping(null);
+        if (!hasCompleteShippingAddress) {
+            setQuotedShipping(0);
             setShippingError('');
             return;
         }
@@ -357,7 +360,7 @@ function CheckoutForm() {
 
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(payload?.message || 'Unable to fetch UPS shipping charge');
+                    throw new Error(payload?.error || payload?.message || 'Unable to fetch UPS shipping charge');
                 }
 
                 setQuotedShipping(Number(payload?.shipping || 0));
@@ -367,7 +370,7 @@ function CheckoutForm() {
                 }
 
                 setShippingError(error?.message || 'Unable to fetch UPS shipping charge');
-                setQuotedShipping(calculateShippingCost({ country: form.country, state: form.state }, subtotal, 'ups'));
+                setQuotedShipping(0);
             } finally {
                 setIsFetchingShipping(false);
             }
@@ -377,7 +380,7 @@ function CheckoutForm() {
             controller.abort();
             clearTimeout(timer);
         };
-    }, [form.city, form.country, form.postal_code, form.state, normalizedItems, selectedCourier, subtotal]);
+    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, subtotal]);
 
     useEffect(() => {
         const city = String(form.city || '').trim();
@@ -522,7 +525,7 @@ function CheckoutForm() {
                 },
                 body: JSON.stringify({
                     ...form,
-                    courier: selectedCourier,
+                    courier: 'ups',
                     items: normalizedItems,
                     subtotal,
                     shipping,
@@ -564,7 +567,7 @@ function CheckoutForm() {
                 subtotal,
                 shipping,
                 total,
-                courier_service: selectedCourier,
+                courier_service: 'ups',
                 courier_reference: String(payload?.courier_reference || ''),
                 created_at: new Date().toISOString(),
             };
@@ -809,38 +812,7 @@ function CheckoutForm() {
                 <aside className="bg-white p-5 shadow-sm sm:p-7">
                     <h2 className="font-monstrate text-[1.5rem] uppercase tracking-[0.05em] text-zinc-900">Order Summary</h2>
 
-                    <div className="mt-4 rounded border border-zinc-200 p-3">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Courier Service</p>
-                        <div className="mt-3 space-y-2">
-                            <label className="flex cursor-pointer items-center gap-2 text-[0.85rem] text-zinc-700">
-                                <input
-                                    type="radio"
-                                    name="courier"
-                                    value="ups"
-                                    checked={selectedCourier === 'ups'}
-                                    onChange={() => setSelectedCourier('ups')}
-                                    className="h-4 w-4 accent-zinc-900"
-                                />
-                                <span>Ship with UPS</span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2 text-[0.85rem] text-zinc-700">
-                                <input
-                                    type="radio"
-                                    name="courier"
-                                    value="shipstation"
-                                    checked={selectedCourier === 'shipstation'}
-                                    onChange={() => setSelectedCourier('shipstation')}
-                                    className="h-4 w-4 accent-zinc-900"
-                                />
-                                <span>Ship with ShipStation</span>
-                            </label>
-                        </div>
-                        {selectedCourier === 'ups' && isFetchingShipping ? (
-                            <p className="mt-2 text-xs text-zinc-500">Fetching UPS shipment charge...</p>
-                        ) : null}
-                        {shippingError ? <p className="mt-2 text-xs text-amber-600">{shippingError}</p> : null}
-                    </div>
-
+                
                     <div className="mt-6 space-y-4">
                         {items.map((item) => (
                             <article key={item.lineId} className="flex gap-3 border border-zinc-200 p-3 sm:p-4">
@@ -859,6 +831,7 @@ function CheckoutForm() {
                                     <div className="mt-2 flex flex-wrap gap-2 text-[0.74rem] text-zinc-500">
                                         {item.selectedColor ? <span>Color: {item.selectedColor}</span> : null}
                                         {item.selectedSize ? <span>Size: {item.selectedSize}</span> : null}
+                                        {item.weight ? <span>Weight: {item.weight} Lbs</span> : null}
                                     </div>
 
                                     <div className="mt-3 flex items-center justify-between gap-3">
@@ -904,6 +877,12 @@ function CheckoutForm() {
                             <span>Shipping</span>
                             <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
                         </div>
+                        {isFetchingShipping ? (
+                            <p className="text-xs text-zinc-500">Fetching UPS shipping quote...</p>
+                        ) : null}
+                        {!isFetchingShipping && shippingError ? (
+                            <p className="text-xs text-red-600">{shippingError}</p>
+                        ) : null}
                         <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
                             <span>Total</span>
                             <span>${total.toFixed(2)}</span>
@@ -938,7 +917,7 @@ function CheckoutForm() {
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
-                        disabled={isSubmitting || !stripe || !elements || (selectedCourier === 'ups' && isFetchingShipping)}
+                        disabled={isSubmitting || !stripe || !elements || isFetchingShipping || (subtotal > 0 && hasCompleteShippingAddress && shipping <= 0)}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}

@@ -37,15 +37,15 @@ function StatusBadge({ status }) {
     );
 }
 
-function ShipStationSyncBadge({ order }) {
-    if (order.shipstation_synced_at) {
+function CourierSyncBadge({ order }) {
+    if (order.courier_sync_status === 'synced') {
         return (
             <div className="flex flex-col gap-0.5">
                 <span className="inline-flex w-fit items-center rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                     Synced
                 </span>
-                {order.shipstation_order_id ? (
-                    <span className="font-mono text-[11px] text-zinc-500">{order.shipstation_order_id}</span>
+                {order.courier_reference || order.ups_tracking_number ? (
+                    <span className="font-mono text-[11px] text-zinc-500">{order.courier_reference || order.ups_tracking_number}</span>
                 ) : null}
             </div>
         );
@@ -302,7 +302,7 @@ export default function Orders() {
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Items</th>
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Total</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Status</th>
-                            {!isCustomer && <th className="px-4 py-3 text-left font-semibold text-zinc-700">ShipStation</th>}
+                            {!isCustomer && <th className="px-4 py-3 text-left font-semibold text-zinc-700">UPS Courier</th>}
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Date</th>
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Actions</th>
                         </tr>
@@ -334,7 +334,7 @@ export default function Orders() {
                                 <td className="px-4 py-3 text-center text-zinc-700">{order.items_count}</td>
                                 <td className="px-4 py-3 text-right font-medium text-zinc-800">${Number(order.total).toFixed(2)}</td>
                                 <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
-                                {!isCustomer && <td className="px-4 py-3"><ShipStationSyncBadge order={order} /></td>}
+                                {!isCustomer && <td className="px-4 py-3"><CourierSyncBadge order={order} /></td>}
                                 <td className="px-4 py-3 text-xs text-zinc-500">
                                     {new Date(order.created_at).toLocaleDateString()}
                                 </td>

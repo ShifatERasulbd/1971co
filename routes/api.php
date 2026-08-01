@@ -30,6 +30,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
 
+
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['web', 'throttle:6,1']);
@@ -57,6 +58,8 @@ Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
 Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
+Route::get('/public/shipping/ups-diagnostics', [CheckoutOrderController::class, 'upsDiagnostics']);
+Route::post('/public/shipping/ups-rate-diagnostics', [CheckoutOrderController::class, 'upsRateDiagnostics']);
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
 Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
 Route::get('/public/locations/postal-code', [UsLocationController::class, 'postalCodeByCityState']);

@@ -215,6 +215,63 @@ function resolveSelectedVariantSku(product, selectedColor, selectedSize, colorRe
     return String(product?.sku || '').trim();
 }
 
+function resolveSelectedVariantWeight(product, selectedColor, selectedSize, colorRecords = [], sizeNameLookup = {}) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (variants.length === 0) {
+        return String(product?.weight || '').trim();
+    }
+
+    const selectedColorToken = normalizeVariantColorToken(selectedColor, colorRecords);
+    const selectedSizeToken = normalizeVariantSizeToken(selectedSize, sizeNameLookup);
+
+    const scored = variants
+        .map((row) => {
+            const rowColors = parseOptionTokens(row?.color)
+                .map((item) => normalizeVariantColorToken(item, colorRecords))
+                .filter(Boolean);
+
+            const rowSizes = parseOptionTokens(row?.size)
+                .map((item) => normalizeVariantSizeToken(item, sizeNameLookup))
+                .filter(Boolean);
+
+            const colorMatch = selectedColorToken
+                ? rowColors.includes(selectedColorToken)
+                : rowColors.length === 0;
+
+            const sizeMatch = selectedSizeToken
+                ? rowSizes.includes(selectedSizeToken)
+                : rowSizes.length === 0;
+
+            let score = 0;
+            if (colorMatch) {
+                score += 2;
+            }
+            if (sizeMatch) {
+                score += 2;
+            }
+            if (!selectedColorToken && rowColors.length === 0) {
+                score += 1;
+            }
+            if (!selectedSizeToken && rowSizes.length === 0) {
+                score += 1;
+            }
+
+            return {
+                row,
+                score,
+                colorMatch,
+                sizeMatch,
+            };
+        })
+        .sort((a, b) => b.score - a.score);
+
+    const exact = scored.find((item) => item.colorMatch && item.sizeMatch && item.score >= 4);
+    const partial = scored.find((item) => item.colorMatch || item.sizeMatch);
+    const fallback = exact || partial || scored[0];
+
+    return String(fallback?.row?.weight || product?.weight || '').trim();
+}
+
 function normalizeSizes(product, sizeNameLookup = {}) {
     const directSizes = parseOptionTokens(product?.size);
     if (directSizes.length > 0) {
@@ -528,6 +585,8 @@ export default function SingleProductMainSection({ product, initialColor = '' })
             selectedSize,
             quantity,
             image: selectedImage,
+            sku: activeVariantSku,
+            weight: activeVariantWeight,
         });
         openCartDrawer();
     }
@@ -585,6 +644,10 @@ export default function SingleProductMainSection({ product, initialColor = '' })
     const primaryVideo = filteredVideos[0] || '';
     const activeVariantSku = useMemo(
         () => resolveSelectedVariantSku(product, selectedColor, selectedSize, colorRecords, sizeNameLookup),
+        [product, selectedColor, selectedSize, colorRecords, sizeNameLookup],
+    );
+    const activeVariantWeight = useMemo(
+        () => resolveSelectedVariantWeight(product, selectedColor, selectedSize, colorRecords, sizeNameLookup),
         [product, selectedColor, selectedSize, colorRecords, sizeNameLookup],
     );
 

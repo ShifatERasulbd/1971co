@@ -17,6 +17,62 @@ function toNumberPrice(value) {
     return 0;
 }
 
+function normalizeWeightValue(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const text = String(value).trim();
+    if (!text) {
+        return '';
+    }
+
+    return text;
+}
+
+function parseVariantTokens(value) {
+    return String(value || '')
+        .split(',')
+        .map((token) => token.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function findVariantRowWeight(product, selectedColor, selectedSize, selectedSku = '') {
+    const rows = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (rows.length === 0) {
+        return '';
+    }
+
+    const selectedSkuToken = String(selectedSku || '').trim().toLowerCase();
+    if (selectedSkuToken) {
+        const rowBySku = rows.find((row) => String(row?.sku || '').trim().toLowerCase() === selectedSkuToken);
+        if (rowBySku) {
+            return normalizeWeightValue(rowBySku.weight);
+        }
+    }
+
+    const selectedColorToken = String(selectedColor || '').trim().toLowerCase();
+    const selectedSizeToken = String(selectedSize || '').trim().toLowerCase();
+
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') {
+            continue;
+        }
+
+        const rowColorTokens = parseVariantTokens(row.color);
+        const rowSizeTokens = parseVariantTokens(row.size);
+
+        const colorMatches = selectedColorToken ? rowColorTokens.includes(selectedColorToken) : true;
+        const sizeMatches = selectedSizeToken ? rowSizeTokens.includes(selectedSizeToken) : true;
+
+        if (colorMatches && sizeMatches) {
+            return normalizeWeightValue(row.weight);
+        }
+    }
+
+    return '';
+}
+
 function normalizeCartItem(product, options = {}) {
     const productId = String(product?.id || product?.slug || product?.name || Date.now());
     const selectedColor = String(options.selectedColor || '').trim();
@@ -36,6 +92,11 @@ function normalizeCartItem(product, options = {}) {
             : '';
 
     const priceValue = toNumberPrice(product?.priceValue ?? product?.price);
+    const variantSku = String(options.sku || '').trim();
+    const variantWeight = findVariantRowWeight(product, selectedColor, selectedSize, variantSku);
+    const weight = normalizeWeightValue(options.weight)
+        || variantWeight
+        || normalizeWeightValue(product?.weight);
 
     return {
         lineId,
@@ -47,6 +108,8 @@ function normalizeCartItem(product, options = {}) {
         quantity,
         selectedColor,
         selectedSize,
+        sku: variantSku || String(product?.sku || '').trim(),
+        weight,
         slug: String(product?.slug || '').trim(),
     };
 }

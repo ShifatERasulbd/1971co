@@ -41,7 +41,7 @@ export function normalizeCountryCode(country) {
     return COUNTRY_ALIASES[value] || 'US';
 }
 
-export function calculateShippingCost({ country, state } = {}, subtotal = 0, courier = 'shipstation') {
+export function calculateShippingCost({ country, state } = {}, subtotal = 0, courier = 'ups') {
     const normalizedCountry = normalizeCountryCode(country);
     const normalizedState = String(state || '').trim().toUpperCase();
     const subtotalValue = Number(subtotal || 0);
@@ -50,33 +50,13 @@ export function calculateShippingCost({ country, state } = {}, subtotal = 0, cou
         return 0;
     }
 
-    if (courier === 'ups') {
-        // Frontend fallback only; authoritative UPS charge comes from /api/public/shipping/quote.
-        if (normalizedCountry === 'US') {
-            return normalizedState === 'AK' || normalizedState === 'HI' ? 14.99 : 8.99;
-        }
-
-        if (normalizedCountry === 'CA') {
-            return 16.99;
-        }
-
-        return 24.99;
-    }
-
+    // Frontend fallback only; authoritative UPS charge comes from /api/public/shipping/quote.
     if (normalizedCountry === 'US') {
-        if (normalizedState === 'AK' || normalizedState === 'HI') {
-            return 14.99;
-        }
-
-        return 8.99;
+        return normalizedState === 'AK' || normalizedState === 'HI' ? 14.99 : 8.99;
     }
 
     if (normalizedCountry === 'CA') {
         return 16.99;
-    }
-
-    if (normalizedCountry === 'GB') {
-        return 19.99;
     }
 
     return 24.99;

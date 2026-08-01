@@ -153,6 +153,28 @@ function toPrice(value) {
     return Number.isFinite(next) ? next : 0;
 }
 
+function resolveSelectedVariantRow(product, selectedColor, selectedSize) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (variants.length === 0) {
+        return null;
+    }
+
+    const selectedColorToken = String(selectedColor || '').trim().toLowerCase();
+    const selectedSizeToken = String(selectedSize || '').trim().toLowerCase();
+
+    const matched = variants.find((row) => {
+        const rowColors = parseList(row?.color).map((item) => String(item || '').trim().toLowerCase());
+        const rowSizes = parseList(row?.size).map((item) => String(item || '').trim().toLowerCase());
+
+        const colorMatch = selectedColorToken ? rowColors.includes(selectedColorToken) : true;
+        const sizeMatch = selectedSizeToken ? rowSizes.includes(selectedSizeToken) : true;
+
+        return colorMatch && sizeMatch;
+    });
+
+    return matched || null;
+}
+
 function resolveOptionValue(preferredValue, options = [], labelLookup = {}) {
     const raw = String(preferredValue || '').trim();
     if (!raw || !Array.isArray(options) || options.length === 0) {
@@ -375,6 +397,10 @@ export default function ProductVariantModal({
     const needsColor = colors.length > 0;
     const needsSize = sizes.length > 0;
     const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
+    const selectedVariantRow = useMemo(
+        () => resolveSelectedVariantRow(product, selectedColor, selectedSize),
+        [product, selectedColor, selectedSize],
+    );
 
     return (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
@@ -519,6 +545,8 @@ export default function ProductVariantModal({
                                         selectedSize,
                                         quantity,
                                         image: mainImage,
+                                        sku: String(selectedVariantRow?.sku || product?.sku || '').trim(),
+                                        weight: String(selectedVariantRow?.weight || product?.weight || '').trim(),
                                     });
                                 }}
                                 className="inline-flex h-12 w-full flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400 sm:text-[0.8rem] sm:tracking-[0.14em]"

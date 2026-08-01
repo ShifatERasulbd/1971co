@@ -131,9 +131,8 @@ export default function EditOrder() {
         return <div className="px-6 py-10 text-center text-sm text-zinc-400">Order not found.</div>;
     }
 
-    const courierService = String(order.courier_service || 'shipstation').toLowerCase();
-    const courierName = courierService === 'ups' ? 'UPS' : 'ShipStation';
-    const courierReferenceLabel = courierService === 'ups' ? 'UPS Tracking Number' : 'ShipStation Order ID';
+    const courierName = 'UPS';
+    const courierReferenceLabel = 'UPS Tracking Number';
     const courierReference = order.courier_reference || order.ups_tracking_number || order.shipstation_order_id;
     const isCourierConnected = order.courier_sync_status === 'synced';
 

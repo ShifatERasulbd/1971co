@@ -22,6 +22,39 @@ class UpsService
     {
         $this->ensureConfigured();
 
+        [$requestPayload, $normalizedInput] = $this->buildRateRequestPayload($payload);
+
+        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Rate');
+        $response = $this->request('post', $rateEndpoint, $requestPayload);
+
+        $amount = $this->extractRateAmount($response);
+        if ($amount === null) {
+            throw new RuntimeException('UPS did not return a valid shipment charge.');
+        }
+
+        return $amount;
+    }
+
+    public function diagnoseRateQuote(array $payload): array
+    {
+        $this->ensureConfigured();
+
+        [$requestPayload, $normalizedInput] = $this->buildRateRequestPayload($payload);
+
+        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Rate');
+        $response = $this->request('post', $rateEndpoint, $requestPayload);
+        $amount = $this->extractRateAmount($response);
+
+        return [
+            'normalized_input' => $normalizedInput,
+            'request_payload' => $requestPayload,
+            'raw_response' => $response,
+            'parsed_amount' => $amount,
+        ];
+    }
+
+    protected function buildRateRequestPayload(array $payload): array
+    {
         $countryCode = $this->normalizeCountryCode($payload['country'] ?? null);
         $state = strtoupper(trim((string) ($payload['state'] ?? '')));
         $city = trim((string) ($payload['city'] ?? ''));
@@ -77,15 +110,15 @@ class UpsService
             ],
         ];
 
-        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Rate');
-        $response = $this->request('post', $rateEndpoint, $requestPayload);
+        $normalizedInput = [
+            'country_code' => $countryCode,
+            'state' => $state,
+            'city' => $city,
+            'postal_code' => $postalCode,
+            'weight_lbs' => $weight,
+        ];
 
-        $amount = $this->extractRateAmount($response);
-        if ($amount === null) {
-            throw new RuntimeException('UPS did not return a valid shipment charge.');
-        }
-
-        return $amount;
+        return [$requestPayload, $normalizedInput];
     }
 
     public function createShipmentForCheckoutOrder(CheckoutOrder $order): array
@@ -375,6 +408,64 @@ class UpsService
         ];
 
         return $map[$value] ?? 'US';
+    }
+
+    public function diagnostics(bool $probeAuth = true): array
+    {
+        $details = [
+            'configured' => $this->isConfigured(),
+            'base_url' => (string) $this->config('base_url', ''),
+            'oauth_base_url' => (string) $this->config('oauth_base_url', ''),
+            'token_endpoint' => (string) $this->config('token_endpoint', ''),
+            'rate_endpoint' => (string) $this->config('rate_endpoint', ''),
+            'shipment_endpoint' => (string) $this->config('shipment_endpoint', ''),
+            'verify_ssl' => (bool) $this->config('verify_ssl', true),
+            'has_client_id' => trim((string) $this->config('client_id', '')) !== '',
+            'has_client_secret' => trim((string) $this->config('client_secret', '')) !== '',
+            'shipper_number_masked' => $this->maskValue((string) $this->config('shipper_number', '')),
+        ];
+
+        if (! $probeAuth) {
+            $details['auth_probe'] = [
+                'attempted' => false,
+            ];
+
+            return $details;
+        }
+
+        try {
+            $token = $this->getAccessToken();
+
+            $details['auth_probe'] = [
+                'attempted' => true,
+                'success' => true,
+                'token_prefix' => substr($token, 0, 10),
+                'token_length' => strlen($token),
+            ];
+        } catch (\Throwable $exception) {
+            $details['auth_probe'] = [
+                'attempted' => true,
+                'success' => false,
+                'error' => $exception->getMessage(),
+            ];
+        }
+
+        return $details;
+    }
+
+    protected function maskValue(string $value): string
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $length = strlen($trimmed);
+        if ($length <= 4) {
+            return str_repeat('*', $length);
+        }
+
+        return str_repeat('*', $length - 4) . substr($trimmed, -4);
     }
 
     protected function ensureConfigured(): void
