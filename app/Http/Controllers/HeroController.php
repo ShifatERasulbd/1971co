@@ -43,7 +43,7 @@ class HeroController extends Controller
             $hero = Hero::query()->create([
                 'title' => 'Custom apparel solutions',
                 'description' => 'Elevate your brand with premium customized apparel designed for teams, events, corporate identity, and professional wear.',
-                'image' => '/uploads/heroes/images/hero1.webp',
+                'image' => '',
                 'video' => null,
                 'title_display_mode' => 'double',
                 'title_font_size' => 124,

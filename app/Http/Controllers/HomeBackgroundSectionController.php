@@ -25,7 +25,7 @@ class HomeBackgroundSectionController extends Controller
         });
     }
 
-    private const DEFAULT_BACKGROUND_IMAGE = '/uploads/heroes/images/hero1.webp';
+    private const DEFAULT_BACKGROUND_IMAGE = '';
 
     private function defaultItem(): array
     {

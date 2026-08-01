@@ -1,7 +1,7 @@
 import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function toAbsoluteImageUrl(path) {
     if (!path || typeof path !== 'string') {

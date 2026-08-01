@@ -52,6 +52,12 @@ class MediaController extends Controller
             ]);
         }
 
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('imagewebp')) {
+            return response()->file($publicAbsolute, [
+                'Cache-Control' => 'public, max-age=2592000',
+            ]);
+        }
+
         $targetWidth = (int) ($validated['w'] ?? 1400);
         $quality = (int) ($validated['q'] ?? 76);
         $lastModified = File::lastModified($publicAbsolute);
@@ -107,12 +113,12 @@ class MediaController extends Controller
                 $sourceHeight
             );
 
-            imagewebp($target, $cachedPath, $quality);
+            $saved = @imagewebp($target, $cachedPath, $quality);
 
             imagedestroy($target);
             imagedestroy($source);
 
-            if (! File::exists($cachedPath)) {
+            if (! $saved || ! File::exists($cachedPath)) {
                 return response()->file($publicAbsolute, [
                     'Cache-Control' => 'public, max-age=2592000',
                 ]);

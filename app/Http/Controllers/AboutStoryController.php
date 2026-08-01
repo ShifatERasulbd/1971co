@@ -29,7 +29,7 @@ class AboutStoryController extends Controller
 
         if (!$section) {
             $section = AboutStorySection::query()->create([
-                'background_image' => '/uploads/heroes/images/hero1.webp',
+                'background_image' => '',
                 'section_title' => 'The Beginning',
                 'title' => 'Why 1971?',
                 'description_html' => '<p>"1971" carries deep historical significance representing independence, pride, and cultural identity. It signals that our brand is rooted in Bangladeshi legacy, not copying Western streetwear but redefining its own path.</p><p>The "Co" brings a fresh, youthful street vibe clean, approachable, and contemporary. Together, they represent our mission: heritage meets modern street culture.</p><p>At 1971Co, we believe streetwear is more than clothing. It\'s a statement of identity and confidence. Our designs combine bold aesthetics, urban culture influences, and high-quality craftsmanship to help individuals express themselves fearlessly.</p>',

@@ -18,7 +18,7 @@ class AboutGivingBackController extends Controller
 
         if (!$section) {
             $section = AboutGivingBackSection::query()->create([
-                'image' => '/uploads/heroes/images/hero1.webp',
+                'image' => '',
                 'section_title' => 'Giving Back',
                 'title' => 'Roots Run Deep.',
                 'description' => "",

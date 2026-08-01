@@ -8,7 +8,7 @@ import { useCart } from '../context/CartContext';
 import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 const cardElementOptions = {
     hidePostalCode: true,

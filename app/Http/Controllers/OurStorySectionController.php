@@ -32,7 +32,7 @@ class OurStorySectionController extends Controller
 
         if (!$section) {
             $section = OurStorySection::query()->create([
-                'story_image' => '/uploads/heroes/images/hero1.webp',
+                'story_image' => '',
                 'story_logo' => null,
                 'section_title' => 'Our Story',
                 'title' => 'Heritage, Refined.',

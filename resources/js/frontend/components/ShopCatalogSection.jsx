@@ -9,7 +9,7 @@ import ProductVariantModal from './ProductVariantModal.jsx';
 import ShopSidebar from './ShopSidebar.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
-const productImage = '/uploads/heroes/images/hero1.webp';
+const productImage = '';
 const PRODUCTS_PER_PAGE = 12;
 
 function parseSizeList(value) {

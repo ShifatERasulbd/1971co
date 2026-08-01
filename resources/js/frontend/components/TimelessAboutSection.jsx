@@ -1,4 +1,4 @@
-const aboutImage = '/uploads/heroes/images/hero1.webp';
+const aboutImage = '';
 
 export default function TimelessAboutSection() {
     return (

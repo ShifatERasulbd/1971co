@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const missionBackground = '/uploads/heroes/images/hero1.webp';
+const missionBackground = '';
 
 const defaultMissionData = {
     background_image: missionBackground,

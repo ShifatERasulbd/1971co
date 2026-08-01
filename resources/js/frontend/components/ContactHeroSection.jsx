@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const contactHeroImage = '/uploads/heroes/images/hero1.webp';
+const contactHeroImage = '';
 
 export default function ContactHeroSection() {
     return (

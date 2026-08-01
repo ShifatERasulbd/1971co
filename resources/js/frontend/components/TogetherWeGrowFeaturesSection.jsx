@@ -13,7 +13,7 @@ const iconMap = {
 };
 
 export default function TogetherWeGrowFeaturesSection({ sectionData }) {
-    const imageSrc = sectionData?.featureImage || '/uploads/heroes/images/hero1.webp';
+    const imageSrc = sectionData?.featureImage || '';
     
 
     return (

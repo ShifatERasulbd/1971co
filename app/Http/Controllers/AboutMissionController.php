@@ -17,7 +17,7 @@ class AboutMissionController extends Controller
 
         if (!$section) {
             $section = AboutMissionSection::query()->create([
-                'background_image' => '/uploads/heroes/images/hero1.webp',
+                'background_image' => '',
                 'title' => 'Our Mission',
                 'description' => 'Our mission is to make personalized fashion accessible, premium, and expressive. We aim to deliver apparel that combines comfort, durability, and modern design while giving customers the freedom to create styles that represent their identity.',
                 'items' => [

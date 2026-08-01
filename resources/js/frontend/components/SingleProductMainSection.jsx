@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
 import SingleProductMediaGallery from './SingleProductMediaGallery.jsx';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function toAbsoluteImageUrl(path) {
     if (!path || typeof path !== 'string') {

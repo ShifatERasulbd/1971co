@@ -1,5 +1,5 @@
 export const defaultAboutGivingBackDraft = {
-    image: '/uploads/heroes/images/hero1.webp',
+    image: '',
     section_title: 'Giving Back',
     title: 'Roots Run Deep.',
     description:

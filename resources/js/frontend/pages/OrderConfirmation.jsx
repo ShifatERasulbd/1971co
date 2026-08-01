@@ -30,7 +30,7 @@ function formatMoney(value) {
 
 function toImageUrl(path) {
     if (!path || typeof path !== 'string') {
-        return '/uploads/heroes/images/hero1.webp';
+        return '';
     }
 
     if (path.startsWith('http')) {

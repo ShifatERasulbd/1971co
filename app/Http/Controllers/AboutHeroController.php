@@ -16,7 +16,7 @@ class AboutHeroController extends Controller
 
         if (!$section) {
             $section = AboutHeroSection::query()->create([
-                'background_image' => '/uploads/heroes/images/hero1.webp',
+                'background_image' => '',
                 'section_title' => 'Our Story',
                 'title' => 'Heritage. Culture. Style.',
                 'description' => 'Redefining streetwear through bold design and authentic self-expression.',

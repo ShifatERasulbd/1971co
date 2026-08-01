@@ -18,14 +18,14 @@ import { fetchAboutGivingBack, updateAboutGivingBack } from '@/pages/Website/abo
 import { defaultAboutGivingBackDraft } from '@/pages/Website/aboutGivingBackDefaults';
 
 const defaultAboutHeroDraft = {
-    background_image: '/uploads/heroes/images/hero1.webp',
+    background_image: '',
     section_title: 'Our Story',
     title: 'Heritage. Culture. Style.',
     description: 'Redefining streetwear through bold design and authentic self-expression.',
 };
 
 const defaultAboutStoryDraft = {
-    background_image: '/uploads/heroes/images/hero1.webp',
+    background_image: '',
     section_title: 'The Beginning',
     title: 'Why 1971?',
     description_html:
@@ -33,7 +33,7 @@ const defaultAboutStoryDraft = {
 };
 
 const defaultAboutMissionDraft = {
-    background_image: '/uploads/heroes/images/hero1.webp',
+    background_image: '',
     title: 'Our Mission',
     description:
         'Our mission is to make personalized fashion accessible, premium, and expressive. We aim to deliver apparel that combines comfort, durability, and modern design while giving customers the freedom to create styles that represent their identity.',

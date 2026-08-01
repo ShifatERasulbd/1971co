@@ -14,7 +14,7 @@ export const communitySections = [
         key: 'features',
         title: 'Impact Features',
         description: 'Education, care, and opportunity cards.',
-        featureImage: '/uploads/heroes/images/hero1.webp',
+        featureImage: '',
         featureItems: [
             {
                 id: 'education',

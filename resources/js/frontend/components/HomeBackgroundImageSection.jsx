@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { timelessFontClass } from '../utils/typography';
 import { buildOptimizedImageUrl } from '../utils/media';
 
-const DEFAULT_BACKGROUND_IMAGE = '/uploads/heroes/images/hero1.webp';
+const DEFAULT_BACKGROUND_IMAGE = '';
 const DEFAULT_ITEM = {
     image: DEFAULT_BACKGROUND_IMAGE,
     title: 'Built For Everyday Confidence',

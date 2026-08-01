@@ -8,7 +8,7 @@ import ProductVariantModal from './ProductVariantModal.jsx';
 import { featuresFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function normalizeProductColors(value) {
     if (Array.isArray(value)) {

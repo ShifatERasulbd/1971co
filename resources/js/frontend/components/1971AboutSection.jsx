@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 const defaultAboutStoryData = {
-    background_image: '/uploads/heroes/images/hero1.webp',
+    background_image: '',
     section_title: 'The Beginning',
     title: 'Why 1971?',
     description_html:

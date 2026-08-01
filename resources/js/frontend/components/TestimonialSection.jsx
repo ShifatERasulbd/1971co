@@ -1,4 +1,4 @@
-const avatarImage = '/uploads/heroes/images/hero1.webp';
+const avatarImage = '';
 
 export default function TestimonialSection() {
     return (

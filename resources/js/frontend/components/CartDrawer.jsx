@@ -3,7 +3,7 @@ import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function toImageUrl(value) {
     if (typeof value !== 'string' || !value.trim()) {

@@ -8,7 +8,7 @@ import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings'
 const AuthLoginForm = lazy(() => import('../components/AuthLoginForm.jsx'));
 const AuthRegisterForm = lazy(() => import('../components/AuthRegisterForm.jsx'));
 
-const fallbackShowcaseImage = '/uploads/heroes/images/hero1.webp';
+const fallbackShowcaseImage = '';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 

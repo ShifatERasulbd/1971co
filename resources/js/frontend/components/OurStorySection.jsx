@@ -6,7 +6,7 @@ import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 const FALLBACK_STORY_DATA = {
-    story_image: '/uploads/heroes/images/hero1.webp',
+    story_image: '',
     story_logo: '',
     section_title: 'Our Story',
     title: 'Heritage, Refined.',

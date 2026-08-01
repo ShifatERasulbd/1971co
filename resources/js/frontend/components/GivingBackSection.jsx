@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const givingBackImage = '/uploads/heroes/images/hero1.webp';
+const givingBackImage = '';
 
 const defaultGivingBackData = {
     image: givingBackImage,

@@ -110,25 +110,25 @@ class CollectionController extends Controller
                 [
                     'name' => 'New Arrivals',
                     'slug' => 'new-arrivals',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 0,
                 ],
                 [
                     'name' => 'Essentials',
                     'slug' => 'essentials',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 1,
                 ],
                 [
                     'name' => 'Tees',
                     'slug' => 'tees',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 2,
                 ],
                 [
                     'name' => 'Bottoms',
                     'slug' => 'bottoms',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 3,
                 ],
             ];
