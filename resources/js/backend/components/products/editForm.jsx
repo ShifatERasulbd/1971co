@@ -656,6 +656,24 @@ export default function EditForm({
                                     </Label>
                                 </div>
 
+                                  <div className="space-y-2">
+                                        <Label htmlFor="product-stock">
+                                            Product Weight(in LBS) <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="product-weight"
+                                            name="weight"
+                                            type="number"
+                                            min="0"
+                                            value={form.weight ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0"
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.weight && <p className="text-xs text-destructive">{errors.weight[0]}</p>}
+                                    </div>
+
+
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="product-color">Color</Label>

@@ -174,7 +174,9 @@ class CollectionController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json($this->cachedResponse());
+        $collectionSection = $this->ensureSection();
+       
+       return response()->json($this->toResponse($collectionSection));
     }
 
     public function publicIndex(): JsonResponse

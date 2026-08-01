@@ -153,12 +153,60 @@ export default function Header() {
         }
     }
 
-    function handleLogoClick(event) {
+    async function resolveAuthenticatedDashboard() {
+        try {
+            const response = await fetch('/api/user', {
+                credentials: 'include',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const payload = await response.json().catch(() => null);
+            if (payload?.user_type === 'customer') {
+                return '/user/dashboard';
+            }
+
+            return '/admin/dashboard';
+        } catch {
+            return null;
+        }
+    }
+
+    async function handleAccountClick(event) {
         event.preventDefault();
 
         closeShopMenuImmediately();
         closeMobileMenu();
         closeSearch();
+
+        const dashboardPath = await resolveAuthenticatedDashboard();
+
+        if (dashboardPath) {
+            window.location.assign(dashboardPath);
+            return;
+        }
+
+        navigate('/login');
+    }
+
+    async function handleLogoClick(event) {
+        event.preventDefault();
+
+        closeShopMenuImmediately();
+        closeMobileMenu();
+        closeSearch();
+
+        const dashboardPath = await resolveAuthenticatedDashboard();
+        if (dashboardPath) {
+            window.location.assign(dashboardPath);
+            return;
+        }
 
         if (location.pathname !== '/') {
             navigate('/');
@@ -678,6 +726,16 @@ export default function Header() {
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </button>
+                            ) : label === 'Account' ? (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    aria-label={label}
+                                    onClick={handleAccountClick}
+                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                >
+                                    <Icon className="size-5" strokeWidth={1.75} />
+                                </button>
                             ) : href.startsWith('/') ? (
                                 <Link
                                     key={label}
@@ -879,14 +937,14 @@ export default function Header() {
                         </ul>
 
                         <div className="mt-7 border-t border-zinc-200/80 pt-6">
-                            <Link
-                                to="/login"
-                                onClick={closeMobileMenu}
+                            <button
+                                type="button"
+                                onClick={handleAccountClick}
                                 className="inline-flex items-center gap-2 text-[0.88rem] font-medium uppercase tracking-[0.03em] text-zinc-800"
                             >
                                 <UserCircle2 className="size-4" strokeWidth={1.8} />
                                 Register/ Login
-                            </Link>
+                            </button>
 
                             <button
                                 type="button"

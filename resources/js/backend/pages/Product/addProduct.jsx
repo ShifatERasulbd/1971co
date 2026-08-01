@@ -18,6 +18,7 @@ const initialForm = {
     sku: '',
     color: '',
     size: '',
+    weight: '',
     description: '',
     fit: '',
     fabric_and_care: '',

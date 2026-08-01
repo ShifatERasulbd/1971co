@@ -63,6 +63,7 @@ class ProductController extends Controller
             'color_variant_videos',
             'color_variant_size_charts',
             'size',
+            'weight',
             'variant_rows',
             'available_products',
             'category_id',
@@ -121,6 +122,7 @@ class ProductController extends Controller
             'long_description',
             'additional_information',
             'price',
+            'weight',
             'cover_image',
             'size_chart_image',
             'size_chart_images',
@@ -167,6 +169,7 @@ class ProductController extends Controller
             'sku' => 'required|string|max:255',
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
+            'weight' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
             'fabric_and_care' => 'nullable|string',
@@ -301,6 +304,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
+        
         $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
         $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
 
@@ -312,6 +316,7 @@ class ProductController extends Controller
             'size' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
+            'weight' => 'nullable|string|max:255',
             'fabric_and_care' => 'nullable|string',
             'product_features' => 'nullable|array',
             'product_features.*.icon' => 'nullable|string|max:100',

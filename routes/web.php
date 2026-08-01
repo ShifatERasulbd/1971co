@@ -67,15 +67,13 @@ Route::get('/reset-password/{token}', function () {
     return view('home');
 })->name('password.reset');
 
-Route::get('/admin', function () {
+Route::get('/admin/{path?}', function () {
     return view('app');
-})->name('login');
+})->where('path', '.*')->name('login');
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/admin/{path?}', function () {
-        return view('app');
-    })->where('path', '.*');
-});
+Route::get('/user/{path?}', function () {
+    return view('app');
+})->where('path', '.*');
 
 Route::get('/{subCategorySlug}/{grandChildSlug?}', function () {
     return view('home');

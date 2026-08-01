@@ -93,7 +93,7 @@ export default function Dashboard() {
                     </p>
                     <div className="mt-5">
                         <Link
-                            to="/admin/orders"
+                            to="/user/orders"
                             className="inline-flex h-10 items-center rounded bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-black"
                         >
                             View My Orders

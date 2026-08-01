@@ -7,6 +7,7 @@ function buildProductPayload(data = {}) {
         sku: data.sku?.trim() || '',
         color: data.color?.trim() || '',
         size: data.size?.trim() || '',
+        weight: data.weight?.toString().trim() || '',
         description: data.description?.trim() || '',
         fit: data.fit || '',
         fabric_and_care: data.fabric_and_care || '',

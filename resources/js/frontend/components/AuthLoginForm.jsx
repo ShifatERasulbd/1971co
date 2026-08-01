@@ -63,7 +63,7 @@ export default function AuthLoginForm() {
                 return;
             }
 
-            window.location.assign('/admin/dashboard');
+            window.location.assign('/user/dashboard');
         } catch {
             setErrorMessage('Unable to reach the server. Please try again.');
         } finally {
@@ -92,7 +92,7 @@ export default function AuthLoginForm() {
                 return;
             }
 
-            window.location.assign('/admin/dashboard');
+            window.location.assign('/user/dashboard');
         } catch {
             setErrorMessage('Unable to complete Google login. Please try again.');
         } finally {

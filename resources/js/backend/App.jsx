@@ -146,6 +146,11 @@ export default function App() {
                            
 
                         </Route>
+
+                        <Route path="/user" element={<AppLayout />}>
+                            <Route path="dashboard" element={<Dashboard />} />
+                            <Route path="orders" element={<Orders />} />
+                        </Route>
                         <Route path="/" element={<main />} />
 
                         {/* Hero Management */}

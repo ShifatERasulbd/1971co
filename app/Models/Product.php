@@ -38,6 +38,7 @@ class Product extends Model
         'subcategory_id',
         'grand_child_id',
         'stock',
+        'weight',
         'position',
         'show_on_best_sellers',
     ];

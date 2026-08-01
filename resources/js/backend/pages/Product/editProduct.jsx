@@ -32,6 +32,7 @@ const initialForm = {
     subcategory_id: '',
     grand_child_id: '',
     stock: '',
+    weight: '',
     show_on_best_sellers: false,
 };
 
@@ -430,6 +431,7 @@ export default function EditProduct() {
                         sku: data?.sku || '',
                         color: data?.color || '',
                         size: data?.size || '',
+                        weight: data?.weight || '',
                         description: data?.description || '',
                         fit: data?.fit || data?.long_description || '',
                         fabric_and_care: data?.fabric_and_care || data?.additional_information || '',

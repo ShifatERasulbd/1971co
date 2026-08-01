@@ -11,6 +11,8 @@ export default function AppLayout() {
     const { pageTitle, user, setUser } = useAppContext();
     const location = useLocation();
     const navigate = useNavigate();
+    const isCustomer = user?.user_type === 'customer';
+    const dashboardPath = isCustomer ? '/user/dashboard' : '/admin/dashboard';
 
     useEffect(() => {
         let ignore = false;
@@ -51,30 +53,48 @@ export default function AppLayout() {
     }, [navigate, setUser, user]);
 
     useEffect(() => {
-        if (!user || user.user_type !== 'customer') {
+        if (!user) {
             return;
         }
 
-        const isDashboardPath = location.pathname === '/admin/dashboard';
-        const isOrdersPath = location.pathname === '/admin/orders';
+        if (user.user_type !== 'customer' && location.pathname.startsWith('/user/')) {
+            navigate('/admin/dashboard', { replace: true });
+            return;
+        }
+
+        if (user.user_type !== 'customer') {
+            return;
+        }
+
+        const isDashboardPath = location.pathname === '/user/dashboard';
+        const isOrdersPath = location.pathname === '/user/orders';
+
+        if (location.pathname === '/admin/dashboard') {
+            navigate('/user/dashboard', { replace: true });
+            return;
+        }
+
+        if (location.pathname === '/admin/orders') {
+            navigate('/user/orders', { replace: true });
+            return;
+        }
 
         if (!isDashboardPath && !isOrdersPath) {
-            navigate('/admin/dashboard', { replace: true });
+            navigate('/user/dashboard', { replace: true });
         }
     }, [location.pathname, navigate, user]);
 
-    const warehouseName = user?.warehouse?.name || 'No Warehouse Assigned';
+    const warehouseName = user?.warehouse?.name;
     const isHomePageBuilder = location.pathname.startsWith('/admin/website/home-page');
     const isAboutPageBuilder = location.pathname.startsWith('/admin/website/about-page');
     const isCommunityPageBuilder = location.pathname.startsWith('/admin/website/community-page');
-    const isCustomer = user?.user_type === 'customer';
-    const isCustomerAllowedPath = location.pathname === '/admin/dashboard' || location.pathname === '/admin/orders';
+    const isCustomerAllowedPath = location.pathname === '/user/dashboard' || location.pathname === '/user/orders';
 
     const renderBuilderShell = () => (
         <div className="min-h-screen bg-background">
             <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-6">
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" onClick={() => navigate('/admin/dashboard')}>
+                    <Button variant="outline" size="sm" onClick={() => navigate(dashboardPath)}>
                         <ArrowLeft className="mr-2 size-4" />
                         Back
                     </Button>
@@ -101,7 +121,7 @@ export default function AppLayout() {
     }
 
     if (isCustomer && !isCustomerAllowedPath) {
-        return <Navigate to="/admin/dashboard" replace />;
+        return <Navigate to="/user/dashboard" replace />;
     }
 
     if (isHomePageBuilder || isAboutPageBuilder || isCommunityPageBuilder) {
