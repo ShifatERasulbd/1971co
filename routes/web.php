@@ -22,7 +22,30 @@ $normalizeAbsoluteUrl = static function (?string $value): ?string {
     return url('/' . ltrim($raw, '/'));
 };
 
-$resolveDefaultShareImage = static function () use ($normalizeAbsoluteUrl): string {
+$buildShareCardImageUrl = static function (?string $value) use ($normalizeAbsoluteUrl): ?string {
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return null;
+    }
+
+    if (Str::startsWith($raw, ['http://', 'https://'])) {
+        return $raw;
+    }
+
+    $path = '/' . ltrim($raw, '/');
+    $query = http_build_query([
+        'path' => $path,
+        'w' => 1200,
+        'h' => 630,
+        'fit' => 'contain',
+        'bg' => 'ffffff',
+        'q' => 84,
+    ]);
+
+    return url('/media/optimize?' . $query);
+};
+
+$resolveDefaultShareImage = static function () use ($normalizeAbsoluteUrl, $buildShareCardImageUrl): string {
     $payload = Settings::query()->latest('id')->value('payload');
     $settings = is_array($payload) ? $payload : [];
 
@@ -31,10 +54,12 @@ $resolveDefaultShareImage = static function () use ($normalizeAbsoluteUrl): stri
         ?? $settings['favicon']
         ?? '/favicon.ico';
 
-    return $normalizeAbsoluteUrl($candidate) ?? url('/favicon.ico');
+    return $buildShareCardImageUrl($candidate)
+        ?? $normalizeAbsoluteUrl($candidate)
+        ?? url('/favicon.ico');
 };
 
-$resolveProductShareImage = static function (Product $product) use ($normalizeAbsoluteUrl): ?string {
+$resolveProductShareImage = static function (Product $product) use ($normalizeAbsoluteUrl, $buildShareCardImageUrl): ?string {
     $candidates = [];
 
     if (is_string($product->cover_image) && trim($product->cover_image) !== '') {
@@ -64,6 +89,11 @@ $resolveProductShareImage = static function (Product $product) use ($normalizeAb
     }
 
     foreach ($candidates as $candidate) {
+        $shareCard = $buildShareCardImageUrl($candidate);
+        if ($shareCard !== null) {
+            return $shareCard;
+        }
+
         $resolved = $normalizeAbsoluteUrl($candidate);
         if ($resolved !== null) {
             return $resolved;

@@ -12,7 +12,10 @@ class MediaController extends Controller
         $validated = $request->validate([
             'path' => ['required', 'string', 'max:2048'],
             'w' => ['nullable', 'integer', 'min:120', 'max:2600'],
+            'h' => ['nullable', 'integer', 'min:120', 'max:2600'],
             'q' => ['nullable', 'integer', 'min:40', 'max:90'],
+            'fit' => ['nullable', 'in:contain,cover'],
+            'bg' => ['nullable', 'regex:/^[0-9a-fA-F]{6}$/'],
         ]);
 
         $relativePath = '/' . ltrim((string) $validated['path'], '/');
@@ -59,13 +62,24 @@ class MediaController extends Controller
         }
 
         $targetWidth = (int) ($validated['w'] ?? 1400);
+        $targetHeight = isset($validated['h']) ? (int) $validated['h'] : null;
         $quality = (int) ($validated['q'] ?? 76);
+        $fit = (string) ($validated['fit'] ?? 'contain');
+        $backgroundHex = strtolower((string) ($validated['bg'] ?? 'ffffff'));
         $lastModified = File::lastModified($publicAbsolute);
 
         $cacheDirectory = public_path('uploads/cache/media');
         File::ensureDirectoryExists($cacheDirectory);
 
-        $cacheKey = md5($relativePath . '|' . $targetWidth . '|' . $quality . '|' . $lastModified);
+        $cacheKey = md5(
+            $relativePath
+            . '|' . $targetWidth
+            . '|' . ($targetHeight ?? 0)
+            . '|' . $quality
+            . '|' . $fit
+            . '|' . $backgroundHex
+            . '|' . $lastModified
+        );
         $cachedPath = $cacheDirectory . DIRECTORY_SEPARATOR . $cacheKey . '.webp';
 
         if (! File::exists($cachedPath)) {
@@ -85,11 +99,18 @@ class MediaController extends Controller
                 ]);
             }
 
-            $scale = min($targetWidth / $sourceWidth, 1);
-            $resizedWidth = max(1, (int) floor($sourceWidth * $scale));
-            $resizedHeight = max(1, (int) floor($sourceHeight * $scale));
+            if ($targetHeight === null) {
+                $scale = min($targetWidth / $sourceWidth, 1);
+                $resizedWidth = max(1, (int) floor($sourceWidth * $scale));
+                $resizedHeight = max(1, (int) floor($sourceHeight * $scale));
 
-            $target = imagecreatetruecolor($resizedWidth, $resizedHeight);
+                $target = imagecreatetruecolor($resizedWidth, $resizedHeight);
+            } else {
+                $resizedWidth = $targetWidth;
+                $resizedHeight = $targetHeight;
+                $target = imagecreatetruecolor($targetWidth, $targetHeight);
+            }
+
             if (! $target) {
                 imagedestroy($source);
                 return response()->file($publicAbsolute, [
@@ -100,18 +121,48 @@ class MediaController extends Controller
             imagealphablending($target, true);
             imagesavealpha($target, true);
 
-            imagecopyresampled(
-                $target,
-                $source,
-                0,
-                0,
-                0,
-                0,
-                $resizedWidth,
-                $resizedHeight,
-                $sourceWidth,
-                $sourceHeight
-            );
+            if ($targetHeight === null) {
+                imagecopyresampled(
+                    $target,
+                    $source,
+                    0,
+                    0,
+                    0,
+                    0,
+                    $resizedWidth,
+                    $resizedHeight,
+                    $sourceWidth,
+                    $sourceHeight
+                );
+            } else {
+                [$bgRed, $bgGreen, $bgBlue] = $this->hexToRgb($backgroundHex);
+                $bgColor = imagecolorallocate($target, $bgRed, $bgGreen, $bgBlue);
+                imagefilledrectangle($target, 0, 0, $targetWidth, $targetHeight, $bgColor);
+
+                if ($fit === 'cover') {
+                    $scale = max($targetWidth / $sourceWidth, $targetHeight / $sourceHeight);
+                } else {
+                    $scale = min($targetWidth / $sourceWidth, $targetHeight / $sourceHeight);
+                }
+
+                $drawWidth = max(1, (int) floor($sourceWidth * $scale));
+                $drawHeight = max(1, (int) floor($sourceHeight * $scale));
+                $drawX = (int) floor(($targetWidth - $drawWidth) / 2);
+                $drawY = (int) floor(($targetHeight - $drawHeight) / 2);
+
+                imagecopyresampled(
+                    $target,
+                    $source,
+                    $drawX,
+                    $drawY,
+                    0,
+                    0,
+                    $drawWidth,
+                    $drawHeight,
+                    $sourceWidth,
+                    $sourceHeight
+                );
+            }
 
             $saved = @imagewebp($target, $cachedPath, $quality);
 
@@ -140,5 +191,19 @@ class MediaController extends Controller
             'image/gif' => @imagecreatefromgif($path),
             default => null,
         };
+    }
+
+    private function hexToRgb(string $hex): array
+    {
+        $normalized = ltrim(trim($hex), '#');
+        if (! preg_match('/^[0-9a-fA-F]{6}$/', $normalized)) {
+            return [255, 255, 255];
+        }
+
+        return [
+            hexdec(substr($normalized, 0, 2)),
+            hexdec(substr($normalized, 2, 2)),
+            hexdec(substr($normalized, 4, 2)),
+        ];
     }
 }
