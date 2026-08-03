@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -141,6 +142,40 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Password reset successful. You can now log in.',
+        ]);
+    }
+
+    public function updateCustomerProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || $user->user_type !== 'customer') {
+            return response()->json([
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->first_name = trim($validated['first_name']);
+        $user->last_name = trim($validated['last_name']);
+        $user->name = trim($user->first_name . ' ' . $user->last_name);
+        $user->email = strtolower(trim($validated['email']));
+
+        if (! empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'user' => $user->fresh(),
         ]);
     }
 }

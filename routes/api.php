@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::get('/customer/orders', [CheckoutOrderController::class, 'customerIndex']);
 		Route::get('/customer/orders/{checkoutOrder}', [CheckoutOrderController::class, 'customerShow']);
 		Route::put('/customer/orders/{checkoutOrder}/cancel', [CheckoutOrderController::class, 'customerCancel']);
+		Route::put('/customer/profile', [AuthController::class, 'updateCustomerProfile']);
 	});
 
 	Route::middleware('user-type:admin')->group(function () {

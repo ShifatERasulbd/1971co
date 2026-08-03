@@ -11,6 +11,7 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="google-client-id" content="{{ config('services.google.client_id', '') }}">
         <meta name="description" content="{{ $metaDescription }}">
 
         <meta property="og:type" content="{{ $metaType }}">

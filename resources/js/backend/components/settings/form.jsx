@@ -17,7 +17,7 @@ const tabs = [
     { key: 'social', label: 'Social Media' },
     { key: 'contact', label: 'Contact & Currency' },
     { key: 'analytics', label: 'Analytics' },
-    { key: 'frontend-utils', label: 'Frontend Utils' },
+  
 ];
 
 function previewFor(file) {
@@ -42,7 +42,7 @@ export default function SettingsForm({
     onSocialIconChange,
     onAddSocial,
     onRemoveSocial,
-    onFrontendUtilsChange,
+   
     onSubmit,
     onCancel,
     submitLabel = 'Save Settings',
@@ -301,70 +301,7 @@ export default function SettingsForm({
                         </div>
                     )}
 
-                    {activeTab === 'frontend-utils' && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="frontend-timeless-font">Timeless Font Family</Label>
-                                    <Input
-                                        id="frontend-timeless-font"
-                                        value={form.frontend_utils?.timeless_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('timeless_font_family', event.target.value)}
-                                        placeholder='e.g. "Bebas Neue"'
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="frontend-features-font">Features Font Family</Label>
-                                    <Input
-                                        id="frontend-features-font"
-                                        value={form.frontend_utils?.features_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('features_font_family', event.target.value)}
-                                        placeholder='e.g. "Inter", ui-sans-serif, system-ui, sans-serif'
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-default-font">Hero Default Font Key</Label>
-                                    <Input
-                                        id="frontend-hero-default-font"
-                                        value={form.frontend_utils?.hero_default_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_default_font_family', event.target.value)}
-                                        placeholder="e.g. instrument-sans"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-options">Hero Font Options (JSON)</Label>
-                                    <textarea
-                                        id="frontend-hero-options"
-                                        value={form.frontend_utils?.hero_font_family_options_json || '[]'}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_font_family_options_json', event.target.value)}
-                                        placeholder='[{"label":"Bebas Neue","value":"Bebas Neue"}]'
-                                        rows={5}
-                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-css-map">Hero Font CSS Map (JSON)</Label>
-                                    <textarea
-                                        id="frontend-hero-css-map"
-                                        value={form.frontend_utils?.hero_font_family_css_map_json || '{}'}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_font_family_css_map_json', event.target.value)}
-                                        placeholder='{"Bebas Neue":"\"Bebas Neue\""}'
-                                        rows={6}
-                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    
                 </CardContent>
 
                 <Separator />

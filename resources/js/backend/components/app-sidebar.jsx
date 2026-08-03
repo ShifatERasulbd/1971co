@@ -277,16 +277,18 @@ export function AppSidebar(props) {
 
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-sidebar-border">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout" onClick={handleLogout} disabled={isLoggingOut}>
-                            <LogOut className="size-4 shrink-0 text-sidebar-foreground" />
-                            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarFooter>
+            {!isCustomer ? (
+                <SidebarFooter className="border-t border-sidebar-border">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Logout" onClick={handleLogout} disabled={isLoggingOut}>
+                                <LogOut className="size-4 shrink-0 text-sidebar-foreground" />
+                                <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarFooter>
+            ) : null}
         </Sidebar>
     );
 }

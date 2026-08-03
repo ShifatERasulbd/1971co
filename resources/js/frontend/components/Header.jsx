@@ -510,6 +510,76 @@ export default function Header() {
         ).trim();
     }, [siteSettings]);
 
+    function normalizePathname(pathname = '/') {
+        const raw = String(pathname || '/').trim();
+        if (!raw) {
+            return '/';
+        }
+
+        const withoutTrailingSlash = raw.replace(/\/+$/, '');
+        return withoutTrailingSlash === '' ? '/' : withoutTrailingSlash;
+    }
+
+    function isHeaderItemActive(item) {
+        if (!item?.isRoute || !item?.href) {
+            return false;
+        }
+
+        const currentPath = normalizePathname(location.pathname).toLowerCase();
+        const currentSearch = new URLSearchParams(location.search || '');
+
+        if (item.isShop) {
+            if (currentPath === '/new-arrivals' || currentPath === '/trending') {
+                return false;
+            }
+
+            return currentPath === '/shop'
+                || currentPath === '/best-sellers'
+                || currentPath.startsWith('/collection/')
+                || currentPath.startsWith('/search/')
+                || currentPath.startsWith('/product-details/')
+                || currentPath === '/singleproduct';
+        }
+
+        let target;
+        try {
+            target = new URL(String(item.href), window.location.origin);
+        } catch {
+            return false;
+        }
+
+        const targetPath = normalizePathname(target.pathname).toLowerCase();
+        const targetSearch = target.searchParams;
+
+        const pathMatches = targetPath === '/'
+            ? currentPath === '/'
+            : (currentPath === targetPath || currentPath.startsWith(`${targetPath}/`));
+
+        if (!pathMatches) {
+            return false;
+        }
+
+        if (targetSearch.has('category')) {
+            return currentSearch.get('category') === targetSearch.get('category');
+        }
+
+        return true;
+    }
+
+    function isUtilityItemActive(label) {
+        const currentPath = normalizePathname(location.pathname).toLowerCase();
+
+        if (label === 'Account') {
+            return currentPath === '/login' || currentPath === '/register' || currentPath.startsWith('/reset-password');
+        }
+
+        if (label === 'Search') {
+            return isSearchOpen;
+        }
+
+        return false;
+    }
+
     return (
         <>
         <header className={`${timelessFontClass} site-header sticky top-0 z-[300] border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
@@ -540,6 +610,13 @@ export default function Header() {
                     ) : (
                         navigationItems.map((item) => {
                             const navKey = `${String(item?.id ?? '')}-${String(item?.label ?? '')}-${String(item?.href ?? '')}`;
+                            const isActive = isHeaderItemActive(item);
+                            const navLinkClassName = [
+                                'site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950',
+                                'transition-all duration-200 ease-out',
+                                'hover:-translate-y-1 hover:scale-[1.08] hover:font-semibold hover:text-black',
+                                isActive ? '-translate-y-1 scale-[1.08] font-semibold text-black' : '',
+                            ].join(' ').trim();
 
                             return (
                             item.isShop ? (
@@ -557,7 +634,7 @@ export default function Header() {
                                 >
                                     <Link
                                         to={item.href}
-                                        className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        className={navLinkClassName}
                                         style={{ fontFamily: 'Montserrat, sans-serif' }}
                                         aria-expanded={isShopMegaMenuOpen}
                                         aria-haspopup="menu"
@@ -649,7 +726,7 @@ export default function Header() {
                                 <Link
                                     key={navKey}
                                     to={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
@@ -658,7 +735,7 @@ export default function Header() {
                                 <Link
                                     key={navKey}
                                     href={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
@@ -690,14 +767,23 @@ export default function Header() {
                 {/* Utilities / Right Side Tools */}
                 <div className="site-header-tools flex items-center justify-end gap-1 sm:gap-2 xl:col-start-3 xl:justify-self-end xl:gap-8">
                     <div className="hidden items-center gap-1 xl:flex">
-                        {utilityIcons.map(({ label, icon: Icon, href }) => (
+                        {utilityIcons.map(({ label, icon: Icon, href }) => {
+                            const isUtilityActive = isUtilityItemActive(label);
+                            const utilityClassName = [
+                                'inline-flex size-11 items-center justify-center rounded-full text-zinc-950',
+                                'transition-all duration-200 ease-out',
+                                'hover:-translate-y-1 hover:scale-110 hover:bg-zinc-100 hover:text-zinc-900',
+                                isUtilityActive ? '-translate-y-1 scale-110 bg-zinc-100 text-zinc-900' : '',
+                            ].join(' ').trim();
+
+                            return (
                             label === 'Cart' ? (
                                 <button
                                     key={label}
                                     type="button"
                                     aria-label={label}
                                     onClick={handleOpenCart}
-                                    className="relative inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={`relative ${utilityClassName}`}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                     {itemCount > 0 ? (
@@ -712,7 +798,7 @@ export default function Header() {
                                     type="button"
                                     aria-label={label}
                                     onClick={openSearch}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </button>
@@ -722,7 +808,7 @@ export default function Header() {
                                     type="button"
                                     aria-label={label}
                                     onClick={handleAccountClick}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </button>
@@ -731,7 +817,7 @@ export default function Header() {
                                     key={label}
                                     to={href}
                                     aria-label={label}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </Link>
@@ -740,12 +826,13 @@ export default function Header() {
                                     key={label}
                                     href={href}
                                     aria-label={label}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </a>
                             )
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="flex items-center gap-1 xl:hidden">

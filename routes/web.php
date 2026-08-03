@@ -28,11 +28,28 @@ $buildShareCardImageUrl = static function (?string $value) use ($normalizeAbsolu
         return null;
     }
 
+    $path = null;
+
     if (Str::startsWith($raw, ['http://', 'https://'])) {
-        return $raw;
+        $parsed = parse_url($raw);
+        $rawPath = (string) ($parsed['path'] ?? '');
+
+        if ($rawPath === '') {
+            return $raw;
+        }
+
+        $currentHost = parse_url(url('/'), PHP_URL_HOST);
+        $imageHost = $parsed['host'] ?? null;
+
+        if (! $currentHost || ! $imageHost || strtolower((string) $currentHost) !== strtolower((string) $imageHost)) {
+            return $raw;
+        }
+
+        $path = '/' . ltrim($rawPath, '/');
+    } else {
+        $path = '/' . ltrim($raw, '/');
     }
 
-    $path = '/' . ltrim($raw, '/');
     $query = http_build_query([
         'path' => $path,
         'w' => 1200,
