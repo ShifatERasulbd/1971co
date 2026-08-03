@@ -2,69 +2,175 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MediaController;
+use App\Models\Product;
+use App\Models\Settings;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+
+$normalizeAbsoluteUrl = static function (?string $value): ?string {
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return null;
+    }
+
+    if (Str::startsWith($raw, ['http://', 'https://'])) {
+        return $raw;
+    }
+
+    return url('/' . ltrim($raw, '/'));
+};
+
+$resolveDefaultShareImage = static function () use ($normalizeAbsoluteUrl): string {
+    $payload = Settings::query()->latest('id')->value('payload');
+    $settings = is_array($payload) ? $payload : [];
+
+    $candidate = $settings['header_logo']
+        ?? $settings['footer_logo']
+        ?? $settings['favicon']
+        ?? '/favicon.ico';
+
+    return $normalizeAbsoluteUrl($candidate) ?? url('/favicon.ico');
+};
+
+$resolveProductShareImage = static function (Product $product) use ($normalizeAbsoluteUrl): ?string {
+    $candidates = [];
+
+    if (is_string($product->cover_image) && trim($product->cover_image) !== '') {
+        $candidates[] = $product->cover_image;
+    }
+
+    if (is_array($product->image_gallery)) {
+        foreach ($product->image_gallery as $item) {
+            if (is_string($item) && trim($item) !== '') {
+                $candidates[] = $item;
+            }
+        }
+    }
+
+    if (is_array($product->color_variant_images)) {
+        foreach ($product->color_variant_images as $items) {
+            if (! is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    $candidates[] = $item;
+                }
+            }
+        }
+    }
+
+    foreach ($candidates as $candidate) {
+        $resolved = $normalizeAbsoluteUrl($candidate);
+        if ($resolved !== null) {
+            return $resolved;
+        }
+    }
+
+    return null;
+};
+
+$buildHomeMeta = static function (?Product $product = null) use ($resolveDefaultShareImage, $resolveProductShareImage): array {
+    $brand = (string) config('app.name', '1971Co');
+    $defaultDescription = 'Discover premium fashion and personalized apparel from ' . $brand . '.';
+    $defaultImage = $resolveDefaultShareImage();
+
+    if ($product === null) {
+        return [
+            'title' => $brand,
+            'description' => $defaultDescription,
+            'image' => $defaultImage,
+            'url' => url()->current(),
+            'type' => 'website',
+        ];
+    }
+
+    $descriptionSource = trim((string) ($product->description ?: $product->long_description ?: $defaultDescription));
+    $description = Str::limit(trim(strip_tags($descriptionSource)), 200, '...');
+
+    return [
+        'title' => trim((string) ($product->name ?: $brand)),
+        'description' => $description !== '' ? $description : $defaultDescription,
+        'image' => $resolveProductShareImage($product) ?? $defaultImage,
+        'url' => url()->current(),
+        'type' => 'product',
+    ];
+};
+
+$renderHome = static function (?Product $product = null) use ($buildHomeMeta) {
+    return view('home', ['meta' => $buildHomeMeta($product)]);
+};
 
 Route::get('/media/optimize', [MediaController::class, 'optimize']);
 
-Route::get('/', function () {
-    return view('home');
+Route::get('/', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/shop', function () {
-    return view('home');
+Route::get('/shop', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/best-sellers', function () {
-    return view('home');
+Route::get('/best-sellers', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/collection/{slug}', function () {
-    return view('home');
+Route::get('/collection/{slug}', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/new-arrivals', function () {
-    return view('home');
+Route::get('/new-arrivals', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/product-details/{slug}/{color?}', function () {
-    return view('home');
+Route::get('/product-details/{slug}/{color?}', function () use ($renderHome) {
+    $product = null;
+
+    if (Schema::hasColumn('products', 'slug')) {
+        $product = Product::query()->where('slug', request()->route('slug'))->first();
+    }
+
+    return $renderHome($product);
 });
 
-Route::get('/singleProduct', function () {
-    return view('home');
+Route::get('/singleProduct', function () use ($renderHome) {
+    return $renderHome();
 });
 
 
-Route::get('/about', function () {
-    return view('home');
+Route::get('/about', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/contact', function () {
-    return view('home');
+Route::get('/contact', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/together-we-grow', function () {
-    return view('home');
+Route::get('/together-we-grow', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/checkout', function () {
-    return view('home');
+Route::get('/checkout', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/order-confirmation', function () {
-    return view('home');
+Route::get('/order-confirmation', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/login', function () {
-    return view('home');
+Route::get('/login', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/register', function () {
-    return view('home');
+Route::get('/register', function () use ($renderHome) {
+    return $renderHome();
 });
 
-Route::get('/reset-password/{token}', function () {
-    return view('home');
+Route::get('/reset-password/{token}', function () use ($renderHome) {
+    return $renderHome();
 })->name('password.reset');
 
 Route::get('/admin/{path?}', function () {
@@ -75,7 +181,7 @@ Route::get('/user/{path?}', function () {
     return view('app');
 })->where('path', '.*');
 
-Route::get('/{subCategorySlug}/{grandChildSlug?}', function () {
-    return view('home');
+Route::get('/{subCategorySlug}/{grandChildSlug?}', function () use ($renderHome) {
+    return $renderHome();
 });
 
