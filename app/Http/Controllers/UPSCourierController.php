@@ -25,7 +25,21 @@ class UPSCourierController extends Controller
             'state'         => 'required|string|max:2',
             'postal_code'   => 'required|string',
             'weight'        => 'required|numeric',
+            'country'       => 'nullable|string|max:2',
         ]);
+
+        $destinationCountry = strtoupper(trim((string) ($validated['country'] ?? 'US')));
+        if ($destinationCountry === '') {
+            $destinationCountry = 'US';
+        }
+
+        $originAddress = [
+            "AddressLine" => [config('services.ups.origin_address_1', '123 Warehouse Rd')],
+            "City" => config('services.ups.origin_city', 'New York'),
+            "StateProvinceCode" => config('services.ups.origin_state', 'NY'),
+            "PostalCode" => config('services.ups.origin_postal_code', '10001'),
+            "CountryCode" => config('services.ups.origin_country', 'US')
+        ];
 
         // 2. Format the strict payload expected by the UPS Shipping API
         $upsPayload = [
@@ -36,15 +50,13 @@ class UPSCourierController extends Controller
                 "Shipment" => [
                     "Description" => "E-Commerce Order Fulfillment",
                     "Shipper" => [
-                        "Name" => "Your Company Name",
+                        "Name" => config('services.ups.shipper_name', '1971Co'),
                         "ShipperNumber" => config('services.ups.shipper_number'), // Your 6-character UPS account number
-                        "Address" => [
-                            "AddressLine" => ["123 Warehouse Rd"],
-                            "City" => "Warehouse City",
-                            "StateProvinceCode" => "TX",
-                            "PostalCode" => "75001",
-                            "CountryCode" => "US"
-                        ]
+                        "Address" => $originAddress
+                    ],
+                    "ShipFrom" => [
+                        "Name" => config('services.ups.shipper_name', '1971Co'),
+                        "Address" => $originAddress
                     ],
                     "ShipTo" => [
                         "Name" => $validated['customer_name'],
@@ -53,12 +65,12 @@ class UPSCourierController extends Controller
                             "City" => $validated['city'],
                             "StateProvinceCode" => $validated['state'],
                             "PostalCode" => $validated['postal_code'],
-                            "CountryCode" => "US"
+                            "CountryCode" => $destinationCountry
                         ]
                     ],
                     "Service" => [
-                        "Code" => "03", // "03" stands for UPS Ground
-                        "Description" => "UPS Ground"
+                        "Code" => config('services.ups.service_code', '03'),
+                        "Description" => config('services.ups.service_description', 'UPS Ground')
                     ],
                     "PaymentInformation" => [
                         "ShipmentCharge" => [
@@ -71,7 +83,7 @@ class UPSCourierController extends Controller
                     "Package" => [
                         [
                             "Packaging" => [
-                                "Code" => "02", // Customer Supplied Package / Box
+                                "Code" => config('services.ups.packaging_code', '02'), // Customer Supplied Package / Box
                                 "Description" => "Customer Box"
                             ],
                             "PackageWeight" => [

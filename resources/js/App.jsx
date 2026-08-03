@@ -8,8 +8,11 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
+import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
 import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics';
+
+preventInvalidBodyAriaHidden();
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));

@@ -24,7 +24,7 @@ class UpsService
 
         [$requestPayload, $normalizedInput] = $this->buildRateRequestPayload($payload);
 
-        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Rate');
+        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Shop');
         $response = $this->request('post', $rateEndpoint, $requestPayload);
 
         $amount = $this->extractRateAmount($response);
@@ -41,7 +41,7 @@ class UpsService
 
         [$requestPayload, $normalizedInput] = $this->buildRateRequestPayload($payload);
 
-        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Rate');
+        $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Shop');
         $response = $this->request('post', $rateEndpoint, $requestPayload);
         $amount = $this->extractRateAmount($response);
 
@@ -53,13 +53,19 @@ class UpsService
         ];
     }
 
-    protected function buildRateRequestPayload(array $payload): array
+    protected function buildRateRequestPayload(array $payload, ?array $origin = null): array
     {
         $countryCode = $this->normalizeCountryCode($payload['country'] ?? null);
         $state = strtoupper(trim((string) ($payload['state'] ?? '')));
         $city = trim((string) ($payload['city'] ?? ''));
         $postalCode = trim((string) ($payload['postal_code'] ?? ''));
         $weight = max(0.5, (float) ($payload['weight'] ?? 1.0));
+        $originAddress = [
+            'PostalCode' => trim((string) ($origin['postal_code'] ?? $this->config('origin_postal_code', '10001'))),
+            'CountryCode' => $this->normalizeCountryCode((string) ($origin['country'] ?? $this->config('origin_country', 'US'))),
+            'StateProvinceCode' => strtoupper(trim((string) ($origin['state'] ?? $this->config('origin_state', 'NY')))),
+            'City' => trim((string) ($origin['city'] ?? $this->config('origin_city', 'New York'))),
+        ];
 
         $requestPayload = [
             'RateRequest' => [
@@ -72,12 +78,7 @@ class UpsService
                 'Shipment' => [
                     'Shipper' => [
                         'ShipperNumber' => $this->config('shipper_number'),
-                        'Address' => [
-                            'PostalCode' => $this->config('origin_postal_code', '10001'),
-                            'CountryCode' => $this->config('origin_country', 'US'),
-                            'StateProvinceCode' => $this->config('origin_state', 'NY'),
-                            'City' => $this->config('origin_city', 'New York'),
-                        ],
+                        'Address' => $originAddress,
                     ],
                     'ShipTo' => [
                         'Address' => [
@@ -88,12 +89,7 @@ class UpsService
                         ],
                     ],
                     'ShipFrom' => [
-                        'Address' => [
-                            'PostalCode' => $this->config('origin_postal_code', '10001'),
-                            'CountryCode' => $this->config('origin_country', 'US'),
-                            'StateProvinceCode' => $this->config('origin_state', 'NY'),
-                            'City' => $this->config('origin_city', 'New York'),
-                        ],
+                        'Address' => $originAddress,
                     ],
                     'Package' => [[
                         'PackagingType' => [
@@ -131,6 +127,25 @@ class UpsService
         $postalCode = trim((string) ($order->postal_code ?? ''));
         $fullName = trim($order->first_name . ' ' . $order->last_name);
         $weight = $this->estimateWeightFromItems($order->items ?? []);
+        $originAddress = [
+            'AddressLine' => [$this->config('origin_address_1', '123 Warehouse Rd')],
+            'City' => $this->config('origin_city', 'New York'),
+            'StateProvinceCode' => $this->config('origin_state', 'NY'),
+            'PostalCode' => $this->config('origin_postal_code', '10001'),
+            'CountryCode' => $this->config('origin_country', 'US'),
+        ];
+        $service = $this->resolveShipmentService([
+            'country' => $countryCode,
+            'state' => $state,
+            'city' => $city,
+            'postal_code' => $postalCode,
+            'weight' => $weight,
+        ], [
+            'country' => $originAddress['CountryCode'] ?? 'US',
+            'state' => $originAddress['StateProvinceCode'] ?? 'NY',
+            'city' => $originAddress['City'] ?? 'New York',
+            'postal_code' => $originAddress['PostalCode'] ?? '10001',
+        ]);
 
         $shipmentPayload = [
             'ShipmentRequest' => [
@@ -145,13 +160,11 @@ class UpsService
                     'Shipper' => [
                         'Name' => $this->config('shipper_name', '1971Co'),
                         'ShipperNumber' => $this->config('shipper_number'),
-                        'Address' => [
-                            'AddressLine' => [$this->config('origin_address_1', '123 Warehouse Rd')],
-                            'City' => $this->config('origin_city', 'New York'),
-                            'StateProvinceCode' => $this->config('origin_state', 'NY'),
-                            'PostalCode' => $this->config('origin_postal_code', '10001'),
-                            'CountryCode' => $this->config('origin_country', 'US'),
-                        ],
+                        'Address' => $originAddress,
+                    ],
+                    'ShipFrom' => [
+                        'Name' => $this->config('shipper_name', '1971Co'),
+                        'Address' => $originAddress,
                     ],
                     'ShipTo' => [
                         'Name' => $fullName !== '' ? $fullName : 'Customer',
@@ -164,8 +177,8 @@ class UpsService
                         ],
                     ],
                     'Service' => [
-                        'Code' => $this->config('service_code', '03'),
-                        'Description' => $this->config('service_description', 'UPS Ground'),
+                        'Code' => $service['code'],
+                        'Description' => $service['description'],
                     ],
                     'PaymentInformation' => [
                         'ShipmentCharge' => [
@@ -201,16 +214,174 @@ class UpsService
         return $this->request('post', $shipmentEndpoint, $shipmentPayload);
     }
 
+    protected function resolveShipmentService(array $payload, ?array $origin = null): array
+    {
+        $fallbackCode = (string) $this->config('service_code', '03');
+        $fallbackDescription = (string) $this->config('service_description', 'UPS Ground');
+
+        try {
+            [$requestPayload] = $this->buildRateRequestPayload($payload, $origin);
+            $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Shop');
+            $rawResponse = $this->request('post', $rateEndpoint, $requestPayload);
+            $ratedShipments = $this->extractRatedShipments($rawResponse);
+
+            if ($ratedShipments === []) {
+                return [
+                    'code' => $fallbackCode,
+                    'description' => $fallbackDescription,
+                ];
+            }
+
+            foreach ($ratedShipments as $ratedShipment) {
+                if (($ratedShipment['code'] ?? '') === $fallbackCode) {
+                    return [
+                        'code' => $fallbackCode,
+                        'description' => $ratedShipment['description'] ?? $fallbackDescription,
+                    ];
+                }
+            }
+
+            $selected = $ratedShipments[0];
+
+            Log::warning('Configured UPS service code is not available for this shipment; using first valid service.', [
+                'configured_service_code' => $fallbackCode,
+                'selected_service_code' => $selected['code'],
+                'selected_service_description' => $selected['description'] ?? null,
+                'destination_country' => $payload['country'] ?? null,
+                'destination_state' => $payload['state'] ?? null,
+                'destination_postal_code' => $payload['postal_code'] ?? null,
+            ]);
+
+            return [
+                'code' => $selected['code'],
+                'description' => $selected['description'] ?? $fallbackDescription,
+            ];
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to resolve UPS service from rate quote; falling back to configured service.', [
+                'error' => $exception->getMessage(),
+                'configured_service_code' => $fallbackCode,
+                'destination_country' => $payload['country'] ?? null,
+                'destination_state' => $payload['state'] ?? null,
+                'destination_postal_code' => $payload['postal_code'] ?? null,
+            ]);
+
+            return [
+                'code' => $fallbackCode,
+                'description' => $fallbackDescription,
+            ];
+        }
+    }
+
+    protected function extractRatedShipments(array $response): array
+    {
+        $rated = data_get($response, 'RateResponse.RatedShipment');
+
+        if (! is_array($rated)) {
+            return [];
+        }
+
+        // Normalize UPS one-item object and many-item array shapes.
+        $ratedRows = array_is_list($rated) ? $rated : [$rated];
+        $services = [];
+
+        foreach ($ratedRows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $code = trim((string) data_get($row, 'Service.Code', ''));
+            if ($code === '') {
+                continue;
+            }
+
+            $services[] = [
+                'code' => $code,
+                'description' => trim((string) data_get($row, 'Service.Description', '')),
+            ];
+        }
+
+        return $services;
+    }
+
     public function createShipment(array $shipmentPayload): array
     {
         $this->ensureConfigured();
 
         $shipmentEndpoint = $this->config('shipment_endpoint', '/api/shipments/v2409/ship');
 
-        return $this->request('post', $shipmentEndpoint, $shipmentPayload);
+        try {
+            return $this->request('post', $shipmentEndpoint, $shipmentPayload);
+        } catch (RuntimeException $exception) {
+            if (! str_contains($exception->getMessage(), '111100')) {
+                throw $exception;
+            }
+
+            $retryPayload = $this->withResolvedShipmentService($shipmentPayload);
+            if ($retryPayload === null) {
+                throw $exception;
+            }
+
+            return $this->request('post', $shipmentEndpoint, $retryPayload);
+        }
     }
 
-    protected function request(string $method, string $path, array $payload, bool $allowPaymentRetry = true): array
+    protected function withResolvedShipmentService(array $shipmentPayload): ?array
+    {
+        $countryCode = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipTo.Address.CountryCode', ''));
+        $state = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipTo.Address.StateProvinceCode', ''));
+        $city = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipTo.Address.City', ''));
+        $postalCode = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipTo.Address.PostalCode', ''));
+        $weight = max(0.5, (float) data_get($shipmentPayload, 'ShipmentRequest.Shipment.Package.0.PackageWeight.Weight', 1.0));
+
+        if ($countryCode === '' || $postalCode === '') {
+            return null;
+        }
+
+        $originCountry = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipFrom.Address.CountryCode', data_get($shipmentPayload, 'ShipmentRequest.Shipment.Shipper.Address.CountryCode', $this->config('origin_country', 'US'))));
+        $originState = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipFrom.Address.StateProvinceCode', data_get($shipmentPayload, 'ShipmentRequest.Shipment.Shipper.Address.StateProvinceCode', $this->config('origin_state', 'NY'))));
+        $originCity = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipFrom.Address.City', data_get($shipmentPayload, 'ShipmentRequest.Shipment.Shipper.Address.City', $this->config('origin_city', 'New York'))));
+        $originPostalCode = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipFrom.Address.PostalCode', data_get($shipmentPayload, 'ShipmentRequest.Shipment.Shipper.Address.PostalCode', $this->config('origin_postal_code', '10001'))));
+
+        $currentCode = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.Service.Code', ''));
+        $service = $this->resolveShipmentService([
+            'country' => $countryCode,
+            'state' => $state,
+            'city' => $city,
+            'postal_code' => $postalCode,
+            'weight' => $weight,
+        ], [
+            'country' => $originCountry,
+            'state' => $originState,
+            'city' => $originCity,
+            'postal_code' => $originPostalCode,
+        ]);
+
+        $newCode = trim((string) ($service['code'] ?? ''));
+        if ($newCode === '' || $newCode === $currentCode) {
+            return null;
+        }
+
+        data_set($shipmentPayload, 'ShipmentRequest.Shipment.Service.Code', $newCode);
+        data_set($shipmentPayload, 'ShipmentRequest.Shipment.Service.Description', (string) ($service['description'] ?? ''));
+
+        Log::warning('Retrying UPS shipment with resolved service code.', [
+            'previous_service_code' => $currentCode,
+            'resolved_service_code' => $newCode,
+            'destination_country' => $countryCode,
+            'destination_state' => $state,
+            'destination_postal_code' => $postalCode,
+        ]);
+
+        return $shipmentPayload;
+    }
+
+    protected function request(
+        string $method,
+        string $path,
+        array $payload,
+        bool $allowPaymentRetry = true,
+        bool $allowOriginRetry = true,
+    ): array
     {
         $token = $this->getAccessToken();
         $url = rtrim($this->config('base_url', 'https://wwwcie.ups.com'), '/') . '/' . ltrim($path, '/');
@@ -257,7 +428,30 @@ class UpsService
                 // UPS rejects account+card style payment hints together; retry once without PaymentInformation.
                 unset($payload['ShipmentRequest']['Shipment']['PaymentInformation']);
 
-                return $this->request($method, $path, $payload, false);
+                return $this->request($method, $path, $payload, false, $allowOriginRetry);
+            }
+
+            if (str_contains($body, '111100')) {
+                $originSummary = sprintf(
+                    '%s, %s %s, %s',
+                    (string) $this->config('origin_city', ''),
+                    (string) $this->config('origin_state', ''),
+                    (string) $this->config('origin_postal_code', ''),
+                    (string) $this->config('origin_country', ''),
+                );
+
+                throw new RuntimeException(
+                    'UPS API request failed with service/origin mismatch (111100). '
+                    . 'Set UPS_ORIGIN_ADDRESS_1, UPS_ORIGIN_CITY, UPS_ORIGIN_STATE, UPS_ORIGIN_POSTAL_CODE, UPS_ORIGIN_COUNTRY to your real UPS ship-from address and verify UPS_SERVICE_CODE. '
+                    . 'Current origin: ' . trim($originSummary)
+                );
+            }
+
+            if (str_contains($body, '9110006')) {
+                throw new RuntimeException(
+                    'UPS API request failed because shipper address is missing (9110006). '
+                    . 'Set UPS_ORIGIN_ADDRESS_1, UPS_ORIGIN_CITY, UPS_ORIGIN_STATE, UPS_ORIGIN_POSTAL_CODE, and UPS_ORIGIN_COUNTRY in .env.'
+                );
             }
 
             throw new RuntimeException('UPS API request failed: ' . $response->status() . ' ' . $body);
@@ -335,6 +529,40 @@ class UpsService
 
     protected function extractRateAmount(array $response): ?float
     {
+        $configuredServiceCode = trim((string) $this->config('service_code', '03'));
+        $rated = data_get($response, 'RateResponse.RatedShipment');
+
+        if (is_array($rated)) {
+            $ratedRows = array_is_list($rated) ? $rated : [$rated];
+            $cheapest = null;
+
+            foreach ($ratedRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $amount = data_get($row, 'TotalCharges.MonetaryValue');
+                if ($amount === null || $amount === '') {
+                    continue;
+                }
+
+                $value = (float) $amount;
+                $serviceCode = trim((string) data_get($row, 'Service.Code', ''));
+
+                if ($configuredServiceCode !== '' && $serviceCode === $configuredServiceCode) {
+                    return $value;
+                }
+
+                if ($cheapest === null || $value < $cheapest) {
+                    $cheapest = $value;
+                }
+            }
+
+            if ($cheapest !== null) {
+                return $cheapest;
+            }
+        }
+
         $candidates = [
             data_get($response, 'RateResponse.RatedShipment.0.TotalCharges.MonetaryValue'),
             data_get($response, 'RateResponse.RatedShipment.TotalCharges.MonetaryValue'),

@@ -58,7 +58,7 @@ return [
         'base_url' => env('UPS_BASE_URL', env('UPS_API_URL', 'https://wwwcie.ups.com')),
         'oauth_base_url' => env('UPS_OAUTH_BASE_URL', env('UPS_API_URL', 'https://wwwcie.ups.com')),
         'token_endpoint' => env('UPS_TOKEN_ENDPOINT', '/security/v1/oauth/token'),
-        'rate_endpoint' => env('UPS_RATE_ENDPOINT', '/api/rating/v2409/Rate'),
+        'rate_endpoint' => env('UPS_RATE_ENDPOINT', '/api/rating/v2409/Shop'),
         'shipment_endpoint' => env('UPS_SHIPMENT_ENDPOINT', '/api/shipments/v2409/ship'),
         'verify_ssl' => env('UPS_VERIFY_SSL', true),
         'ca_bundle' => env('UPS_CA_BUNDLE'),

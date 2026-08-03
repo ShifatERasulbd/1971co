@@ -35,7 +35,7 @@ class CheckoutOrderController extends Controller
         ]);
 
         try {
-            $shipping = $this->calculateShippingByCourier('ups', $validated, false);
+            $shipping = $this->calculateShippingByCourier('ups', $validated, true);
         } catch (\Throwable $exception) {
             return response()->json([
                 'message' => 'Unable to fetch UPS shipping charge at the moment.',
@@ -419,7 +419,7 @@ class CheckoutOrderController extends Controller
         }
 
         try {
-            $shipping = $this->calculateShippingByCourier('ups', $validated, false);
+            $shipping = $this->calculateShippingByCourier('ups', $validated, true);
         } catch (\Throwable $exception) {
             return response()->json([
                 'message' => 'Unable to calculate UPS shipping for this address and cart weight.',
