@@ -26,6 +26,7 @@ const initialForm = {
     long_description: '',
     additional_information: '',
     price: '',
+    discount_price:'',
     cover_image: '',
     size_chart_image: '',
     category_id: '',
@@ -424,6 +425,7 @@ export default function EditProduct() {
                         stock: variant?.stock ?? 0,
                         weight: variant?.weight ?? '',
                         price: variant?.price ?? 0,
+                        discount_price:variant?.discount_price??0,
                     }));
 
                     setForm({
@@ -441,6 +443,7 @@ export default function EditProduct() {
                         long_description: data?.long_description || '',
                         additional_information: data?.additional_information || '',
                         price: data?.price ?? '',
+                        discount_price:data?.discount_price??'',
                         cover_image: data?.cover_image || '',
                         size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
@@ -544,6 +547,7 @@ export default function EditProduct() {
                             stock: data?.stock ?? '',
                             weight: data?.weight ?? '',
                             price: data?.price ?? '',
+                            discount_price:data?.discount_price??'',
                             show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                         };
 
@@ -705,6 +709,7 @@ export default function EditProduct() {
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
                         weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
+                        discount_price: pickVariantNumberValue(existing?.discount_price, form.discount_price),
                         show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
                 });
@@ -712,7 +717,7 @@ export default function EditProduct() {
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, form.discount_price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
 
     useEffect(() => {
         const validValues = new Set(galleryPreviewItems.map((item) => item.value));

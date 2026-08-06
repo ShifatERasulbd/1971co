@@ -25,6 +25,7 @@ class Product extends Model
         'long_description',
         'additional_information',
         'price',
+
         'cover_image',
         'size_chart_image',
         'size_chart_images',
@@ -57,6 +58,7 @@ class Product extends Model
             'color_variant_videos' => 'array',
             'color_variant_size_charts' => 'array',
             'price' => 'decimal:2',
+            'discount_price'=>'decimal:2',
             'stock' => 'integer',
             'position' => 'integer',
             'show_on_best_sellers' => 'boolean',

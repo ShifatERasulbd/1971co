@@ -50,7 +50,7 @@ export default function SingleProductMediaGallery({
             <div className="grid grid-cols-2 gap-3">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
-                    <div className="relative overflow-hidden border border-zinc-900">
+                    <div className="relative overflow-hidden">
                         {!isVideoReady && videoPlaceholderImage ? (
                             <img
                                 src={videoPlaceholderImage}
@@ -100,7 +100,7 @@ export default function SingleProductMediaGallery({
                                 onClick={() => handleImageClick(image)}
                                 className={`w-full overflow-hidden border transition-all duration-200 cursor-zoom-in ${
                                     isCurrentlyActive
-                                        ? 'border-zinc-900'
+                                        ? 'border-zinc-200'
                                         : 'border-zinc-200 hover:border-zinc-400'
                                 }`}
                             >

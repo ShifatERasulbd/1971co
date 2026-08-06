@@ -34,6 +34,8 @@ export default function SettingsForm({
     shopMenuImagePreview = '',
     socialIconPreviews = {},
     onChange,
+
+    
     onHeaderLogoChange,
     onFooterLogoChange,
     onFaviconChange,
