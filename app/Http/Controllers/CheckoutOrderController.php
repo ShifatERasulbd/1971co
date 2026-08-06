@@ -49,6 +49,40 @@ class CheckoutOrderController extends Controller
         ]);
     }
 
+    public function quoteTax(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'country' => 'required|string|max:120',
+            'state' => 'required|string|max:120',
+            'city' => 'required|string|max:120',
+            'postal_code' => 'required|string|max:40',
+            'address_line_1' => 'nullable|string|max:255',
+            'items' => 'required|array|min:1',
+            'items.*.priceValue' => 'required|numeric|min:0',
+            'items.*.quantity' => 'required|integer|min:1|max:999',
+            'subtotal' => 'required|numeric|min:0',
+            'shipping' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $tax = $this->calculateStripeTax($validated);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => 'Unable to calculate tax at the moment.',
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
+
+        $shipping = (float) ($validated['shipping'] ?? 0);
+        $total = (float) $validated['subtotal'] + $shipping + $tax;
+
+        return response()->json([
+            'tax' => $tax,
+            'shipping' => $shipping,
+            'total' => round($total, 2),
+        ]);
+    }
+
     public function upsDiagnostics(Request $request): JsonResponse
     {
         if (! app()->environment('local')) {
@@ -427,7 +461,24 @@ class CheckoutOrderController extends Controller
             ], 422);
         }
 
-        $computedTotal = (float) $validated['subtotal'] + $shipping;
+        try {
+            $tax = $this->calculateStripeTax([
+                'country' => $validated['country'] ?? null,
+                'state' => $validated['state'] ?? null,
+                'city' => $validated['city'] ?? null,
+                'postal_code' => $validated['postal_code'] ?? null,
+                'address_line_1' => $validated['address_line_1'] ?? null,
+                'items' => $validated['items'],
+                'shipping' => $shipping,
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => 'Unable to calculate tax for this address and cart.',
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
+
+        $computedTotal = (float) $validated['subtotal'] + $shipping + $tax;
         $expectedAmount = (int) round($computedTotal * 100);
 
         try {
@@ -490,9 +541,88 @@ class CheckoutOrderController extends Controller
             'message' => 'Order created successfully',
             'order_id' => $order->id,
             'order_number' => $order->order_number,
+            'tax' => $tax,
             'courier_service' => $order->courier_service,
             'courier_sync_status' => $order->fresh()?->courier_sync_status,
         ], 201);
+    }
+
+    protected function calculateStripeTax(array $payload): float
+    {
+        $secretKey = (string) config('services.stripe.secret');
+        if ($secretKey === '') {
+            throw new \RuntimeException('Stripe secret key is not configured.');
+        }
+
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+        $lineItems = [];
+
+        foreach ($items as $index => $item) {
+            $priceValue = (float) ($item['priceValue'] ?? 0);
+            $quantity = max(1, (int) ($item['quantity'] ?? 1));
+            $amount = (int) round(max(0, $priceValue) * 100);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $lineItems[] = [
+                'amount' => $amount,
+                'quantity' => $quantity,
+                'reference' => 'line-' . ($index + 1),
+                'tax_code' => 'txcd_99999999',
+            ];
+        }
+
+        if ($lineItems === []) {
+            return 0.0;
+        }
+
+        $country = strtoupper($this->shippingRateService->normalizeCountryCode($payload['country'] ?? null));
+        $state = strtoupper(trim((string) ($payload['state'] ?? '')));
+        $city = trim((string) ($payload['city'] ?? ''));
+        $postalCode = trim((string) ($payload['postal_code'] ?? ''));
+        $line1 = trim((string) ($payload['address_line_1'] ?? 'N/A'));
+        $shippingAmount = (int) round(max(0, (float) ($payload['shipping'] ?? 0)) * 100);
+
+        $params = [
+            'currency' => 'usd',
+            'line_items' => $lineItems,
+            'customer_details' => [
+                'address_source' => 'shipping',
+                'address' => [
+                    'line1' => $line1,
+                    'city' => $city,
+                    'state' => $state,
+                    'postal_code' => $postalCode,
+                    'country' => $country !== '' ? $country : 'US',
+                ],
+            ],
+        ];
+
+        if ($shippingAmount > 0) {
+            $params['shipping_cost'] = [
+                'amount' => $shippingAmount,
+                'tax_code' => 'txcd_92010001',
+            ];
+        }
+
+        $stripe = new StripeClient($secretKey);
+        $calculation = $stripe->tax->calculations->create($params);
+
+        $taxAmount = 0;
+
+        if (isset($calculation->amount_tax)) {
+            $taxAmount = (int) $calculation->amount_tax;
+        } elseif (isset($calculation->amount_total, $calculation->amount_subtotal)) {
+            $taxAmount = (int) $calculation->amount_total - (int) $calculation->amount_subtotal;
+        } elseif (isset($calculation->tax_breakdown) && is_array($calculation->tax_breakdown)) {
+            foreach ($calculation->tax_breakdown as $row) {
+                $taxAmount += (int) ($row->amount ?? 0);
+            }
+        }
+
+        return round(max(0, $taxAmount) / 100, 2);
     }
 
     protected function calculateShippingByCourier(string $courier, array $payload, bool $allowFallback = true): float

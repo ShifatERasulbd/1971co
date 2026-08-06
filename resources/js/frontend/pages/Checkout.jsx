@@ -99,6 +99,9 @@ function CheckoutForm() {
     const [quotedShipping, setQuotedShipping] = useState(0);
     const [isFetchingShipping, setIsFetchingShipping] = useState(false);
     const [shippingError, setShippingError] = useState('');
+    const [quotedTax, setQuotedTax] = useState(0);
+    const [isFetchingTax, setIsFetchingTax] = useState(false);
+    const [taxError, setTaxError] = useState('');
     const [stateOptions, setStateOptions] = useState([]);
     const [cityOptions, setCityOptions] = useState([]);
     const [isLoadingStates, setIsLoadingStates] = useState(false);
@@ -129,7 +132,12 @@ function CheckoutForm() {
         return Number.isFinite(value) && value > 0 ? value : 0;
     }, [quotedShipping]);
 
-    const total = subtotal + shipping;
+    const tax = useMemo(() => {
+        const value = Number(quotedTax);
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }, [quotedTax]);
+
+    const total = subtotal + shipping + tax;
 
     const normalizedItems = useMemo(
         () =>
@@ -306,13 +314,17 @@ function CheckoutForm() {
     useEffect(() => {
         if (subtotal <= 0) {
             setQuotedShipping(0);
+            setQuotedTax(0);
             setShippingError('');
+            setTaxError('');
             return;
         }
 
         if (!hasCompleteShippingAddress) {
             setQuotedShipping(0);
+            setQuotedTax(0);
             setShippingError('');
+            setTaxError('');
             return;
         }
 
@@ -363,6 +375,68 @@ function CheckoutForm() {
             clearTimeout(timer);
         };
     }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, subtotal]);
+
+    useEffect(() => {
+        if (subtotal <= 0) {
+            setQuotedTax(0);
+            setTaxError('');
+            return;
+        }
+
+        if (!hasCompleteShippingAddress) {
+            setQuotedTax(0);
+            setTaxError('');
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            setIsFetchingTax(true);
+            setTaxError('');
+
+            try {
+                const response = await fetch('/api/public/tax/quote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        subtotal,
+                        shipping,
+                        city: form.city,
+                        state: form.state,
+                        postal_code: form.postal_code,
+                        country: form.country,
+                        address_line_1: form.address_line_1,
+                        items: normalizedItems,
+                    }),
+                    signal: controller.signal,
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload?.error || payload?.message || 'Unable to calculate tax');
+                }
+
+                setQuotedTax(Number(payload?.tax || 0));
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+
+                setTaxError(error?.message || 'Unable to calculate tax');
+                setQuotedTax(0);
+            } finally {
+                setIsFetchingTax(false);
+            }
+        }, 350);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
+    }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
 
     useEffect(() => {
         const city = String(form.city || '').trim();
@@ -532,6 +606,7 @@ function CheckoutForm() {
                     shipping,
                     total,
                     payment_intent_id: paymentResult.paymentIntent.id,
+                    tax,
                 }),
             });
 
@@ -567,6 +642,7 @@ function CheckoutForm() {
                 items_count: normalizedItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0),
                 subtotal,
                 shipping,
+                tax,
                 total,
                 courier_service: 'ups',
                 courier_reference: String(payload?.courier_reference || ''),
@@ -878,11 +954,21 @@ function CheckoutForm() {
                             <span>Shipping</span>
                             <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
                         </div>
+                        <div className="flex items-center justify-between">
+                            <span>Tax</span>
+                            <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
+                        </div>
                         {isFetchingShipping ? (
                             <p className="text-xs text-zinc-500">Fetching UPS shipping quote...</p>
                         ) : null}
                         {!isFetchingShipping && shippingError ? (
                             <p className="text-xs text-red-600">{shippingError}</p>
+                        ) : null}
+                        {isFetchingTax ? (
+                            <p className="text-xs text-zinc-500">Calculating tax with Stripe Tax...</p>
+                        ) : null}
+                        {!isFetchingTax && taxError ? (
+                            <p className="text-xs text-red-600">{taxError}</p>
                         ) : null}
                         <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
                             <span>Total</span>
@@ -918,7 +1004,7 @@ function CheckoutForm() {
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
-                        disabled={isSubmitting || !stripe || !elements || isFetchingShipping || (subtotal > 0 && hasCompleteShippingAddress && shipping <= 0)}
+                        disabled={isSubmitting || !stripe || !elements || isFetchingShipping || isFetchingTax || (subtotal > 0 && hasCompleteShippingAddress && shippingError !== '') || (subtotal > 0 && hasCompleteShippingAddress && taxError !== '')}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}

@@ -58,6 +58,7 @@ Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
 Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
+Route::post('/public/tax/quote', [CheckoutOrderController::class, 'quoteTax']);
 Route::get('/public/shipping/ups-diagnostics', [CheckoutOrderController::class, 'upsDiagnostics']);
 Route::post('/public/shipping/ups-rate-diagnostics', [CheckoutOrderController::class, 'upsRateDiagnostics']);
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
