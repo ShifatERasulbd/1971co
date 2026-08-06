@@ -54,7 +54,6 @@ class ProductController extends Controller
             'long_description',
             'additional_information',
             'price',
-            'discount_price',
             'cover_image',
             'size_chart_image',
             'size_chart_images',
@@ -76,6 +75,10 @@ class ProductController extends Controller
 
         if (Schema::hasColumn('products', 'slug')) {
             $columns[] = 'slug';
+        }
+
+        if (Schema::hasColumn('products', 'discount_price')) {
+            $columns[] = 'discount_price';
         }
 
         $products = Product::select($columns)
@@ -123,7 +126,6 @@ class ProductController extends Controller
             'long_description',
             'additional_information',
             'price',
-            'discount_price',
             'weight',
             'cover_image',
             'size_chart_image',
@@ -143,6 +145,10 @@ class ProductController extends Controller
 
         if (Schema::hasColumn('products', 'slug')) {
             $columns[] = 'slug';
+        }
+
+        if (Schema::hasColumn('products', 'discount_price')) {
+            $columns[] = 'discount_price';
         }
 
         $products = Product::query()
@@ -375,6 +381,10 @@ class ProductController extends Controller
             'color_variant_size_charts.*' => 'nullable|array',
             'color_variant_size_charts.*.*' => 'nullable|string|max:2048',
         ]);
+
+        if (! Schema::hasColumn('products', 'discount_price')) {
+            unset($validated['discount_price']);
+        }
 
         if ($request->hasFile('thumbnail_image')) {
             $validated['cover_image'] = $this->uploadThumbnailImage($request, $product->cover_image);
