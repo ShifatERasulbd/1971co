@@ -47,15 +47,15 @@ export default function SingleProductMediaGallery({
     return (
         <div className="w-full">
             {/* Main grid wrapper handling the columns */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 leading-none">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
-                    <div className="relative overflow-hidden">
+                    <div className="relative aspect-[4/5] overflow-hidden">
                         {!isVideoReady && videoPlaceholderImage ? (
                             <img
                                 src={videoPlaceholderImage}
                                 alt="Product preview"
-                                className="aspect-[4/5] w-full object-cover object-center"
+                                className="h-full w-full object-cover object-center"
                             />
                         ) : null}
                         <video
@@ -67,8 +67,8 @@ export default function SingleProductMediaGallery({
                             playsInline
                             controls
                             onCanPlay={handleVideoCanPlay}
-                            className={`aspect-[4/5] w-full object-cover object-center ${
-                                isVideoReady ? 'opacity-100' : 'absolute inset-0 opacity-0'
+                            className={`absolute inset-0 h-full w-full object-cover object-center ${
+                                isVideoReady ? 'opacity-100' : 'opacity-0'
                             }`}
                             preload="metadata"
                         />
@@ -94,20 +94,20 @@ export default function SingleProductMediaGallery({
                         : 'left-[calc(100%+12px)]';
 
                     return (
-                        <div key={`${image}-${index}`} className="relative">
+                        <div key={`${image}-${index}`} className="relative leading-none">
                             <button
                                 type="button"
                                 onClick={() => handleImageClick(image)}
-                                className={`w-full overflow-hidden border transition-all duration-200 cursor-zoom-in ${
+                                className={`block aspect-[4/5] w-full cursor-zoom-in overflow-hidden transition-all duration-200 ${
                                     isCurrentlyActive
-                                        ? 'border-zinc-200'
-                                        : 'border-zinc-200 hover:border-zinc-400'
+                                        ? 'ring-1 ring-zinc-300'
+                                        : 'ring-1 ring-zinc-200 hover:ring-zinc-400'
                                 }`}
                             >
                                 <img
                                     src={image}
                                     alt={`Product ${index + 1}`}
-                                    className="aspect-[4/5] w-full object-cover object-center pointer-events-none"
+                                    className="h-full w-full pointer-events-none object-cover object-center"
                                 />
                             </button>
 
