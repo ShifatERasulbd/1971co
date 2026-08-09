@@ -10,6 +10,7 @@ const initialForm = {
     footer_logo: '',
     favicon: '',
     shop_menu_image: '',
+    contact_phone: '',
     email: '',
     location: '',
     currency: '',

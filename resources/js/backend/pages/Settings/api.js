@@ -26,6 +26,7 @@ function normalizeSettingRecord(record) {
             footer_logo: payload.footer_logo || '',
             favicon: payload.favicon || '',
             shop_menu_image: payload.shop_menu_image || '',
+            contact_phone: payload.contact_phone || '',
             email: payload.email || '',
             location: payload.location || '',
             currency: payload.currency || '',
@@ -65,6 +66,7 @@ function buildSettingsPayload(data = {}) {
         footer_logo: data.footer_logo || '',
         favicon: data.favicon || '',
         shop_menu_image: data.shop_menu_image || '',
+        contact_phone: data.contact_phone || '',
         email: data.email || '',
         location: data.location || '',
         currency: data.currency || '',
@@ -95,6 +97,7 @@ function buildSettingsFormData(data = {}) {
     formData.append('shop_menu_image_existing', payload.shop_menu_image || '');
     formData.append('social_media', JSON.stringify(payload.social_media));
     formData.append('frontend_utils', JSON.stringify(payload.frontend_utils));
+    formData.append('contact_phone', payload.contact_phone);
     formData.append('email', payload.email);
     formData.append('location', payload.location);
     formData.append('currency', payload.currency);

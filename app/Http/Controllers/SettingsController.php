@@ -68,7 +68,7 @@ class SettingsController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeJsonFields($request, ['social_media', 'frontend_utils']);
-        $this->normalizeEmptyStringFields($request, ['email']);
+        $this->normalizeEmptyStringFields($request, ['email', 'contact_phone']);
 
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
@@ -85,6 +85,7 @@ class SettingsController extends Controller
             'social_media.*.icon' => 'nullable|string|max:2048',
             'social_icon_files' => 'nullable|array',
             'social_icon_files.*' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'contact_phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'location' => 'nullable|string|max:4000',
             'currency' => 'nullable|string|max:50',
@@ -115,7 +116,7 @@ class SettingsController extends Controller
     public function update(Request $request, Settings $setting): JsonResponse
     {
         $this->normalizeJsonFields($request, ['social_media', 'frontend_utils']);
-        $this->normalizeEmptyStringFields($request, ['email']);
+        $this->normalizeEmptyStringFields($request, ['email', 'contact_phone']);
 
         $validated = $request->validate([
             'header_logo_existing' => 'nullable|string|max:2048',
@@ -132,6 +133,7 @@ class SettingsController extends Controller
             'social_media.*.icon' => 'nullable|string|max:2048',
             'social_icon_files' => 'nullable|array',
             'social_icon_files.*' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg,avif|max:4096',
+            'contact_phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'location' => 'nullable|string|max:4000',
             'currency' => 'nullable|string|max:50',
@@ -242,6 +244,7 @@ class SettingsController extends Controller
             'footer_logo' => $footerLogo,
             'favicon' => $favicon,
             'shop_menu_image' => $shopMenuImage,
+            'contact_phone' => (string) ($validated['contact_phone'] ?? ($existingPayload['contact_phone'] ?? '')),
             'email' => (string) ($validated['email'] ?? ($existingPayload['email'] ?? '')),
             'location' => (string) ($validated['location'] ?? ($existingPayload['location'] ?? '')),
             'currency' => (string) ($validated['currency'] ?? ($existingPayload['currency'] ?? '')),

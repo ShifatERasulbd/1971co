@@ -241,6 +241,19 @@ export default function SettingsForm({
                     {activeTab === 'contact' && (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
+                                <Label htmlFor="settings-phone">Phone Number</Label>
+                                <Input
+                                    id="settings-phone"
+                                    name="contact_phone"
+                                    value={form.contact_phone || ''}
+                                    onChange={onChange}
+                                    placeholder="(202) 123-4567"
+                                    disabled={isSubmitting}
+                                />
+                                {errors.contact_phone && <p className="text-xs text-destructive">{errors.contact_phone[0]}</p>}
+                            </div>
+
+                            <div className="space-y-2">
                                 <Label htmlFor="settings-email">Email Address</Label>
                                 <Input
                                     id="settings-email"
