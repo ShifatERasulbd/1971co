@@ -232,7 +232,7 @@ export default function Footer() {
                             
                             <form
                                 onSubmit={(e) => e.preventDefault()}
-                                className="flex items-stretch border-b border-zinc-600 focus-within:border-white transition-colors"
+                                className="flex flex-col items-start gap-2 sm:flex-row sm:items-stretch sm:gap-0 border-b border-zinc-600 focus-within:border-white transition-colors"
                             >
                                 <label htmlFor="footer-email" className="sr-only">Email address</label>
                                 <input
@@ -240,11 +240,11 @@ export default function Footer() {
                                     type="email"
                                     placeholder="Email address"
                                     required
-                                    className={`font-monstrate flex-1 bg-transparent py-2 ${sectionTypography.footerLink} text-white outline-none placeholder:text-zinc-500`}
+                                    className={`font-monstrate w-full flex-1 bg-transparent py-2 ${sectionTypography.footerLink} text-white outline-none placeholder:text-zinc-500`}
                                 />
                                 <button
                                     type="submit"
-                                    className="font-monstrate py-2 pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
+                                    className="font-monstrate py-2 sm:pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
                                 >
                                     Join
                                 </button>
