@@ -29,6 +29,7 @@ use App\Http\Controllers\UsLocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\CompliancePageController;
 
 
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
@@ -64,6 +65,7 @@ Route::post('/public/shipping/ups-rate-diagnostics', [CheckoutOrderController::c
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
 Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
 Route::get('/public/locations/postal-code', [UsLocationController::class, 'postalCodeByCityState']);
+Route::get('/public/compliance', [App\Http\Controllers\CompliancePageController::class, 'publicIndex']);
 Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(function () {
 	Route::get('/', [CheckoutOrderController::class, 'publicExternalIndex']);
@@ -153,6 +155,9 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/public-api-keys', [PublicApiKeyController::class, 'store']);
 	Route::delete('/public-api-keys/{publicApiKey}', [PublicApiKeyController::class, 'destroy']);
 	});
+
+	// Compliance Management
+	Route::apiResource('/compliance', \App\Http\Controllers\CompliancePageController::class);
 	
 });
 

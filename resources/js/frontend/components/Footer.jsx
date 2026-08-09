@@ -15,15 +15,15 @@ const shopLinks = [
 ];
 
 const supportLinks = [
-    { label: 'Shipping', href: '#shipping' },
-    { label: 'Returns', href: '#returns' },
+    { label: 'Shipping', href: '/shipping' },
+  
     { label: 'Contact', href: '/contact' },
 ];
 
 const companyLinks = [
     { label: 'About', href: '/about' },
-    { label: 'Privacy', href: '#privacy' },
-    { label: 'Terms', href: '#terms' },
+    { label: 'Privacy', href: '/privacy' },
+    { label: 'Terms', href: '/terms' },
 ];
 
 const socialLinks = [

@@ -78,6 +78,10 @@ const EditSettings = lazyWithRetry(() => import('@/pages/Settings/editSettings')
 const PublicApiKeys = lazyWithRetry(() => import('@/pages/PublicApiKeys/publicApiKeys'), 'public-api-keys');
 
 
+// Compliance Management
+const Compliance = lazyWithRetry(() => import('@/pages/Compliance/compliance'), 'compliance');
+const AddCompliance = lazyWithRetry(() => import('@/pages/Compliance/addCompliance'), 'add-compliance');
+const EditCompliance = lazyWithRetry(() => import('@/pages/Compliance/editCompliance'), 'edit-compliance');
 
 export default function App() {
     return (
@@ -143,7 +147,10 @@ export default function App() {
                             <Route path="settings/:id/edit" element={<EditSettings />} />
                             <Route path="public-api-keys" element={<PublicApiKeys />} />
 
-                           
+                           {/* Compliance Management */}
+                            <Route path="compliance" element={<Compliance />} />
+                            <Route path="compliance/add" element={<AddCompliance />} />
+                            <Route path="compliance/:id/edit" element={<EditCompliance />} />
 
                         </Route>
 

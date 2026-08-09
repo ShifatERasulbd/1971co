@@ -7,7 +7,7 @@ const ContactHeroSection = lazy(() => import('../components/ContactHeroSection.j
 const ContactSection = lazy(() => import('../components/ContactSection.jsx'));
 const ContactLocationMapSection = lazy(() => import('../components/ContactLocationMapSection.jsx'));
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
-const InstagramSection = lazy(() => import('../components/InstagramSection.jsx'));
+
 
 function LazySection({ children, heightClass, className, variant = 'generic', defer = true }) {
     const containerRef = useRef(null);

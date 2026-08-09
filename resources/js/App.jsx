@@ -24,6 +24,7 @@ const ResetPasswordPage = lazy(() => import('./frontend/pages/ResetPassword.jsx'
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
 const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.jsx'));
+const CompliancePolicyPage = lazy(() => import('./frontend/pages/CompliancePolicyPage.jsx'));
 
 const BRAND_NAME = '1971Co';
 
@@ -62,6 +63,9 @@ function resolvePageLabel(pathname) {
     if (path === '/together-we-grow') return 'Together We Grow';
     if (path === '/checkout') return 'Checkout';
     if (path === '/order-confirmation') return 'Order Confirmation';
+    if (path === '/shipping') return 'Shipping';
+    if (path === '/privacy') return 'Privacy Policy';
+    if (path === '/terms') return 'Terms & Conditions';
     if (path === '/login') return 'Login';
     if (path === '/register') return 'Register';
     if (path.startsWith('/reset-password')) return 'Reset Password';
@@ -174,6 +178,9 @@ function AppRouter() {
                         <Route path="together-we-grow" element={withPageFallback(TogetherWeGrowPage)} />
                         <Route path="checkout" element={withPageFallback(CheckoutPage)} />
                         <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
+                        <Route path="shipping" element={withPageFallback(CompliancePolicyPage)} />
+                        <Route path="privacy" element={withPageFallback(CompliancePolicyPage)} />
+                        <Route path="terms" element={withPageFallback(CompliancePolicyPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />
                         <Route path="register" element={withPageFallback(AuthPage)} />
                         <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />

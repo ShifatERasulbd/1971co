@@ -6,6 +6,7 @@ import {
     LogOut,
     Settings,
     ShoppingBag,
+    FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -59,6 +60,9 @@ const SettingsItems = [
     { title: 'Public API Keys', icon: Settings, path: '/admin/public-api-keys' },
 ];
 
+const complianceItems = [
+    { title: 'Compliance', icon: FileText, path: '/admin/compliance' },
+];
 
 
 
@@ -264,6 +268,30 @@ export function AppSidebar(props) {
                                             isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
                                             <Link to={toScopedPath(item.path, isCustomer)}>
+                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                {!isCustomer && complianceItems.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Compliance</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {complianceItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.title}
+                                            isActive={isMenuItemActive(item.path)}
+                                        >
+                                            <Link to={item.path}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
