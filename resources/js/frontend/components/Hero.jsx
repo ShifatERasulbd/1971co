@@ -245,13 +245,13 @@ export default function Hero() {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 1024 : false;
     const connection = typeof navigator !== 'undefined' ? navigator.connection || navigator.mozConnection || navigator.webkitConnection : null;
     const saveData = Boolean(connection?.saveData);
     const effectiveType = String(connection?.effectiveType || '').toLowerCase();
     const isSlowNetwork = effectiveType.includes('2g') || effectiveType.includes('3g') || effectiveType === 'slow-2g';
 
-    setCanAutoPlayVideo(!reducedMotion && !isMobile && !saveData && !isSlowNetwork);
+    // Mobile browsers can autoplay muted inline video; only disable when user/system signals low-motion or low-data.
+    setCanAutoPlayVideo(!reducedMotion && !saveData && !isSlowNetwork);
   }, [heroVideo]);
 
   const titleSize = resolveHeroFontSize(displayHeroData?.title_font_size, 86);
@@ -377,13 +377,15 @@ export default function Hero() {
     if (isLoading) {
       return <div className="absolute inset-0 -z-30 h-full w-full bg-neutral-900 animate-pulse" />;
     }
-    if (heroVideo && canAutoPlayVideo && !isVideoFallback) {
+    const shouldUseVideo = Boolean(heroVideo) && !isVideoFallback && (canAutoPlayVideo || !heroImage);
+
+    if (shouldUseVideo) {
       return (
         <video
           key={heroVideo}
           poster={optimizedHeroImage || heroImage}
           className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
-          autoPlay
+          autoPlay={canAutoPlayVideo || !heroImage}
           muted
           loop
           playsInline
@@ -394,6 +396,11 @@ export default function Hero() {
         </video>
       );
     }
+
+    if (!heroImage && !optimizedHeroImage) {
+      return <div className="absolute inset-0 -z-30 h-full w-full bg-neutral-100" />;
+    }
+
     return (
       <img
         src={optimizedHeroImage || heroImage}
