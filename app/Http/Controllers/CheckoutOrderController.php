@@ -13,6 +13,12 @@ use Stripe\StripeClient;
 
 class CheckoutOrderController extends Controller
 {
+    private const PROCESSING_FEE = 0.50;
+
+    private const STRIPE_PERCENT_RATE = 0.029;
+
+    private const STRIPE_FIXED_FEE = 0.30;
+
     public function __construct(
         private readonly ShippingRateService $shippingRateService,
         private readonly UpsService $upsService,
@@ -74,12 +80,16 @@ class CheckoutOrderController extends Controller
         }
 
         $shipping = (float) ($validated['shipping'] ?? 0);
-        $total = (float) $validated['subtotal'] + $shipping + $tax;
+        $baseTotal = round((float) $validated['subtotal'] + $shipping + $tax, 2);
+        $stripeCharge = $this->calculateStripeCharge($baseTotal);
+        $total = round($baseTotal + $stripeCharge, 2);
 
         return response()->json([
             'tax' => $tax,
             'shipping' => $shipping,
-            'total' => round($total, 2),
+            'stripe_charge' => $stripeCharge,
+            'processing_fee' => self::PROCESSING_FEE,
+            'total' => $total,
         ]);
     }
 
@@ -441,6 +451,8 @@ class CheckoutOrderController extends Controller
             'courier' => 'nullable|string|in:ups',
             'subtotal' => 'required|numeric|min:0',
             'shipping' => 'required|numeric|min:0',
+            'tax' => 'required|numeric|min:0',
+            'stripe_charge' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
             'payment_intent_id' => 'required|string|max:255',
         ]);
@@ -452,34 +464,14 @@ class CheckoutOrderController extends Controller
             ], 500);
         }
 
-        try {
-            $shipping = $this->calculateShippingByCourier('ups', $validated, true);
-        } catch (\Throwable $exception) {
-            return response()->json([
-                'message' => 'Unable to calculate UPS shipping for this address and cart weight.',
-                'error' => $exception->getMessage(),
-            ], 422);
-        }
-
-        try {
-            $tax = $this->calculateStripeTax([
-                'country' => $validated['country'] ?? null,
-                'state' => $validated['state'] ?? null,
-                'city' => $validated['city'] ?? null,
-                'postal_code' => $validated['postal_code'] ?? null,
-                'address_line_1' => $validated['address_line_1'] ?? null,
-                'items' => $validated['items'],
-                'shipping' => $shipping,
-            ]);
-        } catch (\Throwable $exception) {
-            return response()->json([
-                'message' => 'Unable to calculate tax for this address and cart.',
-                'error' => $exception->getMessage(),
-            ], 422);
-        }
-
-        $computedTotal = (float) $validated['subtotal'] + $shipping + $tax;
-        $expectedAmount = (int) round($computedTotal * 100);
+        $shipping = round((float) $validated['shipping'], 2);
+        $tax = round((float) $validated['tax'], 2);
+        $baseTotal = round((float) $validated['subtotal'] + $shipping + $tax, 2);
+        $stripeCharge = isset($validated['stripe_charge'])
+            ? round((float) $validated['stripe_charge'], 2)
+            : $this->calculateStripeCharge($baseTotal);
+        $clientTotal = round((float) $validated['total'], 2);
+        $expectedAmount = (int) round($clientTotal * 100);
 
         try {
             $stripe = new StripeClient($secretKey);
@@ -496,11 +488,15 @@ class CheckoutOrderController extends Controller
             ], 422);
         }
 
-        if ((int) ($paymentIntent->amount ?? 0) !== $expectedAmount) {
+        $paidAmount = (int) ($paymentIntent->amount ?? 0);
+        if (abs($paidAmount - $expectedAmount) > 1) {
             return response()->json([
                 'message' => 'Payment amount does not match order total.',
             ], 422);
         }
+
+        $computedTotal = round($paidAmount / 100, 2);
+        $stripeCharge = round(max(0, $computedTotal - $baseTotal), 2);
 
         $orderNumber = sprintf('ORD-%s-%04d', now()->format('YmdHis'), random_int(0, 9999));
 
@@ -521,6 +517,10 @@ class CheckoutOrderController extends Controller
             'items_count' => collect($validated['items'])->sum('quantity'),
             'subtotal' => $validated['subtotal'],
             'shipping' => $shipping,
+            'delivery_cost' => $shipping,
+            'state_tax' => $tax,
+            'stripe_charge' => $stripeCharge,
+            'processing_fee' => self::PROCESSING_FEE,
             'total' => $computedTotal,
             'items' => $validated['items'],
             'status' => 'approved',
@@ -541,10 +541,19 @@ class CheckoutOrderController extends Controller
             'message' => 'Order created successfully',
             'order_id' => $order->id,
             'order_number' => $order->order_number,
+            'delivery_cost' => $shipping,
             'tax' => $tax,
+            'stripe_charge' => $stripeCharge,
+            'processing_fee' => self::PROCESSING_FEE,
             'courier_service' => $order->courier_service,
             'courier_sync_status' => $order->fresh()?->courier_sync_status,
         ], 201);
+    }
+
+    protected function calculateStripeCharge(float $baseAmount): float
+    {
+        $safeAmount = max(0, $baseAmount);
+        return round(($safeAmount * self::STRIPE_PERCENT_RATE) + self::STRIPE_FIXED_FEE, 2);
     }
 
     protected function calculateStripeTax(array $payload): float
@@ -765,6 +774,11 @@ class CheckoutOrderController extends Controller
 
     protected function formatPublicOrder(CheckoutOrder $order): array
     {
+        $deliveryCost = (float) ($order->delivery_cost ?? $order->shipping);
+        $stateTax = (float) ($order->state_tax ?? 0);
+        $stripeCharge = (float) ($order->stripe_charge ?? $order->processing_fee ?? 0);
+        $processingFee = (float) ($order->processing_fee ?? 0);
+
         return [
             'order_number' => (string) $order->order_number,
             'status' => (string) $order->status,
@@ -783,6 +797,17 @@ class CheckoutOrderController extends Controller
             'items' => $order->items,
             'subtotal' => (float) $order->subtotal,
             'shipping' => (float) $order->shipping,
+            'delivery_cost' => $deliveryCost,
+            'deliveryCost' => $deliveryCost,
+            'deliverycost' => $deliveryCost,
+            'state_tax' => $stateTax,
+            'stateTax' => $stateTax,
+            'stripe_charge' => $stripeCharge,
+            'stripeCharge' => $stripeCharge,
+            'stripecharge' => $stripeCharge,
+            'processing_fee' => $processingFee,
+            'processingFee' => $processingFee,
+            'processingfee' => $processingFee,
             'total' => (float) $order->total,
             'courier_service' => $order->courier_service,
             'courier_reference' => $order->courier_reference,
@@ -884,6 +909,11 @@ class CheckoutOrderController extends Controller
 
     protected function formatExternalOrder(CheckoutOrder $order): array
     {
+        $deliveryCost = (float) ($order->delivery_cost ?? $order->shipping);
+        $stateTax = (float) ($order->state_tax ?? 0);
+        $stripeCharge = (float) ($order->stripe_charge ?? $order->processing_fee ?? 0);
+        $processingFee = (float) ($order->processing_fee ?? 0);
+
         return [
             'id' => (int) $order->id,
             'order_number' => (string) $order->order_number,
@@ -903,6 +933,17 @@ class CheckoutOrderController extends Controller
             'items' => $order->items,
             'subtotal' => (float) $order->subtotal,
             'shipping' => (float) $order->shipping,
+            'delivery_cost' => $deliveryCost,
+            'deliveryCost' => $deliveryCost,
+            'deliverycost' => $deliveryCost,
+            'state_tax' => $stateTax,
+            'stateTax' => $stateTax,
+            'stripe_charge' => $stripeCharge,
+            'stripeCharge' => $stripeCharge,
+            'stripecharge' => $stripeCharge,
+            'processing_fee' => $processingFee,
+            'processingFee' => $processingFee,
+            'processingfee' => $processingFee,
             'total' => (float) $order->total,
             'created_at' => $order->created_at,
             'updated_at' => $order->updated_at,

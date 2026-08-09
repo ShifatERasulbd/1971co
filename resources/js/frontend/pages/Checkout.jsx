@@ -9,6 +9,22 @@ import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
 
 const fallbackImage = '';
+const STRIPE_PERCENT_RATE = 0.029;
+const STRIPE_FIXED_FEE = 0.3;
+
+function roundCurrency(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return 0;
+    }
+
+    return Math.round((numericValue + Number.EPSILON) * 100) / 100;
+}
+
+function calculateStripeCharge(baseAmount) {
+    const amount = Math.max(0, Number(baseAmount) || 0);
+    return roundCurrency((amount * STRIPE_PERCENT_RATE) + STRIPE_FIXED_FEE);
+}
 
 const cardElementOptions = {
     hidePostalCode: true,
@@ -137,7 +153,9 @@ function CheckoutForm() {
         return Number.isFinite(value) && value > 0 ? value : 0;
     }, [quotedTax]);
 
-    const total = subtotal + shipping + tax;
+    const baseTotal = useMemo(() => roundCurrency(subtotal + shipping + tax), [subtotal, shipping, tax]);
+    const stripeCharge = useMemo(() => calculateStripeCharge(baseTotal), [baseTotal]);
+    const total = useMemo(() => roundCurrency(baseTotal + stripeCharge), [baseTotal, stripeCharge]);
 
     const normalizedItems = useMemo(
         () =>
@@ -329,10 +347,9 @@ function CheckoutForm() {
         }
 
         const controller = new AbortController();
+        setIsFetchingShipping(true);
+        setShippingError('');
         const timer = setTimeout(async () => {
-            setIsFetchingShipping(true);
-            setShippingError('');
-
             try {
                 const response = await fetch('/api/public/shipping/quote', {
                     method: 'POST',
@@ -373,6 +390,7 @@ function CheckoutForm() {
         return () => {
             controller.abort();
             clearTimeout(timer);
+            setIsFetchingShipping(false);
         };
     }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, subtotal]);
 
@@ -390,10 +408,9 @@ function CheckoutForm() {
         }
 
         const controller = new AbortController();
+        setIsFetchingTax(true);
+        setTaxError('');
         const timer = setTimeout(async () => {
-            setIsFetchingTax(true);
-            setTaxError('');
-
             try {
                 const response = await fetch('/api/public/tax/quote', {
                     method: 'POST',
@@ -435,6 +452,7 @@ function CheckoutForm() {
         return () => {
             controller.abort();
             clearTimeout(timer);
+            setIsFetchingTax(false);
         };
     }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
 
@@ -607,6 +625,7 @@ function CheckoutForm() {
                     total,
                     payment_intent_id: paymentResult.paymentIntent.id,
                     tax,
+                    stripe_charge: stripeCharge,
                 }),
             });
 
@@ -643,6 +662,8 @@ function CheckoutForm() {
                 subtotal,
                 shipping,
                 tax,
+                stripe_charge: stripeCharge,
+                processing_fee: 0.5,
                 total,
                 courier_service: 'ups',
                 courier_reference: String(payload?.courier_reference || ''),
@@ -955,9 +976,14 @@ function CheckoutForm() {
                             <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span>Tax</span>
+                            <span>State Tax</span>
                             <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
                         </div>
+                        <div className="flex items-center justify-between">
+                            <span>Stripe Charge (2.9% + $0.30)</span>
+                            <span>${stripeCharge.toFixed(2)}</span>
+                        </div>
+                        
                         {isFetchingShipping ? (
                             <p className="text-xs text-zinc-500">Fetching UPS shipping quote...</p>
                         ) : null}
