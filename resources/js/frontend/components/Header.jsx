@@ -1032,12 +1032,7 @@ export default function Header() {
                             </button>
                         </div>
 
-                        <div className="mt-7 border-t border-zinc-200/80 pt-6">
-                            <p className="text-[0.84rem] text-zinc-500">To More Inquiry</p>
-                            <a href={`tel:${supportPhone}`} className="mt-1 block text-[1.65rem] font-semibold leading-tight text-zinc-900">
-                                {supportPhone}
-                            </a>
-                        </div>
+                      
                     </nav>
                 </div>
             </aside>
