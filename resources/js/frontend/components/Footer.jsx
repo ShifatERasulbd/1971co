@@ -10,7 +10,7 @@ const shopLinks = [
     { label: 'Shop All', href: '/shop' },
     { label: 'New Arrivals', href: '/new-arrivals' },
     { label: 'Essentials', href: '/shop?collection=essentials' },
-    { label: 'Tops', href: '/top' },
+    { label: 'Tops', href: '/tops' },
     { label: 'Bottoms', href: '/bottom-more' },
 ];
 
