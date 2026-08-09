@@ -231,7 +231,18 @@ export default function Hero() {
     [heroImage, isMobileViewport]
   );
   const [isVideoFallback, setIsVideoFallback] = useState(false);
-  const heroVideo = displayHeroData?.video_url || null;
+  const heroVideo = useMemo(() => {
+    const raw = String(displayHeroData?.video_url || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+      return raw;
+    }
+
+    return `/${raw.replace(/^\/+/, '')}`;
+  }, [displayHeroData?.video_url]);
   const [canAutoPlayVideo, setCanAutoPlayVideo] = useState(false);
 
   useEffect(() => {
@@ -377,23 +388,35 @@ export default function Hero() {
     if (isLoading) {
       return <div className="absolute inset-0 -z-30 h-full w-full bg-neutral-900 animate-pulse" />;
     }
-    const shouldUseVideo = Boolean(heroVideo) && !isVideoFallback && (canAutoPlayVideo || !heroImage);
+    const shouldUseVideo = Boolean(heroVideo) && !isVideoFallback;
 
     if (shouldUseVideo) {
       return (
         <video
           key={heroVideo}
+          src={heroVideo}
           poster={optimizedHeroImage || heroImage}
           className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
-          autoPlay={canAutoPlayVideo || !heroImage}
+          autoPlay={canAutoPlayVideo}
+          defaultMuted
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
+          onLoadedMetadata={(event) => {
+            if (!canAutoPlayVideo) {
+              return;
+            }
+
+            const playPromise = event.currentTarget.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch(() => {
+                // Ignore autoplay promise rejections and keep poster fallback visible.
+              });
+            }
+          }}
           onError={() => setIsVideoFallback(true)}
-        >
-          <source src={heroVideo} type="video/mp4" />
-        </video>
+        />
       );
     }
 
