@@ -42,6 +42,9 @@ class CheckoutOrderController extends Controller
             'items.*.length' => 'nullable|numeric|min:0',
             'items.*.width' => 'nullable|numeric|min:0',
             'items.*.height' => 'nullable|numeric|min:0',
+            'service_code' => 'nullable|string|max:20',
+            'delivery_date' => 'nullable|date',
+            'delivery_time' => 'nullable|string|max:100',
             'subtotal' => 'required|numeric|min:0',
         ]);
 
@@ -52,10 +55,22 @@ class CheckoutOrderController extends Controller
         ]);
 
         try {
-            $shipping = $this->calculateShippingByCourier('ups', $validated, true);
+            $selectedServiceCode = trim((string) ($validated['service_code'] ?? ''));
+            $shippingOptions = $this->upsService->getShipmentRateOptions([
+                'country' => $validated['country'],
+                'state' => $validated['state'],
+                'city' => $validated['city'],
+                'postal_code' => $validated['postal_code'],
+                'weight' => $this->estimateWeight($validated['items'] ?? []),
+                'items' => $validated['items'],
+            ]);
+
+            $shipping = $this->calculateShippingByCourier('ups', $validated, true, $selectedServiceCode !== '' ? $selectedServiceCode : null);
             Log::info('UPS shipping quote response generated', [
                 'courier' => 'ups',
                 'shipping' => $shipping,
+                'selected_service' => $selectedServiceCode,
+                'shipping_options' => $shippingOptions,
                 'payload' => $validated,
             ]);
         } catch (\Throwable $exception) {
@@ -71,9 +86,27 @@ class CheckoutOrderController extends Controller
             ], 422);
         }
 
+        $selectedServiceCode = trim((string) ($validated['service_code'] ?? ''));
+        $shippingOptions = $this->upsService->getShipmentRateOptions([
+            'country' => $validated['country'],
+            'state' => $validated['state'],
+            'city' => $validated['city'],
+            'postal_code' => $validated['postal_code'],
+            'weight' => $this->estimateWeight($validated['items'] ?? []),
+            'items' => $validated['items'],
+        ]);
+
+        if ($selectedServiceCode !== '') {
+            $shippingOptions = array_values(array_filter($shippingOptions, static fn (array $option): bool => (string) ($option['code'] ?? '') === $selectedServiceCode));
+        }
+
         return response()->json([
             'courier' => 'ups',
             'shipping' => $shipping,
+            'shipping_options' => $shippingOptions,
+            'selected_service_code' => $selectedServiceCode !== '' ? $selectedServiceCode : ($shippingOptions[0]['code'] ?? null),
+            'delivery_date' => $validated['delivery_date'] ?? null,
+            'delivery_time' => $validated['delivery_time'] ?? null,
         ]);
     }
 
@@ -695,7 +728,7 @@ class CheckoutOrderController extends Controller
         return round(max(0, $taxAmount) / 100, 2);
     }
 
-    protected function calculateShippingByCourier(string $courier, array $payload, bool $allowFallback = true): float
+    protected function calculateShippingByCourier(string $courier, array $payload, bool $allowFallback = true, ?string $preferredServiceCode = null): float
     {
         $subtotal = (float) ($payload['subtotal'] ?? 0);
         $fallbackShipping = $this->shippingRateService->calculate([
@@ -723,7 +756,7 @@ class CheckoutOrderController extends Controller
                 'postal_code' => $payload['postal_code'] ?? null,
                 'weight' => $weight,
                 'items' => $resolvedItems,
-            ]);
+            ], $preferredServiceCode);
         } catch (\Throwable $exception) {
             Log::warning('UPS shipping quote failed. Falling back to default shipping rate.', [
                 'error' => $exception->getMessage(),

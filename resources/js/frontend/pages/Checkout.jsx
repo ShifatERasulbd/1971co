@@ -113,6 +113,10 @@ function CheckoutForm() {
     const [fieldErrors, setFieldErrors] = useState({});
     const selectedCourier = 'ups';
     const [quotedShipping, setQuotedShipping] = useState(0);
+    const [shippingOptions, setShippingOptions] = useState([]);
+    const [selectedShippingOptionCode, setSelectedShippingOptionCode] = useState('');
+    const [selectedDeliveryDate, setSelectedDeliveryDate] = useState('');
+    const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('');
     const [isFetchingShipping, setIsFetchingShipping] = useState(false);
     const [shippingError, setShippingError] = useState('');
     const [quotedTax, setQuotedTax] = useState(0);
@@ -437,6 +441,9 @@ function CheckoutForm() {
             state: form.state,
             postal_code: form.postal_code,
             country: form.country,
+            service_code: selectedShippingOptionCode || undefined,
+            delivery_date: selectedDeliveryDate || undefined,
+            delivery_time: selectedDeliveryTime || undefined,
             items: normalizedItems,
         };
 
@@ -465,6 +472,16 @@ function CheckoutForm() {
                     throw new Error(payload?.error || payload?.message || 'Unable to fetch UPS shipping charge');
                 }
 
+                const nextOptions = Array.isArray(payload?.shipping_options) ? payload.shipping_options : [];
+                if (nextOptions.length > 0) {
+                    setShippingOptions(nextOptions);
+
+                    const defaultCode = payload?.selected_service_code || nextOptions[0]?.code || '';
+                    if (defaultCode) {
+                        setSelectedShippingOptionCode((current) => current || defaultCode);
+                    }
+                }
+
                 setQuotedShipping(Number(payload?.shipping || 0));
             } catch (error) {
                 console.error('[UPS shipping quote] request failed', error);
@@ -484,7 +501,7 @@ function CheckoutForm() {
             clearTimeout(timer);
             setIsFetchingShipping(false);
         };
-    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, subtotal]);
+    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, selectedDeliveryDate, selectedDeliveryTime, selectedShippingOptionCode, subtotal]);
 
     useEffect(() => {
         if (subtotal <= 0) {
@@ -608,6 +625,31 @@ function CheckoutForm() {
             clearTimeout(timer);
         };
     }, [form.city, form.country, form.postal_code, form.state]);
+
+    const deliveryDates = useMemo(() => {
+        const days = [];
+        const base = new Date();
+
+        for (let index = 0; index < 5; index += 1) {
+            const value = new Date(base);
+            value.setDate(base.getDate() + index);
+            days.push({
+                value: value.toISOString().slice(0, 10),
+                label: value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+            });
+        }
+
+        return days;
+    }, []);
+
+    useEffect(() => {
+        if (!selectedDeliveryDate && deliveryDates[0]) {
+            setSelectedDeliveryDate(deliveryDates[0].value);
+        }
+        if (!selectedDeliveryTime) {
+            setSelectedDeliveryTime('morning');
+        }
+    }, [deliveryDates, selectedDeliveryDate, selectedDeliveryTime]);
 
     if (isCartEmpty) {
         return (
@@ -1087,6 +1129,80 @@ function CheckoutForm() {
                         <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
                             <span>Total</span>
                             <span>${total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 border-t border-zinc-200 pt-5">
+                        <div className="space-y-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                                    Delivery options
+                                </h2>
+                                <div className="flex gap-3">
+                                    <select
+                                        value={selectedDeliveryDate}
+                                        onChange={(event) => setSelectedDeliveryDate(event.target.value)}
+                                        className="h-10 border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-zinc-900"
+                                    >
+                                        {deliveryDates.map((day) => (
+                                            <option key={day.value} value={day.value}>{day.label}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={selectedDeliveryTime}
+                                        onChange={(event) => setSelectedDeliveryTime(event.target.value)}
+                                        className="h-10 border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-zinc-900"
+                                    >
+                                        <option value="morning">Morning</option>
+                                        <option value="afternoon">Afternoon</option>
+                                        <option value="evening">Evening</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {shippingOptions.length > 0 ? (
+                                shippingOptions.map((option) => {
+                                    const isSelected = option.code === selectedShippingOptionCode;
+                                    const selectedPrice = Number(option.price || 0);
+
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={option.code}
+                                            onClick={() => {
+                                                setSelectedShippingOptionCode(option.code);
+                                                setQuotedShipping(selectedPrice);
+                                            }}
+                                            className={`w-full border p-4 text-left transition-colors ${isSelected ? 'border-red-500 bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400'}`}
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${isSelected ? 'border-red-500 bg-red-500' : 'border-zinc-300 bg-white'}`}>
+                                                        {isSelected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
+                                                    </span>
+                                                    <span className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-700">{option.label}</span>
+                                                </div>
+                                                <span className="text-lg font-semibold text-zinc-900">${selectedPrice.toFixed(2)}</span>
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
+                                                <span>{option.estimated_delivery || `Estimated delivery: ${option.delivery_days || '1-3 business days'}`}</span>
+                                                {option.delivery_time ? (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span>{option.delivery_time}</span>
+                                                    </>
+                                                ) : null}
+                                                <span>•</span>
+                                                <span>{selectedDeliveryDate ? new Date(`${selectedDeliveryDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Selected date'}</span>
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            ) : (
+                                <div className="rounded border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500">
+                                    {hasCompleteShippingAddress ? 'Loading delivery options...' : 'Add your shipping address to see delivery options.'}
+                                </div>
+                            )}
                         </div>
                     </div>
 
