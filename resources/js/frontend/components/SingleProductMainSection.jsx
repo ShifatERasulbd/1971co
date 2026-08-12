@@ -275,7 +275,14 @@ function resolveSelectedVariantWeight(product, selectedColor, selectedSize, colo
 function normalizeSizes(product, sizeNameLookup = {}) {
     const directSizes = parseOptionTokens(product?.size);
     if (directSizes.length > 0) {
-        return [...new Set(directSizes.map((item) => resolveSizeDisplayName(item, sizeNameLookup)).filter(Boolean))];
+        const ordered = directSizes
+            .map((item) => resolveSizeDisplayName(item, sizeNameLookup))
+            .filter(Boolean);
+        const uniqueOrdered = [...new Set(ordered)];
+
+        if (uniqueOrdered.length > 0) {
+            return uniqueOrdered;
+        }
     }
 
     const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];

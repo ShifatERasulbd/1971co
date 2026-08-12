@@ -513,8 +513,22 @@ export default function EditProduct() {
 
                         setVariantRows(nextRows);
                         setColorTrendingMap(nextTrendingMap);
-                        setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
-                        setSelectedSizes([...new Set(nextRows.map((row) => row.size).filter(Boolean))]);
+
+                        const savedColorOrder = parseSelectionValues(data?.color);
+                        const savedSizeOrder = parseSelectionValues(data?.size);
+                        const variantColorValues = [...new Set(nextRows.map((row) => row.color).filter(Boolean))];
+                        const variantSizeValues = [...new Set(nextRows.map((row) => row.size).filter(Boolean))];
+
+                        setSelectedColors(
+                            savedColorOrder.length > 0
+                                ? [...new Set([...savedColorOrder.filter((value) => variantColorValues.includes(value)), ...variantColorValues.filter((value) => !savedColorOrder.includes(value))])]
+                                : variantColorValues,
+                        );
+                        setSelectedSizes(
+                            savedSizeOrder.length > 0
+                                ? [...new Set([...savedSizeOrder.filter((value) => variantSizeValues.includes(value)), ...variantSizeValues.filter((value) => !savedSizeOrder.includes(value))])]
+                                : variantSizeValues,
+                        );
                     } else if (fallbackVariants.length > 0) {
                         const nextRows = fallbackVariants.map((row) => ({
                             ...row,
@@ -539,8 +553,22 @@ export default function EditProduct() {
 
                         setColorTrendingMap(nextTrendingMap);
                         setVariantRows(nextRows);
-                        setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
-                        setSelectedSizes([...new Set(nextRows.map((row) => row.size).filter(Boolean))]);
+
+                        const savedColorOrder = parseSelectionValues(data?.color);
+                        const savedSizeOrder = parseSelectionValues(data?.size);
+                        const variantColorValues = [...new Set(nextRows.map((row) => row.color).filter(Boolean))];
+                        const variantSizeValues = [...new Set(nextRows.map((row) => row.size).filter(Boolean))];
+
+                        setSelectedColors(
+                            savedColorOrder.length > 0
+                                ? [...new Set([...savedColorOrder.filter((value) => variantColorValues.includes(value)), ...variantColorValues.filter((value) => !savedColorOrder.includes(value))])]
+                                : variantColorValues,
+                        );
+                        setSelectedSizes(
+                            savedSizeOrder.length > 0
+                                ? [...new Set([...savedSizeOrder.filter((value) => variantSizeValues.includes(value)), ...variantSizeValues.filter((value) => !savedSizeOrder.includes(value))])]
+                                : variantSizeValues,
+                        );
                     } else {
                         const fallbackColorValues = parseSelectionValues(data?.color);
                         const fallbackSizeValues = parseSelectionValues(data?.size);
@@ -922,6 +950,18 @@ export default function EditProduct() {
         setSelectedSizes((previous) => previous.filter((size) => size !== sizeToRemove));
     };
 
+    const handleReorderSizes = (fromSize, toSize) => {
+        if (!fromSize || !toSize || fromSize === toSize) {
+            return;
+        }
+
+        setSelectedSizes((previous) => {
+            const fromIndex = previous.indexOf(fromSize);
+            const toIndex = previous.indexOf(toSize);
+            return reorderItems(previous, fromIndex, toIndex);
+        });
+    };
+
     const handleGalleryFilesChange = (event) => {
         const files = Array.from(event.target.files || []);
         setNewGalleryImageFiles(files);
@@ -1192,6 +1232,7 @@ export default function EditProduct() {
                     onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
+                    onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
                     onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}

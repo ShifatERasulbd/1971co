@@ -499,6 +499,18 @@ export default function AddProduct() {
         setSelectedSizes((previous) => previous.filter((size) => size !== sizeToRemove));
     };
 
+    const handleReorderSizes = (fromSize, toSize) => {
+        if (!fromSize || !toSize || fromSize === toSize) {
+            return;
+        }
+
+        setSelectedSizes((previous) => {
+            const fromIndex = previous.indexOf(fromSize);
+            const toIndex = previous.indexOf(toSize);
+            return reorderItems(previous, fromIndex, toIndex);
+        });
+    };
+
     const handleVariantRowChange = (rowKey, field, value) => {
         setVariantRows((previous) =>
             previous.map((row) => (row.key === rowKey ? { ...row, [field]: value } : row)),
@@ -629,6 +641,7 @@ export default function AddProduct() {
                     onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
+                    onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
                     onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}

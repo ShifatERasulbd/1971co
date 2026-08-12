@@ -41,6 +41,7 @@ export default function AddForm({
     onReorderColors,
     onAddSize,
     onRemoveSize,
+    onReorderSizes,
     onVariantRowChange,
     onColorTrendingChange,
     onColorVariantImagesChange,
@@ -71,6 +72,7 @@ export default function AddForm({
     const [activeColorForSizeCharts, setActiveColorForSizeCharts] = useState('');
     const [draftSizeChartValues, setDraftSizeChartValues] = useState([]);
     const [draggingColor, setDraggingColor] = useState('');
+    const [draggingSize, setDraggingSize] = useState('');
     const [draggingGalleryIndex, setDraggingGalleryIndex] = useState(-1);
 
     const colorLabelById = useMemo(() => {
@@ -225,6 +227,33 @@ export default function AddForm({
 
     const handleColorDragEnd = () => {
         setDraggingColor('');
+    };
+
+    const handleSizeDragStart = (event, size) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', size);
+        setDraggingSize(size);
+    };
+
+    const handleSizeDragOver = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleSizeDrop = (event, size) => {
+        event.preventDefault();
+        const draggedSize = event.dataTransfer.getData('text/plain') || draggingSize;
+        if (!draggedSize || draggedSize === size) {
+            setDraggingSize('');
+            return;
+        }
+
+        onReorderSizes?.(draggedSize, size);
+        setDraggingSize('');
+    };
+
+    const handleSizeDragEnd = () => {
+        setDraggingSize('');
     };
 
     const handleGalleryDragStart = (event, index) => {
@@ -710,16 +739,29 @@ export default function AddForm({
                                         {selectedSizes.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pt-1">
                                                 {selectedSizes.map((size) => (
-                                                    <Button
+                                                    <div
                                                         key={size}
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => onRemoveSize?.(size)}
-                                                        disabled={isSubmitting}
+                                                        draggable={!isSubmitting}
+                                                        onDragStart={(event) => handleSizeDragStart(event, size)}
+                                                        onDragOver={handleSizeDragOver}
+                                                        onDrop={(event) => handleSizeDrop(event, size)}
+                                                        onDragEnd={handleSizeDragEnd}
+                                                        className={`inline-flex items-center gap-2 rounded-md border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground ${
+                                                            draggingSize === size ? 'opacity-60' : ''
+                                                        } ${isSubmitting ? 'cursor-not-allowed' : 'cursor-move'}`}
+                                                        title="Drag to reorder"
                                                     >
-                                                        {getSizeLabel(size)} x
-                                                    </Button>
+                                                        <span>{getSizeLabel(size)}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onRemoveSize?.(size)}
+                                                            disabled={isSubmitting}
+                                                            className="text-[11px] leading-none opacity-70 transition-opacity hover:opacity-100"
+                                                            aria-label={`Remove ${getSizeLabel(size)}`}
+                                                        >
+                                                            x
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
