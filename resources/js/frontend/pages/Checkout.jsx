@@ -1174,11 +1174,11 @@ function CheckoutForm() {
                                                 setSelectedShippingOptionCode(option.code);
                                                 setQuotedShipping(selectedPrice);
                                             }}
-                                            className={`w-full border p-4 text-left transition-colors ${isSelected ? 'border-red-500 bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400'}`}
+                                            className={`w-full border p-4 text-left transition-colors ${isSelected ? 'border-green-500 bg-green-50' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400'}`}
                                         >
                                             <div className="flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-3">
-                                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${isSelected ? 'border-red-500 bg-red-500' : 'border-zinc-300 bg-white'}`}>
+                                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${isSelected ? 'border-green-500 bg-green-500' : 'border-zinc-300 bg-white'}`}>
                                                         {isSelected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
                                                     </span>
                                                     <span className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-700">{displayLabel}</span>
