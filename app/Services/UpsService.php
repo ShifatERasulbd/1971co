@@ -27,6 +27,12 @@ class UpsService
         $rateEndpoint = $this->config('rate_endpoint', '/api/rating/v2409/Shop');
         $response = $this->request('post', $rateEndpoint, $requestPayload);
 
+        Log::info('UPS shipping rate response', [
+            'endpoint' => $rateEndpoint,
+            'request_payload' => $requestPayload,
+            'response' => $response,
+        ]);
+
         $amount = $this->extractRateAmount($response);
         if ($amount === null) {
             throw new RuntimeException('UPS did not return a valid shipment charge.');
@@ -67,6 +73,55 @@ class UpsService
             'City' => trim((string) ($origin['city'] ?? $this->config('origin_city', 'New York'))),
         ];
 
+        $itemDimensions = $this->resolvePackageDimensions($payload['items'] ?? []);
+        $packageDimensions = null;
+
+        if ($itemDimensions !== null) {
+            $length = $this->normalizeDimensionValue($itemDimensions['length'] ?? null, 1);
+            $width = $this->normalizeDimensionValue($itemDimensions['width'] ?? null, 1);
+            $height = $this->normalizeDimensionValue($itemDimensions['height'] ?? null, 1);
+
+            $packageDimensions = [
+                'UnitOfMeasurement' => [
+                    'Code' => 'IN',
+                ],
+                'Length' => $length,
+                'Width' => $width,
+                'Height' => $height,
+            ];
+        }
+
+        if ($packageDimensions === null) {
+            $packageDimensions = [
+                'UnitOfMeasurement' => [
+                    'Code' => 'IN',
+                ],
+                'Length' => 1,
+                'Width' => 1,
+                'Height' => 1,
+            ];
+
+            Log::warning('UPS package dimensions missing; using safe fallback dimensions to satisfy UPS validation.', [
+                'payload' => $payload,
+            ]);
+        }
+
+        $package = [
+            'PackagingType' => [
+                'Code' => $this->config('packaging_code', '02'),
+            ],
+            'PackageWeight' => [
+                'UnitOfMeasurement' => [
+                    'Code' => 'LBS',
+                ],
+                'Weight' => number_format($weight, 2, '.', ''),
+            ],
+        ];
+
+        if ($packageDimensions !== null) {
+            $package['Dimensions'] = $packageDimensions;
+        }
+
         $requestPayload = [
             'RateRequest' => [
                 'Request' => [
@@ -91,17 +146,7 @@ class UpsService
                     'ShipFrom' => [
                         'Address' => $originAddress,
                     ],
-                    'Package' => [[
-                        'PackagingType' => [
-                            'Code' => $this->config('packaging_code', '02'),
-                        ],
-                        'PackageWeight' => [
-                            'UnitOfMeasurement' => [
-                                'Code' => 'LBS',
-                            ],
-                            'Weight' => number_format($weight, 2, '.', ''),
-                        ],
-                    ]],
+                    'Package' => [$package],
                 ],
             ],
         ];
@@ -134,13 +179,14 @@ class UpsService
             'PostalCode' => $this->config('origin_postal_code', '10001'),
             'CountryCode' => $this->config('origin_country', 'US'),
         ];
-        $service = $this->resolveShipmentService([
-            'country' => $countryCode,
-            'state' => $state,
-            'city' => $city,
-            'postal_code' => $postalCode,
-            'weight' => $weight,
-        ], [
+                $service = $this->resolveShipmentService([
+                'country' => $countryCode,
+                'state' => $state,
+                'city' => $city,
+                'postal_code' => $postalCode,
+                'weight' => $weight,
+                'items' => $order->items ?? [],
+            ], [
             'country' => $originAddress['CountryCode'] ?? 'US',
             'state' => $originAddress['StateProvinceCode'] ?? 'NY',
             'city' => $originAddress['City'] ?? 'New York',
@@ -198,6 +244,14 @@ class UpsService
                                 'Code' => 'LBS',
                             ],
                             'Weight' => number_format($weight, 2, '.', ''),
+                        ],
+                        'Dimensions' => [
+                            'UnitOfMeasurement' => [
+                                'Code' => 'IN',
+                            ],
+                            'Length' => '14',
+                            'Width' => '12',
+                            'Height' => '2',
                         ],
                     ]],
                 ],
@@ -454,6 +508,18 @@ class UpsService
                 return $this->request($method, $path, $payload, false, $allowOriginRetry);
             }
 
+            if ($errorCode === '110609' || str_contains($body, '110609')) {
+                $retryPayload = $this->withoutPackageDimensions($payload);
+                if ($retryPayload !== null) {
+                    Log::warning('UPS rejected package dimensions; retrying request without Dimensions.', [
+                        'error_code' => $errorCode,
+                        'request_payload' => $payload,
+                    ]);
+
+                    return $this->request($method, $path, $retryPayload, false, $allowOriginRetry);
+                }
+            }
+
             if ($errorCode === '111100' || str_contains($body, '111100')) {
                 $originSummary = sprintf(
                     '%s, %s %s, %s',
@@ -492,6 +558,39 @@ class UpsService
         }
 
         return $response->json() ?? [];
+    }
+
+    protected function withoutPackageDimensions(array $payload): ?array
+    {
+        $retryPayload = $payload;
+
+        $ratePackages = data_get($retryPayload, 'RateRequest.Shipment.Package');
+        if (is_array($ratePackages)) {
+            foreach ($ratePackages as $index => $package) {
+                if (! is_array($package)) {
+                    continue;
+                }
+
+                unset($retryPayload['RateRequest']['Shipment']['Package'][$index]['Dimensions']);
+            }
+
+            return $retryPayload;
+        }
+
+        $shipmentPackages = data_get($retryPayload, 'ShipmentRequest.Shipment.Package');
+        if (is_array($shipmentPackages)) {
+            foreach ($shipmentPackages as $index => $package) {
+                if (! is_array($package)) {
+                    continue;
+                }
+
+                unset($retryPayload['ShipmentRequest']['Shipment']['Package'][$index]['Dimensions']);
+            }
+
+            return $retryPayload;
+        }
+
+        return null;
     }
 
     protected function getAccessToken(): string
@@ -559,6 +658,53 @@ class UpsService
     protected function isLocalSslError(ConnectionException $exception): bool
     {
         return app()->environment('local') && str_contains($exception->getMessage(), 'cURL error 60');
+    }
+
+    protected function resolvePackageDimensions(array $items): ?array
+    {
+        $lengths = [];
+        $widths = [];
+        $heights = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $length = $this->normalizeDimensionValue($item['length'] ?? null, 0);
+            $width = $this->normalizeDimensionValue($item['width'] ?? null, 0);
+            $height = $this->normalizeDimensionValue($item['height'] ?? null, 0);
+
+            if ($length > 0) {
+                $lengths[] = $length;
+            }
+            if ($width > 0) {
+                $widths[] = $width;
+            }
+            if ($height > 0) {
+                $heights[] = $height;
+            }
+        }
+
+        if ($lengths === [] || $widths === [] || $heights === []) {
+            return null;
+        }
+
+        return [
+            'length' => max($lengths),
+            'width' => max($widths),
+            'height' => max($heights),
+        ];
+    }
+
+    protected function normalizeDimensionValue(mixed $value, int $fallback): int
+    {
+        $numeric = is_numeric($value) ? (float) $value : null;
+        if ($numeric === null || $numeric <= 0) {
+            return max(1, $fallback);
+        }
+
+        return max(1, (int) ceil($numeric));
     }
 
     protected function extractRateAmount(array $response): ?float

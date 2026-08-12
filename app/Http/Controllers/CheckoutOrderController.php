@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CheckoutOrder;
+use App\Models\Product;
 use App\Services\ShippingRateService;
 use App\Services\UpsService;
 use Illuminate\Http\JsonResponse;
@@ -35,14 +36,35 @@ class CheckoutOrderController extends Controller
             'city' => 'required|string|max:120',
             'postal_code' => 'required|string|max:40',
             'items' => 'required|array|min:1',
+            'items.*.productId' => 'nullable|string|max:255',
             'items.*.quantity' => 'required|integer|min:1|max:999',
-            'items.*.weight' => 'nullable',
+            'items.*.weight' => 'nullable|numeric|min:0',
+            'items.*.length' => 'nullable|numeric|min:0',
+            'items.*.width' => 'nullable|numeric|min:0',
+            'items.*.height' => 'nullable|numeric|min:0',
             'subtotal' => 'required|numeric|min:0',
+        ]);
+
+        $validated['items'] = $this->resolveShippingQuoteItems($validated['items'] ?? []);
+
+        Log::info('UPS shipping quote request received', [
+            'payload' => $validated,
         ]);
 
         try {
             $shipping = $this->calculateShippingByCourier('ups', $validated, true);
+            Log::info('UPS shipping quote response generated', [
+                'courier' => 'ups',
+                'shipping' => $shipping,
+                'payload' => $validated,
+            ]);
         } catch (\Throwable $exception) {
+            Log::error('UPS shipping quote request failed', [
+                'payload' => $validated,
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Unable to fetch UPS shipping charge at the moment.',
                 'error' => $exception->getMessage(),
@@ -681,7 +703,8 @@ class CheckoutOrderController extends Controller
             'state' => $payload['state'] ?? null,
         ], $subtotal);
 
-        $weight = $this->estimateWeight($payload['items'] ?? []);
+        $resolvedItems = $this->resolveShippingQuoteItems($payload['items'] ?? []);
+        $weight = $this->estimateWeight($resolvedItems);
 
         if (! $this->upsService->isConfigured()) {
             if ($allowFallback) {
@@ -699,6 +722,7 @@ class CheckoutOrderController extends Controller
                 'city' => $payload['city'] ?? null,
                 'postal_code' => $payload['postal_code'] ?? null,
                 'weight' => $weight,
+                'items' => $resolvedItems,
             ]);
         } catch (\Throwable $exception) {
             Log::warning('UPS shipping quote failed. Falling back to default shipping rate.', [
@@ -714,6 +738,76 @@ class CheckoutOrderController extends Controller
 
             throw $exception;
         }
+    }
+
+    protected function resolveShippingQuoteItems(array $items): array
+    {
+        if (! is_array($items) || $items === []) {
+            return [];
+        }
+
+        $resolved = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $resolvedItem = $item;
+            $productId = $item['productId'] ?? $item['product_id'] ?? null;
+
+            if ($productId !== null && $productId !== '') {
+                $product = Product::query()->find($productId);
+                if ($product) {
+                    $resolvedItem['weight'] = $resolvedItem['weight'] ?? $this->resolveVariantWeight($product, $item['selectedColor'] ?? '', $item['selectedSize'] ?? '', $item['sku'] ?? '');
+                    $resolvedItem['length'] = $resolvedItem['length'] ?? $product->length;
+                    $resolvedItem['width'] = $resolvedItem['width'] ?? $product->width;
+                    $resolvedItem['height'] = $resolvedItem['height'] ?? $product->height;
+                }
+            }
+
+            $resolved[] = $resolvedItem;
+        }
+
+        return $resolved;
+    }
+
+    protected function resolveVariantWeight(Product $product, string $selectedColor = '', string $selectedSize = '', string $selectedSku = ''): ?float
+    {
+        $rows = is_array($product->variant_rows) ? $product->variant_rows : [];
+        if ($rows === []) {
+            return $this->normalizeWeightToFloat($product->weight ?? null);
+        }
+
+        $selectedSku = strtolower(trim((string) $selectedSku));
+        $selectedColor = strtolower(trim((string) $selectedColor));
+        $selectedSize = strtolower(trim((string) $selectedSize));
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $skuMatch = $selectedSku !== '' && strtolower(trim((string) ($row['sku'] ?? ''))) === $selectedSku;
+            if ($skuMatch) {
+                return $this->normalizeWeightToFloat($row['weight'] ?? $product->weight ?? null);
+            }
+
+            $rowColor = strtolower(trim((string) ($row['color'] ?? '')));
+            $rowSize = strtolower(trim((string) ($row['size'] ?? '')));
+
+            if (
+                ($selectedColor === '' || $rowColor === $selectedColor || str_contains($rowColor, $selectedColor))
+                && ($selectedSize === '' || $rowSize === $selectedSize || str_contains($rowSize, $selectedSize))
+            ) {
+                $weight = $this->normalizeWeightToFloat($row['weight'] ?? $product->weight ?? null);
+                if ($weight !== null) {
+                    return $weight;
+                }
+            }
+        }
+
+        return $this->normalizeWeightToFloat($product->weight ?? null);
     }
 
     protected function estimateWeight(array $items): float

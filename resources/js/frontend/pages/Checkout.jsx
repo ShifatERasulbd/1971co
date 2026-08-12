@@ -241,6 +241,9 @@ function CheckoutForm() {
                 selectedColor: item.selectedColor,
                 selectedSize: item.selectedSize,
                 weight: item.weight,
+                length: item.length,
+                width: item.width,
+                height: item.height,
             })),
         [items],
     );
@@ -403,6 +406,7 @@ function CheckoutForm() {
 
     useEffect(() => {
         if (subtotal <= 0) {
+            console.log('[UPS shipping quote] skipped: subtotal is zero or negative', { subtotal });
             setQuotedShipping(0);
             setQuotedTax(0);
             setShippingError('');
@@ -411,6 +415,10 @@ function CheckoutForm() {
         }
 
         if (!hasCompleteShippingAddress) {
+            console.log('[UPS shipping quote] skipped: shipping address is incomplete', {
+                hasCompleteShippingAddress,
+                form,
+            });
             setQuotedShipping(0);
             setQuotedTax(0);
             setShippingError('');
@@ -421,6 +429,19 @@ function CheckoutForm() {
         const controller = new AbortController();
         setIsFetchingShipping(true);
         setShippingError('');
+
+        const quotePayload = {
+            courier: 'ups',
+            subtotal,
+            city: form.city,
+            state: form.state,
+            postal_code: form.postal_code,
+            country: form.country,
+            items: normalizedItems,
+        };
+
+        console.log('[UPS shipping quote] request', quotePayload);
+
         const timer = setTimeout(async () => {
             try {
                 const response = await fetch('/api/public/shipping/quote', {
@@ -429,25 +450,24 @@ function CheckoutForm() {
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
                     },
-                    body: JSON.stringify({
-                        courier: 'ups',
-                        subtotal,
-                        city: form.city,
-                        state: form.state,
-                        postal_code: form.postal_code,
-                        country: form.country,
-                        items: normalizedItems,
-                    }),
+                    body: JSON.stringify(quotePayload),
                     signal: controller.signal,
                 });
 
                 const payload = await response.json().catch(() => ({}));
+                console.log('[UPS shipping quote] response', {
+                    status: response.status,
+                    ok: response.ok,
+                    payload,
+                });
+
                 if (!response.ok) {
                     throw new Error(payload?.error || payload?.message || 'Unable to fetch UPS shipping charge');
                 }
 
                 setQuotedShipping(Number(payload?.shipping || 0));
             } catch (error) {
+                console.error('[UPS shipping quote] request failed', error);
                 if (error?.name === 'AbortError') {
                     return;
                 }

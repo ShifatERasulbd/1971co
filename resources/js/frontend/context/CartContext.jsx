@@ -97,6 +97,12 @@ function normalizeCartItem(product, options = {}) {
     const weight = normalizeWeightValue(options.weight)
         || variantWeight
         || normalizeWeightValue(product?.weight);
+    const length = normalizeWeightValue(options.length)
+        || normalizeWeightValue(product?.length);
+    const width = normalizeWeightValue(options.width)
+        || normalizeWeightValue(product?.width);
+    const height = normalizeWeightValue(options.height)
+        || normalizeWeightValue(product?.height);
 
     return {
         lineId,
@@ -110,6 +116,9 @@ function normalizeCartItem(product, options = {}) {
         selectedSize,
         sku: variantSku || String(product?.sku || '').trim(),
         weight,
+        length,
+        width,
+        height,
         slug: String(product?.slug || '').trim(),
     };
 }
