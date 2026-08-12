@@ -136,6 +136,78 @@ function CheckoutForm() {
         notes: '',
     });
 
+    useEffect(() => {
+        let ignore = false;
+
+        async function prefillFromLoggedInProfile() {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok || ignore) {
+                    return;
+                }
+
+                const payload = await response.json().catch(() => null);
+                if (!payload || ignore) {
+                    return;
+                }
+
+                const fallbackName = String(payload?.name || '').trim();
+                const fallbackNameParts = fallbackName ? fallbackName.split(/\s+/) : [];
+                const fallbackFirstName = fallbackNameParts[0] || '';
+                const fallbackLastName = fallbackNameParts.slice(1).join(' ');
+
+                const profileValues = {
+                    first_name: String(payload?.first_name || fallbackFirstName || '').trim(),
+                    last_name: String(payload?.last_name || fallbackLastName || '').trim(),
+                    email: String(payload?.email || '').trim(),
+                    phone: String(payload?.phone || payload?.phone_number || '').trim(),
+                    address_line_1: String(payload?.address_line_1 || payload?.address1 || '').trim(),
+                    address_line_2: String(payload?.address_line_2 || payload?.address2 || '').trim(),
+                    city: String(payload?.city || '').trim(),
+                    state: String(payload?.state || '').trim(),
+                    postal_code: String(payload?.postal_code || payload?.zip || '').trim(),
+                    country: String(payload?.country || '').trim(),
+                };
+
+                setForm((previous) => {
+                    const next = { ...previous };
+                    let changed = false;
+
+                    Object.entries(profileValues).forEach(([field, value]) => {
+                        if (!value) {
+                            return;
+                        }
+
+                        const current = String(previous[field] || '').trim();
+                        if (current) {
+                            return;
+                        }
+
+                        next[field] = value;
+                        changed = true;
+                    });
+
+                    return changed ? next : previous;
+                });
+            } catch {
+                // Prefill is best-effort only.
+            }
+        }
+
+        prefillFromLoggedInProfile();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
     const hasCompleteShippingAddress = useMemo(() => Boolean(
         String(form.state || '').trim()
         && String(form.city || '').trim()
@@ -978,10 +1050,6 @@ function CheckoutForm() {
                         <div className="flex items-center justify-between">
                             <span>State Tax</span>
                             <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span>Stripe Charge (2.9% + $0.30)</span>
-                            <span>${stripeCharge.toFixed(2)}</span>
                         </div>
                         
                         {isFetchingShipping ? (

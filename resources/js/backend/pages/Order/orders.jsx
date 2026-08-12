@@ -62,6 +62,55 @@ function CourierSyncBadge({ order }) {
     return <span className="text-xs text-zinc-400">-</span>;
 }
 
+function getTrackingNumber(order) {
+    return String(order?.tracking_number || order?.ups_tracking_number || order?.courier_reference || '').trim();
+}
+
+function buildUpsTrackingUrl(trackingNumber) {
+    const value = String(trackingNumber || '').trim();
+    if (!value) {
+        return '';
+    }
+
+    return `https://wwwapps.ups.com/WebTracking/track?track=yes&trackNums=${encodeURIComponent(value)}`;
+}
+
+function renderTrackingContent(order) {
+    const trackingNumber = getTrackingNumber(order);
+    if (trackingNumber) {
+        return {
+            kind: 'tracking',
+            trackingNumber,
+            trackingUrl: buildUpsTrackingUrl(trackingNumber),
+        };
+    }
+
+    const syncStatus = String(order?.courier_sync_status || '').trim().toLowerCase();
+    const upsMessage = String(order?.ups_status_message || '').trim();
+    const orderStatus = String(order?.status || '').trim().toLowerCase();
+
+    if (syncStatus === 'failed') {
+        return {
+            kind: 'failed',
+            label: 'UPS sync failed',
+            message: upsMessage || 'Tracking unavailable for this order.',
+        };
+    }
+
+    if (['approved', 'processing', 'shipped', 'delivered'].includes(orderStatus)) {
+        return {
+            kind: 'pending',
+            label: 'Pending UPS',
+            message: 'Tracking will appear after shipment sync.',
+        };
+    }
+
+    return {
+        kind: 'none',
+        label: '-',
+    };
+}
+
 export default function Orders() {
     const navigate = useNavigate();
     const { setPageTitle, user } = useAppContext();
@@ -211,7 +260,7 @@ export default function Orders() {
     const allSelected = orders.length > 0 && selected.size === orders.length;
     const someSelected = selected.size > 0;
     const lastPage = meta?.last_page ?? 1;
-    const tableColSpan = isCustomer ? 9 : 10;
+    const tableColSpan = isCustomer ? 10 : 11;
 
     return (
         <div className="px-4 py-6 sm:px-6">
@@ -303,6 +352,7 @@ export default function Orders() {
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Total</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Status</th>
                             {!isCustomer && <th className="px-4 py-3 text-left font-semibold text-zinc-700">UPS Courier</th>}
+                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Tracking #</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Date</th>
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Actions</th>
                         </tr>
@@ -316,8 +366,11 @@ export default function Orders() {
                             <tr>
                                 <td colSpan={tableColSpan} className="px-4 py-10 text-center text-zinc-400">No orders found</td>
                             </tr>
-                        ) : orders.map((order) => (
-                            <tr key={order.id} className="hover:bg-zinc-50">
+                        ) : orders.map((order) => {
+                            const tracking = renderTrackingContent(order);
+
+                            return (
+                                <tr key={order.id} className="hover:bg-zinc-50">
                                 <td className="px-3 py-3">
                                     {!isCustomer ? (
                                         <input
@@ -335,6 +388,34 @@ export default function Orders() {
                                 <td className="px-4 py-3 text-right font-medium text-zinc-800">${Number(order.total).toFixed(2)}</td>
                                 <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                                 {!isCustomer && <td className="px-4 py-3"><CourierSyncBadge order={order} /></td>}
+                                <td className="px-4 py-3 text-xs">
+                                    {tracking.kind === 'tracking' ? (
+                                        <a
+                                            href={tracking.trackingUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="font-mono text-zinc-700 underline-offset-2 hover:underline"
+                                        >
+                                            {tracking.trackingNumber}
+                                        </a>
+                                    ) : tracking.kind === 'failed' ? (
+                                        <div className="space-y-0.5">
+                                            <span className="inline-flex items-center rounded bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
+                                                {tracking.label}
+                                            </span>
+                                            <p className="max-w-[190px] text-[10px] leading-4 text-zinc-500">{tracking.message}</p>
+                                        </div>
+                                    ) : tracking.kind === 'pending' ? (
+                                        <div className="space-y-0.5">
+                                            <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                                                {tracking.label}
+                                            </span>
+                                            <p className="text-[10px] leading-4 text-zinc-500">{tracking.message}</p>
+                                        </div>
+                                    ) : (
+                                        <span className="text-zinc-400">{tracking.label}</span>
+                                    )}
+                                </td>
                                 <td className="px-4 py-3 text-xs text-zinc-500">
                                     {new Date(order.created_at).toLocaleDateString()}
                                 </td>
@@ -356,8 +437,9 @@ export default function Orders() {
                                         </button>
                                     )}
                                 </td>
-                            </tr>
-                        ))}
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

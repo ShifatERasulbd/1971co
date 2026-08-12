@@ -1,30 +1,21 @@
-import { ArrowLeft } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Gauge, ShoppingBag, UserCircle2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAppContext } from '@/context/AppContext';
+import CartDrawer from '../../frontend/components/CartDrawer';
+import Footer from '../../frontend/components/Footer';
+import Header from '../../frontend/components/Header';
+import { CartProvider } from '../../frontend/context/CartContext';
 
 export default function AppLayout() {
     const { pageTitle, user, setUser } = useAppContext();
     const location = useLocation();
     const navigate = useNavigate();
-
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [profileError, setProfileError] = useState('');
-    const [profileSuccess, setProfileSuccess] = useState('');
-    const [profileForm, setProfileForm] = useState({
-        first_name: '',
-        last_name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-    });
+    const isCustomerRoute = location.pathname.startsWith('/user/');
 
     const isCustomer = user?.user_type === 'customer';
     const dashboardPath = isCustomer ? '/user/dashboard' : '/admin/dashboard';
@@ -32,21 +23,10 @@ export default function AppLayout() {
     const isHomePageBuilder = location.pathname.startsWith('/admin/website/home-page');
     const isAboutPageBuilder = location.pathname.startsWith('/admin/website/about-page');
     const isCommunityPageBuilder = location.pathname.startsWith('/admin/website/community-page');
-    const isCustomerAllowedPath = location.pathname === '/user/dashboard' || location.pathname === '/user/orders';
-
-    const customerDisplayName = useMemo(() => {
-        const fullName = String(user?.name || '').trim();
-        if (fullName) {
-            return fullName;
-        }
-
-        const fallbackName = [user?.first_name, user?.last_name]
-            .map((item) => String(item || '').trim())
-            .filter(Boolean)
-            .join(' ');
-
-        return fallbackName || 'Customer';
-    }, [user?.first_name, user?.last_name, user?.name]);
+    const isCustomerAllowedPath =
+        location.pathname === '/user/dashboard'
+        || location.pathname === '/user/orders'
+        || location.pathname === '/user/edit-profile';
 
     useEffect(() => {
         let ignore = false;
@@ -63,6 +43,7 @@ export default function AppLayout() {
 
                 if (!response.ok || ignore) {
                     if (!ignore && response.status === 401) {
+                        setUser(null);
                         navigate('/admin');
                     }
                     return;
@@ -91,20 +72,6 @@ export default function AppLayout() {
             return;
         }
 
-        setProfileForm({
-            first_name: String(user.first_name || '').trim(),
-            last_name: String(user.last_name || '').trim(),
-            email: String(user.email || '').trim(),
-            password: '',
-            password_confirmation: '',
-        });
-    }, [user]);
-
-    useEffect(() => {
-        if (!user) {
-            return;
-        }
-
         if (user.user_type !== 'customer' && location.pathname.startsWith('/user/')) {
             navigate('/admin/dashboard', { replace: true });
             return;
@@ -116,6 +83,7 @@ export default function AppLayout() {
 
         const isDashboardPath = location.pathname === '/user/dashboard';
         const isOrdersPath = location.pathname === '/user/orders';
+        const isEditProfilePath = location.pathname === '/user/edit-profile';
 
         if (location.pathname === '/admin/dashboard') {
             navigate('/user/dashboard', { replace: true });
@@ -127,177 +95,15 @@ export default function AppLayout() {
             return;
         }
 
-        if (!isDashboardPath && !isOrdersPath) {
+        if (!isDashboardPath && !isOrdersPath && !isEditProfilePath) {
             navigate('/user/dashboard', { replace: true });
         }
     }, [location.pathname, navigate, user]);
 
-    useEffect(() => {
-        setIsUserMenuOpen(false);
-    }, [location.pathname]);
-
-    const closeProfileModal = () => {
-        setIsProfileModalOpen(false);
-        setProfileError('');
-        setProfileSuccess('');
-        setProfileForm((previous) => ({
-            ...previous,
-            password: '',
-            password_confirmation: '',
-        }));
-    };
-
-    const handleProfileFieldChange = (field, value) => {
-        setProfileForm((previous) => ({
-            ...previous,
-            [field]: value,
-        }));
-    };
-
-    const handleCustomerLogout = async () => {
-        if (isLoggingOut) {
-            return;
-        }
-
-        setIsLoggingOut(true);
-
-        try {
-            await fetch('/sanctum/csrf-cookie', {
-                credentials: 'include',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            await fetch('/api/logout', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-        } finally {
-            setIsLoggingOut(false);
-            navigate('/admin');
-        }
-    };
-
-    const handleProfileSubmit = async (event) => {
-        event.preventDefault();
-        if (isProfileSubmitting) {
-            return;
-        }
-
-        setProfileError('');
-        setProfileSuccess('');
-        setIsProfileSubmitting(true);
-
-        try {
-            await fetch('/sanctum/csrf-cookie', {
-                credentials: 'include',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            const payload = {
-                first_name: String(profileForm.first_name || '').trim(),
-                last_name: String(profileForm.last_name || '').trim(),
-                email: String(profileForm.email || '').trim(),
-                password: String(profileForm.password || ''),
-                password_confirmation: String(profileForm.password_confirmation || ''),
-            };
-
-            if (!payload.password) {
-                delete payload.password;
-                delete payload.password_confirmation;
-            }
-
-            const response = await fetch('/api/customer/profile', {
-                method: 'PUT',
-                credentials: 'include',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                const firstValidationError = data?.errors
-                    ? Object.values(data.errors)[0]?.[0]
-                    : null;
-                setProfileError(firstValidationError || data?.message || 'Unable to update profile.');
-                return;
-            }
-
-            if (data?.user) {
-                setUser(data.user);
-            }
-
-            setProfileForm((previous) => ({
-                ...previous,
-                password: '',
-                password_confirmation: '',
-            }));
-            setProfileSuccess(data?.message || 'Profile updated successfully.');
-        } catch {
-            setProfileError('Unable to update profile right now. Please try again.');
-        } finally {
-            setIsProfileSubmitting(false);
-        }
-    };
-
     const renderHeaderRight = () => {
-        if (!isCustomer) {
-            return (
-                <div className="inline-flex items-center rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background md:text-sm">
-                    {warehouseName || 'Admin'}
-                </div>
-            );
-        }
-
         return (
-            <div className="relative">
-                <button
-                    type="button"
-                    onClick={() => setIsUserMenuOpen((previous) => !previous)}
-                    className="inline-flex items-center rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted md:text-sm"
-                >
-                    {customerDisplayName}
-                </button>
-
-                {isUserMenuOpen ? (
-                    <div className="absolute right-0 z-30 mt-2 min-w-[170px] rounded-md border border-border bg-white p-1 shadow-lg">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsUserMenuOpen(false);
-                                setIsProfileModalOpen(true);
-                            }}
-                            className="block w-full rounded px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
-                        >
-                            Profile
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsUserMenuOpen(false);
-                                handleCustomerLogout();
-                            }}
-                            disabled={isLoggingOut}
-                            className="block w-full rounded px-3 py-2 text-left text-sm text-foreground hover:bg-muted disabled:opacity-60"
-                        >
-                            {isLoggingOut ? 'Logging out...' : 'Logout'}
-                        </button>
-                    </div>
-                ) : null}
+            <div className="inline-flex items-center rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background md:text-sm">
+                {warehouseName || 'Admin'}
             </div>
         );
     };
@@ -323,6 +129,32 @@ export default function AppLayout() {
     );
 
     if (!user) {
+        if (isCustomerRoute) {
+            return (
+                <CartProvider>
+                    <div className="flex min-h-screen flex-col bg-white text-zinc-950">
+                        <Header />
+                        <main className="mx-auto flex w-full max-w-[1700px] flex-1 px-6 py-6 sm:px-10 lg:px-16">
+                            <div className="grid w-full gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                                <aside className="h-fit rounded border border-zinc-200 bg-white p-3">
+                                    <div className="space-y-2">
+                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
+                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
+                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
+                                    </div>
+                                </aside>
+                                <div className="rounded border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
+                                    Loading dashboard...
+                                </div>
+                            </div>
+                        </main>
+                        <Footer />
+                        <CartDrawer />
+                    </div>
+                </CartProvider>
+            );
+        }
+
         return (
             <div className="min-h-screen bg-background px-6 py-10 text-sm text-muted-foreground">
                 Loading dashboard...
@@ -332,6 +164,73 @@ export default function AppLayout() {
 
     if (isCustomer && !isCustomerAllowedPath) {
         return <Navigate to="/user/dashboard" replace />;
+    }
+
+    if (isCustomer) {
+        return (
+            <CartProvider>
+                <div className="flex min-h-screen flex-col bg-white text-zinc-950">
+                    <Header />
+
+                    <main className="mx-auto flex w-full max-w-[1700px] flex-1 px-6 py-6 sm:px-10 lg:px-16">
+                        <div className="grid w-full gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                            <aside className="h-fit rounded border border-zinc-200 bg-white">
+                                <nav aria-label="Customer dashboard" className="p-2">
+                                    <NavLink
+                                        to="/user/dashboard"
+                                        className={({ isActive }) =>
+                                            `flex items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-colors ${
+                                                isActive
+                                                    ? 'bg-zinc-900 text-white'
+                                                    : 'text-zinc-700 hover:bg-zinc-100'
+                                            }`
+                                        }
+                                    >
+                                        <Gauge className="size-4" />
+                                        Dashboard
+                                    </NavLink>
+
+                                    <NavLink
+                                        to="/user/edit-profile"
+                                        className={({ isActive }) =>
+                                            `mt-1 flex items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-colors ${
+                                                isActive
+                                                    ? 'bg-zinc-900 text-white'
+                                                    : 'text-zinc-700 hover:bg-zinc-100'
+                                            }`
+                                        }
+                                    >
+                                        <UserCircle2 className="size-4" />
+                                        Edit Profile
+                                    </NavLink>
+
+                                    <NavLink
+                                        to="/user/orders"
+                                        className={({ isActive }) =>
+                                            `mt-1 flex items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-colors ${
+                                                isActive
+                                                    ? 'bg-zinc-900 text-white'
+                                                    : 'text-zinc-700 hover:bg-zinc-100'
+                                            }`
+                                        }
+                                    >
+                                        <ShoppingBag className="size-4" />
+                                        Orders
+                                    </NavLink>
+                                </nav>
+                            </aside>
+
+                            <div className="min-w-0">
+                                <Outlet />
+                            </div>
+                        </div>
+                    </main>
+
+                    <Footer />
+                    <CartDrawer />
+                </div>
+            </CartProvider>
+        );
     }
 
     if (isHomePageBuilder || isAboutPageBuilder || isCommunityPageBuilder) {
@@ -356,99 +255,7 @@ export default function AppLayout() {
                     <Outlet />
                 </div>
             </SidebarInset>
-
-            {isCustomer && isProfileModalOpen ? (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-                    <div className="w-full max-w-md rounded-lg border border-border bg-white p-5 shadow-xl">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-base font-semibold">Update Profile</h2>
-                            <button
-                                type="button"
-                                onClick={closeProfileModal}
-                                className="rounded px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100"
-                            >
-                                Close
-                            </button>
-                        </div>
-
-                        <form className="space-y-3" onSubmit={handleProfileSubmit}>
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-600">First Name</label>
-                                <input
-                                    type="text"
-                                    value={profileForm.first_name}
-                                    onChange={(event) => handleProfileFieldChange('first_name', event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-900"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-600">Last Name</label>
-                                <input
-                                    type="text"
-                                    value={profileForm.last_name}
-                                    onChange={(event) => handleProfileFieldChange('last_name', event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-900"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-600">Email</label>
-                                <input
-                                    type="email"
-                                    value={profileForm.email}
-                                    onChange={(event) => handleProfileFieldChange('email', event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-900"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-600">New Password (optional)</label>
-                                <input
-                                    type="password"
-                                    value={profileForm.password}
-                                    onChange={(event) => handleProfileFieldChange('password', event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-900"
-                                    placeholder="Leave blank to keep current password"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-600">Confirm New Password</label>
-                                <input
-                                    type="password"
-                                    value={profileForm.password_confirmation}
-                                    onChange={(event) => handleProfileFieldChange('password_confirmation', event.target.value)}
-                                    className="h-10 w-full rounded border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-900"
-                                />
-                            </div>
-
-                            {profileError ? <p className="text-sm text-red-600">{profileError}</p> : null}
-                            {profileSuccess ? <p className="text-sm text-emerald-700">{profileSuccess}</p> : null}
-
-                            <div className="flex items-center justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={closeProfileModal}
-                                    className="inline-flex h-10 items-center rounded border border-zinc-300 px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isProfileSubmitting}
-                                    className="inline-flex h-10 items-center rounded bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-black disabled:opacity-60"
-                                >
-                                    {isProfileSubmitting ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            ) : null}
+            {renderProfileModal()}
         </SidebarProvider>
     );
 }

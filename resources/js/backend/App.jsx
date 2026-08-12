@@ -1,9 +1,10 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import { LoginForm } from '@/components/login-form';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider } from '@/context/AppContext';
 import AppLayout from '@/layouts/AppLayout';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { bootstrapPublicSettings } from '../utils/siteSettings';
 
 function lazyWithRetry(importer, key) {
     return lazy(async () => {
@@ -29,6 +30,7 @@ function lazyWithRetry(importer, key) {
 }
 
 const Dashboard = lazyWithRetry(() => import('@/pages/dashboard'), 'dashboard');
+const EditProfile = lazyWithRetry(() => import('@/pages/Customer/editProfile'), 'customer-edit-profile');
 
 // size Management
 const Size  = lazyWithRetry(() => import('@/pages/Size/size'), 'size');
@@ -84,6 +86,10 @@ const AddCompliance = lazyWithRetry(() => import('@/pages/Compliance/addComplian
 const EditCompliance = lazyWithRetry(() => import('@/pages/Compliance/editCompliance'), 'edit-compliance');
 
 export default function App() {
+    useEffect(() => {
+        bootstrapPublicSettings();
+    }, []);
+
     return (
         <AppProvider>
             <BrowserRouter>
@@ -156,9 +162,10 @@ export default function App() {
 
                         <Route path="/user" element={<AppLayout />}>
                             <Route path="dashboard" element={<Dashboard />} />
+                            <Route path="edit-profile" element={<EditProfile />} />
                             <Route path="orders" element={<Orders />} />
                         </Route>
-                        <Route path="/" element={<main />} />
+                        <Route path="*" element={<Navigate to="/admin" replace />} />
 
                         {/* Hero Management */}
                        

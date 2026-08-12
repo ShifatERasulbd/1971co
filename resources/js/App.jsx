@@ -140,9 +140,9 @@ function withPageFallback(Component) {
 
 function FrontendLayout() {
     return (
-        <div className="min-h-screen bg-white text-zinc-950">
+        <div className="flex min-h-screen flex-col bg-white text-zinc-950">
             <Header />
-            <main>
+            <main className="flex-1">
                 <Outlet />
             </main>
             <Footer />

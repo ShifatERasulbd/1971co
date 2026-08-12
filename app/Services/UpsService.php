@@ -211,7 +211,7 @@ class UpsService
 
         $shipmentEndpoint = $this->config('shipment_endpoint', '/api/shipments/v2409/ship');
 
-        return $this->request('post', $shipmentEndpoint, $shipmentPayload);
+        return $this->createShipment($shipmentPayload);
     }
 
     protected function resolveShipmentService(array $payload, ?array $origin = null): array
@@ -325,6 +325,23 @@ class UpsService
         }
     }
 
+    public function findTrackingNumberByInquiry(string $inquiry): ?string
+    {
+        $normalizedInquiry = trim($inquiry);
+        if ($normalizedInquiry === '') {
+            return null;
+        }
+
+        $this->ensureConfigured();
+
+        $trackEndpointTemplate = (string) $this->config('track_endpoint', '/api/track/v1/details/{inquiryNumber}');
+        $trackEndpoint = str_replace('{inquiryNumber}', rawurlencode($normalizedInquiry), $trackEndpointTemplate);
+
+        $response = $this->request('get', $trackEndpoint, []);
+
+        return $this->extractTrackingNumberFromTrackResponse($response);
+    }
+
     protected function withResolvedShipmentService(array $shipmentPayload): ?array
     {
         $countryCode = trim((string) data_get($shipmentPayload, 'ShipmentRequest.Shipment.ShipTo.Address.CountryCode', ''));
@@ -396,8 +413,11 @@ class UpsService
                 'transactionSrc' => 'LaravelCheckout',
             ]);
 
+        $httpMethod = strtoupper($method);
+        $options = $httpMethod === 'GET' ? [] : ['json' => $payload];
+
         try {
-            $response = $request->send(strtoupper($method), $url, ['json' => $payload]);
+            $response = $request->send($httpMethod, $url, $options);
         } catch (ConnectionException $exception) {
             if (! $this->isLocalSslError($exception)) {
                 throw $exception;
@@ -414,15 +434,18 @@ class UpsService
                     'transId' => (string) uniqid('ups_', true),
                     'transactionSrc' => 'LaravelCheckout',
                 ])
-                ->send(strtoupper($method), $url, ['json' => $payload]);
+                ->send($httpMethod, $url, $options);
         }
 
         if ($response->failed()) {
             $body = $response->body();
+            $upsError = $this->extractUpsErrorDetails($body);
+            $errorCode = $upsError['code'];
+            $errorMessage = $upsError['message'] !== '' ? $upsError['message'] : $body;
 
             if (
                 $allowPaymentRetry
-                && str_contains($body, '9120068')
+                && ($errorCode === '9120068' || str_contains($body, '9120068'))
                 && isset($payload['ShipmentRequest']['Shipment']['PaymentInformation'])
             ) {
                 // UPS rejects account+card style payment hints together; retry once without PaymentInformation.
@@ -431,7 +454,7 @@ class UpsService
                 return $this->request($method, $path, $payload, false, $allowOriginRetry);
             }
 
-            if (str_contains($body, '111100')) {
+            if ($errorCode === '111100' || str_contains($body, '111100')) {
                 $originSummary = sprintf(
                     '%s, %s %s, %s',
                     (string) $this->config('origin_city', ''),
@@ -447,14 +470,25 @@ class UpsService
                 );
             }
 
-            if (str_contains($body, '9110006')) {
+            if ($errorCode === '9110006' || str_contains($body, '9110006')) {
                 throw new RuntimeException(
                     'UPS API request failed because shipper address is missing (9110006). '
                     . 'Set UPS_ORIGIN_ADDRESS_1, UPS_ORIGIN_CITY, UPS_ORIGIN_STATE, UPS_ORIGIN_POSTAL_CODE, and UPS_ORIGIN_COUNTRY in .env.'
                 );
             }
 
-            throw new RuntimeException('UPS API request failed: ' . $response->status() . ' ' . $body);
+            if ($errorCode === '120100' || str_contains($body, '120100')) {
+                throw new RuntimeException(
+                    'UPS API request failed because the shipper number is missing or invalid (120100). '
+                    . 'Verify UPS_SHIPPER_NUMBER in .env matches your UPS account number. '
+                    . 'Current value: ' . $this->maskValue((string) $this->config('shipper_number', ''))
+                );
+            }
+
+            throw new RuntimeException(
+                'UPS API request failed: ' . $response->status() . ' ' . $errorMessage
+                . ($errorCode !== null ? ' (code ' . $errorCode . ')' : '')
+            );
         }
 
         return $response->json() ?? [];
@@ -583,6 +617,31 @@ class UpsService
         return null;
     }
 
+    protected function extractTrackingNumberFromTrackResponse(array $response): ?string
+    {
+        $candidates = [
+            data_get($response, 'trackResponse.shipment.0.package.0.trackingNumber'),
+            data_get($response, 'trackResponse.shipment.package.0.trackingNumber'),
+            data_get($response, 'trackResponse.shipment.package.trackingNumber'),
+            data_get($response, 'shipment.0.package.0.trackingNumber'),
+            data_get($response, 'shipment.package.0.trackingNumber'),
+            data_get($response, 'shipment.package.trackingNumber'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate === null) {
+                continue;
+            }
+
+            $value = trim((string) $candidate);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     protected function estimateWeightFromItems(array $items): float
     {
         $totalQuantity = 0;
@@ -636,6 +695,19 @@ class UpsService
         ];
 
         return $map[$value] ?? 'US';
+    }
+
+    protected function extractUpsErrorDetails(string $body): array
+    {
+        $decoded = json_decode($body, true);
+
+        $code = trim((string) data_get($decoded, 'response.errors.0.code', ''));
+        $message = trim((string) data_get($decoded, 'response.errors.0.message', ''));
+
+        return [
+            'code' => $code !== '' ? $code : null,
+            'message' => $message,
+        ];
     }
 
     public function diagnostics(bool $probeAuth = true): array

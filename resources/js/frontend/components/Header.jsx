@@ -39,6 +39,7 @@ const utilityIcons = [
 export default function Header() {
     const location = useLocation();
     const navigate = useNavigate();
+    const isBackendRoute = location.pathname.startsWith('/user/') || location.pathname.startsWith('/admin/');
     const { itemCount, openCartDrawer } = useCart();
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
@@ -81,17 +82,33 @@ export default function Header() {
         closeSearch();
 
         if (!normalized) {
+            if (isBackendRoute) {
+                window.location.assign('/shop');
+                return;
+            }
+
             navigate('/shop');
             return;
         }
 
         const searchSlug = toSearchSlug(normalized);
         if (!searchSlug) {
+            if (isBackendRoute) {
+                window.location.assign('/shop');
+                return;
+            }
+
             navigate('/shop');
             return;
         }
 
-        navigate(`/search/${encodeURIComponent(searchSlug)}`);
+        const searchPath = `/search/${encodeURIComponent(searchSlug)}`;
+        if (isBackendRoute) {
+            window.location.assign(searchPath);
+            return;
+        }
+
+        navigate(searchPath);
     }
 
     function toggleMobileItem(itemKey) {
@@ -186,6 +203,11 @@ export default function Header() {
             return;
         }
 
+        if (isBackendRoute) {
+            window.location.assign('/login');
+            return;
+        }
+
         navigate('/login');
     }
 
@@ -195,6 +217,11 @@ export default function Header() {
         closeShopMenuImmediately();
         closeMobileMenu();
         closeSearch();
+
+        if (isBackendRoute) {
+            window.location.assign('/');
+            return;
+        }
 
         if (location.pathname !== '/') {
             navigate('/');
@@ -580,6 +607,22 @@ export default function Header() {
         return false;
     }
 
+    function RouteAwareLink({ to, className, onClick, children, ...rest }) {
+        if (isBackendRoute) {
+            return (
+                <a href={to} className={className} onClick={onClick} {...rest}>
+                    {children}
+                </a>
+            );
+        }
+
+        return (
+            <Link to={to} className={className} onClick={onClick} {...rest}>
+                {children}
+            </Link>
+        );
+    }
+
     return (
         <>
         <header className={`${timelessFontClass} site-header sticky top-0 z-[300] border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
@@ -632,7 +675,7 @@ export default function Header() {
                                         }
                                     }}
                                 >
-                                    <Link
+                                    <RouteAwareLink
                                         to={item.href}
                                         className={navLinkClassName}
                                         style={{ fontFamily: 'Montserrat, sans-serif' }}
@@ -640,7 +683,7 @@ export default function Header() {
                                         aria-haspopup="menu"
                                     >
                                         {item.label}
-                                    </Link>
+                                    </RouteAwareLink>
 
                                     {/* Mega Menu Dropdown */}
                                     <div
@@ -664,25 +707,25 @@ export default function Header() {
                                                                     className="px-2 py-2"
                                                                 >
                                                                     <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                                                                        <Link
+                                                                        <RouteAwareLink
                                                                             to={column.href}
                                                                             className="transition-colors hover:text-zinc-700"
                                                                             onClick={closeShopMenuImmediately}
                                                                         >
                                                                             {column.title}
-                                                                        </Link>
+                                                                        </RouteAwareLink>
                                                                     </h3>
 
                                                                     <ul className="mt-5 space-y-2 text-[0.98rem] font-medium uppercase leading-7 tracking-[0.01em] text-zinc-600">
                                                                         {column.items.map((megaItem) => (
                                                                             <li key={`${column.title}-${megaItem.label}`}>
-                                                                                <Link
+                                                                                <RouteAwareLink
                                                                                     to={megaItem.href}
                                                                                     className="transition-colors hover:text-zinc-950"
                                                                                     onClick={closeShopMenuImmediately}
                                                                                 >
                                                                                     {megaItem.label}
-                                                                                </Link>
+                                                                                </RouteAwareLink>
                                                                             </li>
                                                                         ))}
                                                                     </ul>
@@ -700,7 +743,7 @@ export default function Header() {
                                                 {isShopMegaMenuOpen && shopMegaMenuImage ? (
                                                 <div className="flex w-[420px] flex-none justify-center xl:w-[480px]">
                                                     <figure className="w-full max-w-[480px] text-center">
-                                                        <Link
+                                                        <RouteAwareLink
                                                             to={shopMegaMenuHref}
                                                             className="block overflow-hidden border border-zinc-200 bg-zinc-100 p-3"
                                                             onClick={closeShopMenuImmediately}
@@ -713,7 +756,7 @@ export default function Header() {
                                                                 fetchPriority="low"
                                                                 className="h-[300px] w-full object-contain object-center xl:h-[340px]"
                                                             />
-                                                        </Link>
+                                                        </RouteAwareLink>
                                                         
                                                     </figure>
                                                 </div>
@@ -723,23 +766,23 @@ export default function Header() {
                                     </div>
                                 </div>
                             ) : item.isRoute ? (
-                                <Link
+                                <RouteAwareLink
                                     key={navKey}
                                     to={item.href}
                                     className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
-                                </Link>
+                                </RouteAwareLink>
                             ) : (
-                                <Link
+                                <a
                                     key={navKey}
                                     href={item.href}
                                     className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
-                                </Link>
+                                </a>
                             )
                             );
                         })
@@ -917,13 +960,13 @@ export default function Header() {
                                     <li key={`mobile-${item.label}`} className="border-b border-zinc-200/80">
                                         <div className="flex items-center justify-between gap-2 px-1 py-4">
                                             {item.isRoute ? (
-                                                <Link
+                                                <RouteAwareLink
                                                     to={item.href}
                                                     onClick={closeMobileMenu}
                                                     className="min-w-0 flex-1 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
                                                 >
                                                     <span>{item.label}</span>
-                                                </Link>
+                                                </RouteAwareLink>
                                             ) : (
                                                 <a
                                                     href={item.href}
@@ -963,13 +1006,13 @@ export default function Header() {
                                                     return (
                                                         <li key={`mobile-submenu-${itemKey}-${child.id}`}>
                                                             <div className="flex items-center justify-between gap-2 py-2 pr-1">
-                                                                <Link
+                                                                <RouteAwareLink
                                                                     to={child.href}
                                                                     onClick={closeMobileMenu}
                                                                     className="min-w-0 flex-1 text-[0.8rem] font-medium uppercase tracking-[0.03em] text-zinc-700"
                                                                 >
                                                                     {child.label}
-                                                                </Link>
+                                                                </RouteAwareLink>
 
                                                                 {hasGrandChilds ? (
                                                                     <button
@@ -992,13 +1035,13 @@ export default function Header() {
                                                                 <ul id={`mobile-submenu-${itemKey}-${subItemKey}`} className="pb-1 pl-3">
                                                                     {grandChildItems.map((grandChild) => (
                                                                         <li key={`mobile-grand-child-${itemKey}-${subItemKey}-${grandChild.id}`}>
-                                                                            <Link
+                                                                            <RouteAwareLink
                                                                                 to={grandChild.href}
                                                                                 onClick={closeMobileMenu}
                                                                                 className="block py-1.5 text-[0.74rem] font-medium uppercase tracking-[0.03em] text-zinc-600"
                                                                             >
                                                                                 {grandChild.label}
-                                                                            </Link>
+                                                                            </RouteAwareLink>
                                                                         </li>
                                                                     ))}
                                                                 </ul>

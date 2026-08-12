@@ -209,7 +209,61 @@ class CheckoutOrderController extends Controller
 
         $orders = $query->paginate((int) $request->input('per_page', 20));
 
+        $orders->getCollection()->transform(function (CheckoutOrder $order) {
+            $trackingNumber = $this->resolveTrackingNumberForCustomerOrder($order);
+
+            $order->setAttribute('tracking_number', $trackingNumber);
+
+            return $order;
+        });
+
         return response()->json($orders);
+    }
+
+    protected function resolveTrackingNumberForCustomerOrder(CheckoutOrder $order): ?string
+    {
+        $existingTracking = trim((string) ($order->ups_tracking_number ?? $order->courier_reference ?? ''));
+        if ($existingTracking !== '') {
+            return $existingTracking;
+        }
+
+        if (! $this->upsService->isConfigured()) {
+            return null;
+        }
+
+        $inquiryCandidates = array_values(array_unique(array_filter([
+            trim((string) ($order->courier_reference ?? '')),
+            trim((string) ($order->order_number ?? '')),
+        ])));
+
+        foreach ($inquiryCandidates as $inquiryNumber) {
+            try {
+                $trackingNumber = $this->upsService->findTrackingNumberByInquiry($inquiryNumber);
+            } catch (\Throwable $exception) {
+                Log::warning('Unable to resolve UPS tracking number by inquiry.', [
+                    'checkout_order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'inquiry_number' => $inquiryNumber,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                continue;
+            }
+
+            if (! $trackingNumber) {
+                continue;
+            }
+
+            $order->update([
+                'courier_reference' => $trackingNumber,
+                'ups_tracking_number' => $trackingNumber,
+                'courier_sync_status' => $order->courier_sync_status ?: 'synced',
+            ]);
+
+            return $trackingNumber;
+        }
+
+        return null;
     }
 
     public function show(CheckoutOrder $checkoutOrder): JsonResponse
@@ -306,14 +360,7 @@ class CheckoutOrderController extends Controller
         if ($previousStatus === 'approved' && $nextStatus === 'processing') {
             try {
                 $upsResponse = $this->upsService->createShipmentForCheckoutOrder($checkoutOrder);
-                $trackingNumber = $this->extractUpsTrackingNumber($upsResponse);
-
-                $validated['courier_sync_status'] = 'synced';
-                $validated['courier_sync_error'] = null;
-                $validated['courier_reference'] = $trackingNumber;
-                $validated['ups_tracking_number'] = $trackingNumber;
-                $validated['ups_synced_at'] = now();
-                $validated['courier_service'] = 'ups';
+                $validated = array_merge($validated, $this->buildUpsSuccessPayload($upsResponse));
             } catch (\Throwable $exception) {
                 Log::error('UPS shipment push failed on single order update.', [
                     'checkout_order_id' => $checkoutOrder->id,
@@ -321,9 +368,7 @@ class CheckoutOrderController extends Controller
                     'error' => $exception->getMessage(),
                 ]);
 
-                $validated['courier_sync_status'] = 'failed';
-                $validated['courier_sync_error'] = $exception->getMessage();
-                $validated['courier_service'] = 'ups';
+                $validated = array_merge($validated, $this->buildUpsFailurePayload($exception));
                 $syncWarning = 'Order status updated, but UPS sync failed.';
             }
         }
@@ -363,15 +408,7 @@ class CheckoutOrderController extends Controller
             foreach ($ordersToSend as $order) {
                 try {
                     $upsResponse = $this->upsService->createShipmentForCheckoutOrder($order);
-                    $trackingNumber = $this->extractUpsTrackingNumber($upsResponse);
-                    $syncPayloadByOrderId[$order->id] = [
-                        'courier_service' => 'ups',
-                        'courier_sync_status' => 'synced',
-                        'courier_sync_error' => null,
-                        'courier_reference' => $trackingNumber,
-                        'ups_tracking_number' => $trackingNumber,
-                        'ups_synced_at' => now(),
-                    ];
+                    $syncPayloadByOrderId[$order->id] = $this->buildUpsSuccessPayload($upsResponse);
                 } catch (\Throwable $exception) {
                     Log::error('UPS shipment push failed on bulk order update.', [
                         'checkout_order_id' => $order->id,
@@ -380,11 +417,7 @@ class CheckoutOrderController extends Controller
                     ]);
 
                     $failedSyncs++;
-                    $syncPayloadByOrderId[$order->id] = [
-                        'courier_service' => 'ups',
-                        'courier_sync_status' => 'failed',
-                        'courier_sync_error' => $exception->getMessage(),
-                    ];
+                    $syncPayloadByOrderId[$order->id] = $this->buildUpsFailurePayload($exception);
                 }
             }
 
@@ -529,6 +562,8 @@ class CheckoutOrderController extends Controller
             'payment_intent_id' => $validated['payment_intent_id'],
             'courier_service' => 'ups',
             'courier_sync_status' => 'pending',
+            'ups_status' => 'pending',
+            'ups_status_message' => 'Waiting for UPS sync attempt.',
         ]);
 
         $syncPayload = $this->dispatchOrderToCourier($order);
@@ -547,6 +582,10 @@ class CheckoutOrderController extends Controller
             'processing_fee' => self::PROCESSING_FEE,
             'courier_service' => $order->courier_service,
             'courier_sync_status' => $order->fresh()?->courier_sync_status,
+            'ups_status' => $order->fresh()?->ups_status,
+            'ups_status_code' => $order->fresh()?->ups_status_code,
+            'ups_status_message' => $order->fresh()?->ups_status_message,
+            'ups_error_response' => $order->fresh()?->ups_error_response,
         ], 201);
     }
 
@@ -729,16 +768,7 @@ class CheckoutOrderController extends Controller
     {
         try {
             $response = $this->upsService->createShipmentForCheckoutOrder($order);
-            $trackingNumber = $this->extractUpsTrackingNumber($response);
-
-            return [
-                'courier_service' => 'ups',
-                'courier_sync_status' => 'synced',
-                'courier_sync_error' => null,
-                'courier_reference' => $trackingNumber,
-                'ups_tracking_number' => $trackingNumber,
-                'ups_synced_at' => now(),
-            ];
+            return $this->buildUpsSuccessPayload($response);
         } catch (\Throwable $exception) {
             Log::error('UPS shipment push failed on order create.', [
                 'checkout_order_id' => $order->id,
@@ -746,12 +776,82 @@ class CheckoutOrderController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
-            return [
-                'courier_service' => 'ups',
-                'courier_sync_status' => 'failed',
-                'courier_sync_error' => $exception->getMessage(),
-            ];
+            return $this->buildUpsFailurePayload($exception);
         }
+    }
+
+    protected function buildUpsSuccessPayload(array $upsResponse): array
+    {
+        $trackingNumber = $this->extractUpsTrackingNumber($upsResponse);
+        $statusCode = trim((string) (
+            data_get($upsResponse, 'ShipmentResponse.Response.ResponseStatus.Code')
+            ?? data_get($upsResponse, 'Response.ResponseStatus.Code')
+            ?? '200'
+        ));
+        $statusMessage = trim((string) (
+            data_get($upsResponse, 'ShipmentResponse.Response.ResponseStatus.Description')
+            ?? data_get($upsResponse, 'Response.ResponseStatus.Description')
+            ?? 'Shipment created successfully.'
+        ));
+
+        return [
+            'courier_service' => 'ups',
+            'courier_sync_status' => 'synced',
+            'courier_sync_error' => null,
+            'courier_reference' => $trackingNumber,
+            'ups_tracking_number' => $trackingNumber,
+            'ups_synced_at' => now(),
+            'ups_status' => 'success',
+            'ups_status_code' => $statusCode !== '' ? $statusCode : '200',
+            'ups_status_message' => $statusMessage !== '' ? $statusMessage : 'Shipment created successfully.',
+            'ups_error_response' => null,
+        ];
+    }
+
+    protected function buildUpsFailurePayload(\Throwable $exception): array
+    {
+        $details = $this->extractUpsErrorDetailsFromException($exception);
+
+        return [
+            'courier_service' => 'ups',
+            'courier_sync_status' => 'failed',
+            'courier_sync_error' => $details['message'],
+            'ups_synced_at' => now(),
+            'ups_status' => 'failed',
+            'ups_status_code' => $details['code'],
+            'ups_status_message' => $details['message'],
+            'ups_error_response' => $details['raw'],
+        ];
+    }
+
+    protected function extractUpsErrorDetailsFromException(\Throwable $exception): array
+    {
+        $message = trim((string) $exception->getMessage());
+        $jsonChunk = null;
+
+        $firstBraceAt = strpos($message, '{');
+        if ($firstBraceAt !== false) {
+            $jsonChunk = substr($message, $firstBraceAt);
+        }
+
+        $decoded = is_string($jsonChunk) ? json_decode($jsonChunk, true) : null;
+        $code = trim((string) data_get($decoded, 'response.errors.0.code', ''));
+        $upsMessage = trim((string) data_get($decoded, 'response.errors.0.message', ''));
+
+        $normalizedMessage = $message;
+        if ($upsMessage !== '') {
+            $normalizedMessage = $code !== ''
+                ? 'UPS ' . $code . ': ' . $upsMessage
+                : 'UPS: ' . $upsMessage;
+        }
+
+        $raw = is_array($decoded) ? json_encode($decoded, JSON_UNESCAPED_SLASHES) : null;
+
+        return [
+            'code' => $code !== '' ? $code : null,
+            'message' => $normalizedMessage,
+            'raw' => $raw !== false ? $raw : null,
+        ];
     }
 
     protected function extractUpsTrackingNumber(array $upsResponse): ?string
@@ -812,7 +912,13 @@ class CheckoutOrderController extends Controller
             'courier_service' => $order->courier_service,
             'courier_reference' => $order->courier_reference,
             'courier_sync_status' => $order->courier_sync_status,
+            'courier_sync_error' => $order->courier_sync_error,
             'ups_tracking_number' => $order->ups_tracking_number,
+            'ups_status' => $order->ups_status,
+            'ups_status_code' => $order->ups_status_code,
+            'ups_status_message' => $order->ups_status_message,
+            'ups_error_response' => $order->ups_error_response,
+            'ups_synced_at' => $order->ups_synced_at,
             'shipstation_order_id' => $order->shipstation_order_id,
             'created_at' => $order->created_at,
             'updated_at' => $order->updated_at,
@@ -945,6 +1051,16 @@ class CheckoutOrderController extends Controller
             'processingFee' => $processingFee,
             'processingfee' => $processingFee,
             'total' => (float) $order->total,
+            'courier_service' => $order->courier_service,
+            'courier_reference' => $order->courier_reference,
+            'courier_sync_status' => $order->courier_sync_status,
+            'courier_sync_error' => $order->courier_sync_error,
+            'ups_tracking_number' => $order->ups_tracking_number,
+            'ups_status' => $order->ups_status,
+            'ups_status_code' => $order->ups_status_code,
+            'ups_status_message' => $order->ups_status_message,
+            'ups_error_response' => $order->ups_error_response,
+            'ups_synced_at' => $order->ups_synced_at,
             'created_at' => $order->created_at,
             'updated_at' => $order->updated_at,
         ];
