@@ -1161,9 +1161,10 @@ function CheckoutForm() {
                             </div>
 
                             {shippingOptions.length > 0 ? (
-                                shippingOptions.map((option) => {
+                                shippingOptions.slice(0, 3).map((option, index) => {
                                     const isSelected = option.code === selectedShippingOptionCode;
                                     const selectedPrice = Number(option.price || 0);
+                                    const displayLabel = index === 0 ? 'Standard' : index === 1 ? 'Express' : 'Super Express';
 
                                     return (
                                         <button
@@ -1180,7 +1181,7 @@ function CheckoutForm() {
                                                     <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${isSelected ? 'border-red-500 bg-red-500' : 'border-zinc-300 bg-white'}`}>
                                                         {isSelected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
                                                     </span>
-                                                    <span className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-700">{option.label}</span>
+                                                    <span className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-700">{displayLabel}</span>
                                                 </div>
                                                 <span className="text-lg font-semibold text-zinc-900">${selectedPrice.toFixed(2)}</span>
                                             </div>

@@ -96,9 +96,7 @@ class CheckoutOrderController extends Controller
             'items' => $validated['items'],
         ]);
 
-        if ($selectedServiceCode !== '') {
-            $shippingOptions = array_values(array_filter($shippingOptions, static fn (array $option): bool => (string) ($option['code'] ?? '') === $selectedServiceCode));
-        }
+        $shippingOptions = array_values(array_slice($shippingOptions, 0, 3));
 
         return response()->json([
             'courier' => 'ups',
