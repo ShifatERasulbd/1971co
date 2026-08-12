@@ -255,7 +255,6 @@ export default function AppLayout() {
                     <Outlet />
                 </div>
             </SidebarInset>
-            {renderProfileModal()}
         </SidebarProvider>
     );
 }
