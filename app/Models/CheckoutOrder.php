@@ -23,6 +23,7 @@ class CheckoutOrder extends Model
         'state',
         'postal_code',
         'country',
+        'residential',
         'notes',
         'items_count',
         'subtotal',
@@ -64,6 +65,7 @@ class CheckoutOrder extends Model
             'stripe_charge' => 'decimal:2',
             'processing_fee' => 'decimal:2',
             'total' => 'decimal:2',
+            'residential' => 'boolean',
             'ups_synced_at' => 'datetime',
             'shipstation_synced_at' => 'datetime',
         ];

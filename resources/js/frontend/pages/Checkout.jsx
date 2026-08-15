@@ -54,6 +54,46 @@ function toImageUrl(value) {
     return `/${value.replace(/^\/+/, '')}`;
 }
 
+function addBusinessDays(startDate, businessDays) {
+    const result = new Date(startDate);
+    if (!Number.isFinite(businessDays) || businessDays <= 0) {
+        return result;
+    }
+
+    let added = 0;
+    while (added < businessDays) {
+        result.setDate(result.getDate() + 1);
+        const day = result.getDay();
+        if (day !== 0 && day !== 6) {
+            added += 1;
+        }
+    }
+
+    return result;
+}
+
+function formatExpectedDeliveryDate(selectedDeliveryDate, option) {
+    if (!selectedDeliveryDate) {
+        return 'Expected date unavailable';
+    }
+
+    const shipDate = new Date(`${selectedDeliveryDate}T00:00:00`);
+    if (Number.isNaN(shipDate.getTime())) {
+        return 'Expected date unavailable';
+    }
+
+    const transitDays = Number(option?.delivery_days);
+    const expectedDate = Number.isFinite(transitDays) && transitDays > 0
+        ? addBusinessDays(shipDate, transitDays)
+        : shipDate;
+
+    return expectedDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
 function LazyCheckoutImage({ src, alt, className }) {
     const [isVisible, setIsVisible] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -122,6 +162,7 @@ function CheckoutForm() {
     const [quotedTax, setQuotedTax] = useState(0);
     const [isFetchingTax, setIsFetchingTax] = useState(false);
     const [taxError, setTaxError] = useState('');
+    const [isResidentialAddress, setIsResidentialAddress] = useState(false);
     const [stateOptions, setStateOptions] = useState([]);
     const [cityOptions, setCityOptions] = useState([]);
     const [isLoadingStates, setIsLoadingStates] = useState(false);
@@ -179,6 +220,10 @@ function CheckoutForm() {
                     postal_code: String(payload?.postal_code || payload?.zip || '').trim(),
                     country: String(payload?.country || '').trim(),
                 };
+
+                if (payload?.residential !== undefined && payload?.residential !== null) {
+                    setIsResidentialAddress(Boolean(payload.residential));
+                }
 
                 setForm((previous) => {
                     const next = { ...previous };
@@ -441,6 +486,7 @@ function CheckoutForm() {
             state: form.state,
             postal_code: form.postal_code,
             country: form.country,
+            residential: isResidentialAddress,
             service_code: selectedShippingOptionCode || undefined,
             delivery_date: selectedDeliveryDate || undefined,
             delivery_time: selectedDeliveryTime || undefined,
@@ -501,7 +547,7 @@ function CheckoutForm() {
             clearTimeout(timer);
             setIsFetchingShipping(false);
         };
-    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, selectedDeliveryDate, selectedDeliveryTime, selectedShippingOptionCode, subtotal]);
+    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, isResidentialAddress, normalizedItems, selectedDeliveryDate, selectedDeliveryTime, selectedShippingOptionCode, subtotal]);
 
     useEffect(() => {
         if (subtotal <= 0) {
@@ -753,6 +799,7 @@ function CheckoutForm() {
                 body: JSON.stringify({
                     ...form,
                     courier: 'ups',
+                    residential: isResidentialAddress,
                     items: normalizedItems,
                     subtotal,
                     shipping,
@@ -1020,6 +1067,17 @@ function CheckoutForm() {
                                 />
                                 {fieldErrors.country ? <p className="mt-1 text-xs text-red-500">{fieldErrors.country}</p> : null}
                             </div>
+                            <div className="sm:col-span-2">
+                                <label className="inline-flex cursor-pointer items-center gap-2 text-[0.82rem] text-zinc-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={isResidentialAddress}
+                                        onChange={(event) => setIsResidentialAddress(event.target.checked)}
+                                        className="h-4 w-4 border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                                    />
+                                    This is a residential address.
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -1194,7 +1252,7 @@ function CheckoutForm() {
                                                     </>
                                                 ) : null}
                                                 <span>•</span>
-                                                <span>{selectedDeliveryDate ? new Date(`${selectedDeliveryDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Selected date'}</span>
+                                                <span>{formatExpectedDeliveryDate(selectedDeliveryDate, option)}</span>
                                             </div>
                                         </button>
                                     );

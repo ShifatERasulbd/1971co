@@ -35,6 +35,7 @@ class CheckoutOrderController extends Controller
             'state' => 'required|string|max:120',
             'city' => 'required|string|max:120',
             'postal_code' => 'required|string|max:40',
+            'residential' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.productId' => 'nullable|string|max:255',
             'items.*.quantity' => 'required|integer|min:1|max:999',
@@ -61,6 +62,7 @@ class CheckoutOrderController extends Controller
                 'state' => $validated['state'],
                 'city' => $validated['city'],
                 'postal_code' => $validated['postal_code'],
+                'residential' => $validated['residential'] ?? null,
                 'weight' => $this->estimateWeight($validated['items'] ?? []),
                 'items' => $validated['items'],
             ]);
@@ -92,6 +94,7 @@ class CheckoutOrderController extends Controller
             'state' => $validated['state'],
             'city' => $validated['city'],
             'postal_code' => $validated['postal_code'],
+            'residential' => $validated['residential'] ?? null,
             'weight' => $this->estimateWeight($validated['items'] ?? []),
             'items' => $validated['items'],
         ]);
@@ -404,6 +407,7 @@ class CheckoutOrderController extends Controller
             'state'           => 'nullable|string|max:120',
             'postal_code'     => 'nullable|string|max:40',
             'country'         => 'nullable|string|max:120',
+            'residential'     => 'sometimes|boolean',
             'notes'           => 'nullable|string|max:3000',
             'status'          => 'nullable|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
         ]);
@@ -523,6 +527,7 @@ class CheckoutOrderController extends Controller
             'state' => 'nullable|string|max:120',
             'postal_code' => 'nullable|string|max:40',
             'country' => 'nullable|string|max:120',
+            'residential' => 'nullable|boolean',
             'notes' => 'nullable|string|max:3000',
             'items' => 'required|array|min:1',
             'items.*.lineId' => 'nullable|string|max:255',
@@ -599,6 +604,7 @@ class CheckoutOrderController extends Controller
             'state' => isset($validated['state']) ? trim((string) $validated['state']) : null,
             'postal_code' => isset($validated['postal_code']) ? trim((string) $validated['postal_code']) : null,
             'country' => $this->shippingRateService->normalizeCountryCode($validated['country'] ?? null),
+            'residential' => (bool) ($validated['residential'] ?? false),
             'notes' => isset($validated['notes']) ? trim((string) $validated['notes']) : null,
             'items_count' => collect($validated['items'])->sum('quantity'),
             'subtotal' => $validated['subtotal'],
@@ -752,6 +758,7 @@ class CheckoutOrderController extends Controller
                 'state' => $payload['state'] ?? null,
                 'city' => $payload['city'] ?? null,
                 'postal_code' => $payload['postal_code'] ?? null,
+                'residential' => $payload['residential'] ?? null,
                 'weight' => $weight,
                 'items' => $resolvedItems,
             ], $preferredServiceCode);
@@ -786,15 +793,28 @@ class CheckoutOrderController extends Controller
 
             $resolvedItem = $item;
             $productId = $item['productId'] ?? $item['product_id'] ?? null;
+            $product = null;
 
             if ($productId !== null && $productId !== '') {
                 $product = Product::query()->find($productId);
-                if ($product) {
-                    $resolvedItem['weight'] = $resolvedItem['weight'] ?? $this->resolveVariantWeight($product, $item['selectedColor'] ?? '', $item['selectedSize'] ?? '', $item['sku'] ?? '');
-                    $resolvedItem['length'] = $resolvedItem['length'] ?? $product->length;
-                    $resolvedItem['width'] = $resolvedItem['width'] ?? $product->width;
-                    $resolvedItem['height'] = $resolvedItem['height'] ?? $product->height;
+
+                if (! $product) {
+                    $product = Product::query()
+                        ->where('slug', (string) $productId)
+                        ->first();
                 }
+            }
+
+            if ($product) {
+                $resolvedItem['weight'] = $resolvedItem['weight'] ?? $this->resolveVariantWeight(
+                    $product,
+                    $item['selectedColor'] ?? '',
+                    $item['selectedSize'] ?? '',
+                    $item['sku'] ?? ''
+                );
+                $resolvedItem['length'] = $resolvedItem['length'] ?? $product->length;
+                $resolvedItem['width'] = $resolvedItem['width'] ?? $product->width;
+                $resolvedItem['height'] = $resolvedItem['height'] ?? $product->height;
             }
 
             $resolved[] = $resolvedItem;

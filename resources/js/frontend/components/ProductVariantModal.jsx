@@ -548,6 +548,9 @@ export default function ProductVariantModal({
                                         image: mainImage,
                                         sku: String(selectedVariantRow?.sku || product?.sku || '').trim(),
                                         weight: String(selectedVariantRow?.weight || product?.weight || '').trim(),
+                                        length: String(selectedVariantRow?.length || product?.length || '').trim(),
+                                        width: String(selectedVariantRow?.width || product?.width || '').trim(),
+                                        height: String(selectedVariantRow?.height || product?.height || '').trim(),
                                     });
                                 }}
                                 className="inline-flex h-12 w-full flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400 sm:text-[0.8rem] sm:tracking-[0.14em]"

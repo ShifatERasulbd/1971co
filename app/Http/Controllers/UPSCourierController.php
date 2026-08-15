@@ -69,8 +69,8 @@ class UPSCourierController extends Controller
                         ]
                     ],
                     "Service" => [
-                        "Code" => config('services.ups.service_code', '03'),
-                        "Description" => config('services.ups.service_description', 'UPS Ground')
+                        "Code" => config('services.ups.service_code', '02'),
+                        "Description" => config('services.ups.service_description', 'UPS 2nd Day Air')
                     ],
                     "PaymentInformation" => [
                         "ShipmentCharge" => [

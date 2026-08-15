@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 class UpsRatePayloadTest extends TestCase
 {
-    public function test_rate_request_omits_package_dimensions_for_ups_shop_quotes(): void
+    public function test_rate_request_includes_package_dimensions_for_ups_shop_quotes(): void
     {
         $service = new class extends UpsService {
             public function buildPayloadForTest(array $payload): array
@@ -33,6 +33,11 @@ class UpsRatePayloadTest extends TestCase
 
         $requestPayload = $service->buildPayloadForTest($payload);
 
-        $this->assertArrayNotHasKey('Dimensions', $requestPayload['RateRequest']['Shipment']['Package'][0]);
+        $package = $requestPayload['RateRequest']['Shipment']['Package'][0];
+
+        $this->assertArrayHasKey('Dimensions', $package);
+        $this->assertSame('14', $package['Dimensions']['Length']);
+        $this->assertSame('12', $package['Dimensions']['Width']);
+        $this->assertSame('2', $package['Dimensions']['Height']);
     }
 }

@@ -111,14 +111,6 @@ class UpsService
 
         $dimensions = $this->resolvePackageDimensions($items);
 
-        $isResidential = $this->resolveResidentialFlag([
-            'residential' => data_get(
-                $order->shipping_address ?? null,
-                'residential',
-                $order->residential ?? null
-            ),
-        ]);
-
         if ($dimensions === null) {
             throw new RuntimeException(
                 'UPS package dimensions are required. Every package must have a positive length, width, and height.'
@@ -332,10 +324,10 @@ class UpsService
 
     protected function resolveShipmentService(array $payload, ?array $origin = null): array
     {
-        $fallbackCode = (string) $this->config('service_code', '03');
+        $fallbackCode = (string) $this->config('service_code', '02');
         $fallbackDescription = (string) $this->config(
             'service_description',
-            'UPS Ground'
+            'UPS 2nd Day Air'
         );
 
         try {
@@ -1170,7 +1162,7 @@ class UpsService
         $value = $payload['residential'] ?? null;
 
         if ($value === null || $value === '') {
-            return (bool) $this->config('default_residential', true);
+            return (bool) $this->config('default_residential', false);
         }
 
         if (is_bool($value)) {
@@ -1231,7 +1223,7 @@ class UpsService
         ?string $preferredServiceCode = null
     ): ?float {
         $configuredServiceCode = trim(
-            (string) $this->config('service_code', '03')
+            (string) $this->config('service_code', '02')
         );
 
         $rated = data_get(

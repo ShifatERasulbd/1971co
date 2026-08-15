@@ -37,7 +37,7 @@ function parseVariantTokens(value) {
         .filter(Boolean);
 }
 
-function findVariantRowWeight(product, selectedColor, selectedSize, selectedSku = '') {
+function findVariantRowValue(product, selectedColor, selectedSize, selectedSku = '', field = 'weight') {
     const rows = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
     if (rows.length === 0) {
         return '';
@@ -47,7 +47,7 @@ function findVariantRowWeight(product, selectedColor, selectedSize, selectedSku 
     if (selectedSkuToken) {
         const rowBySku = rows.find((row) => String(row?.sku || '').trim().toLowerCase() === selectedSkuToken);
         if (rowBySku) {
-            return normalizeWeightValue(rowBySku.weight);
+            return normalizeWeightValue(rowBySku?.[field]);
         }
     }
 
@@ -66,7 +66,7 @@ function findVariantRowWeight(product, selectedColor, selectedSize, selectedSku 
         const sizeMatches = selectedSizeToken ? rowSizeTokens.includes(selectedSizeToken) : true;
 
         if (colorMatches && sizeMatches) {
-            return normalizeWeightValue(row.weight);
+            return normalizeWeightValue(row?.[field]);
         }
     }
 
@@ -93,15 +93,21 @@ function normalizeCartItem(product, options = {}) {
 
     const priceValue = toNumberPrice(product?.priceValue ?? product?.price);
     const variantSku = String(options.sku || '').trim();
-    const variantWeight = findVariantRowWeight(product, selectedColor, selectedSize, variantSku);
+    const variantWeight = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'weight');
+    const variantLength = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'length');
+    const variantWidth = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'width');
+    const variantHeight = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'height');
     const weight = normalizeWeightValue(options.weight)
         || variantWeight
         || normalizeWeightValue(product?.weight);
     const length = normalizeWeightValue(options.length)
+        || variantLength
         || normalizeWeightValue(product?.length);
     const width = normalizeWeightValue(options.width)
+        || variantWidth
         || normalizeWeightValue(product?.width);
     const height = normalizeWeightValue(options.height)
+        || variantHeight
         || normalizeWeightValue(product?.height);
 
     return {

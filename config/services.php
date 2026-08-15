@@ -55,8 +55,8 @@ return [
     ],
 
     'ups' => [
-        'base_url' => env('UPS_BASE_URL', env('UPS_API_URL', 'https://wwwcie.ups.com')),
-        'oauth_base_url' => env('UPS_OAUTH_BASE_URL', env('UPS_API_URL', 'https://wwwcie.ups.com')),
+        'base_url' => env('UPS_BASE_URL', env('UPS_API_URL', 'https://onlinetools.ups.com')),
+        'oauth_base_url' => env('UPS_OAUTH_BASE_URL', env('UPS_API_URL', 'https://onlinetools.ups.com')),
         'token_endpoint' => env('UPS_TOKEN_ENDPOINT', '/security/v1/oauth/token'),
         'rate_endpoint' => env('UPS_RATE_ENDPOINT', '/api/rating/v2409/Shop'),
         'shipment_endpoint' => env('UPS_SHIPMENT_ENDPOINT', '/api/shipments/v2409/ship'),
@@ -71,8 +71,9 @@ return [
         'origin_state' => env('UPS_ORIGIN_STATE', 'MA'),
         'origin_postal_code' => env('UPS_ORIGIN_POSTAL_CODE', '01821'),
         'origin_country' => env('UPS_ORIGIN_COUNTRY', 'US'),
-        'service_code' => env('UPS_SERVICE_CODE', '03'),
-        'service_description' => env('UPS_SERVICE_DESCRIPTION', 'UPS Ground'),
+        'default_residential' => env('UPS_DEFAULT_RESIDENTIAL', false),
+        'service_code' => env('UPS_SERVICE_CODE', '02'),
+        'service_description' => env('UPS_SERVICE_DESCRIPTION', 'UPS 2nd Day Air'),
         'packaging_code' => env('UPS_PACKAGING_CODE', '02'),
     ],
 
