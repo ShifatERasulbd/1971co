@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\CheckoutOrder;
 use App\Models\Product;
+use App\Services\FacebookConversionsApiService;
 use App\Services\ShippingRateService;
 use App\Services\UpsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Stripe\StripeClient;
 
 class CheckoutOrderController extends Controller
@@ -23,6 +25,7 @@ class CheckoutOrderController extends Controller
     public function __construct(
         private readonly ShippingRateService $shippingRateService,
         private readonly UpsService $upsService,
+        private readonly FacebookConversionsApiService $facebookConversionsApiService,
     )
     {
     }
@@ -546,6 +549,7 @@ class CheckoutOrderController extends Controller
             'stripe_charge' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
             'payment_intent_id' => 'required|string|max:255',
+            'fb_event_id' => 'nullable|string|max:100',
         ]);
 
         $secretKey = (string) config('services.stripe.secret');
@@ -631,6 +635,9 @@ class CheckoutOrderController extends Controller
             $order->update($syncPayload);
         }
 
+        $fbEventId = (string) ($validated['fb_event_id'] ?? '') ?: (string) Str::uuid();
+        $this->sendPurchaseConversionEvent($order, $request, $fbEventId);
+
         return response()->json([
             'message' => 'Order created successfully',
             'order_id' => $order->id,
@@ -645,7 +652,54 @@ class CheckoutOrderController extends Controller
             'ups_status_code' => $order->fresh()?->ups_status_code,
             'ups_status_message' => $order->fresh()?->ups_status_message,
             'ups_error_response' => $order->fresh()?->ups_error_response,
+            'fb_event_id' => $fbEventId,
         ], 201);
+    }
+
+    private function sendPurchaseConversionEvent(CheckoutOrder $order, Request $request, string $eventId): void
+    {
+        try {
+            $items = is_array($order->items) ? $order->items : [];
+            $contents = array_map(static fn ($item) => [
+                'id' => (string) ($item['productId'] ?? ''),
+                'quantity' => (int) ($item['quantity'] ?? 1),
+                'item_price' => (float) ($item['priceValue'] ?? 0),
+            ], $items);
+
+            $this->facebookConversionsApiService->sendEvent(
+                'Purchase',
+                [
+                    'email' => $order->email,
+                    'phone' => $order->phone,
+                    'first_name' => $order->first_name,
+                    'last_name' => $order->last_name,
+                    'city' => $order->city,
+                    'state' => $order->state,
+                    'zip' => $order->postal_code,
+                    'country' => $order->country,
+                    'client_ip_address' => $request->ip(),
+                    'client_user_agent' => $request->userAgent(),
+                    'fbp' => $request->cookie('_fbp'),
+                    'fbc' => $request->cookie('_fbc'),
+                ],
+                [
+                    'currency' => 'USD',
+                    'value' => (float) $order->total,
+                    'content_type' => 'product',
+                    'content_ids' => array_column($contents, 'id'),
+                    'contents' => $contents,
+                    'num_items' => (int) $order->items_count,
+                    'order_id' => $order->order_number,
+                ],
+                $eventId,
+                $request->headers->get('referer'),
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send Facebook Purchase conversion event', [
+                'order_number' => $order->order_number,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     protected function calculateStripeCharge(float $baseAmount): float

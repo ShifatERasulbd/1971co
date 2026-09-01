@@ -11,6 +11,7 @@ import { CartProvider } from './frontend/context/CartContext.jsx';
 import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
 import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics';
+import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel';
 
 preventInvalidBodyAriaHidden();
 
@@ -116,6 +117,7 @@ function DocumentBrandingManager() {
 
         // Track page view with Google Analytics
         trackPageView(pathname);
+        trackPixelPageView();
     }, [pathname, settings]);
 
     useEffect(() => {
@@ -126,6 +128,34 @@ function DocumentBrandingManager() {
             window.__gaInitialized = true;
         }
     }, [settings]);
+
+    useEffect(() => {
+        // Initialize Facebook Pixel once, using the pixel id exposed by the backend
+        if (window.__fbPixelInitialized) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        fetch('/api/public/facebook-pixel-config')
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload) => {
+                if (isCancelled || !payload?.pixelId) {
+                    return;
+                }
+
+                initializeFacebookPixel(payload.pixelId);
+                trackPixelPageView();
+                window.__fbPixelInitialized = true;
+            })
+            .catch(() => {
+                // Ignore pixel bootstrap failures; analytics should never block the app.
+            });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
 
     return null;
 }

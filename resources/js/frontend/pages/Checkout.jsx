@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useCart } from '../context/CartContext';
 import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const fallbackImage = '';
 const STRIPE_PERCENT_RATE = 0.029;
@@ -296,6 +297,21 @@ function CheckoutForm() {
             })),
         [items],
     );
+
+    useEffect(() => {
+        if (isCartEmpty) {
+            return;
+        }
+
+        trackPixelEvent('InitiateCheckout', {
+            content_ids: items.map((item) => item.productId),
+            content_type: 'product',
+            currency: 'USD',
+            value: subtotal,
+            num_items: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     function validateFormValues(values) {
         const errors = {};
@@ -736,6 +752,9 @@ function CheckoutForm() {
         setFieldErrors({});
 
         setIsSubmitting(true);
+        const fbEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `fb-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         try {
             const paymentIntentResponse = await fetch('/api/create-payment-intent', {
                 method: 'POST',
@@ -807,6 +826,7 @@ function CheckoutForm() {
                     payment_intent_id: paymentResult.paymentIntent.id,
                     tax,
                     stripe_charge: stripeCharge,
+                    fb_event_id: fbEventId,
                 }),
             });
 
@@ -857,6 +877,15 @@ function CheckoutForm() {
             } catch {
                 // Ignore storage failures and continue normal flow.
             }
+
+            trackPixelEvent('Purchase', {
+                content_ids: normalizedItems.map((item) => item.productId),
+                content_type: 'product',
+                currency: 'USD',
+                value: total,
+                num_items: normalizedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+                order_id: String(payload?.order_number || ''),
+            }, payload?.fb_event_id || fbEventId);
 
             clearCart();
             toast.success('Payment successful and order placed');

@@ -81,4 +81,11 @@ return [
         'api_key' => env('PUBLIC_ORDERS_API_KEY'),
     ],
 
+    'facebook' => [
+        'pixel_id' => env('FACEBOOK_PIXEL_ID'),
+        'capi_access_token' => env('FACEBOOK_CAPI_ACCESS_TOKEN'),
+        'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v21.0'),
+        'test_event_code' => env('FACEBOOK_CAPI_TEST_EVENT_CODE'),
+    ],
+
 ];

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
 
@@ -172,6 +173,14 @@ export function CartProvider({ children }) {
                 quantity: updated[index].quantity + nextItem.quantity,
             };
             return updated;
+        });
+
+        trackPixelEvent('AddToCart', {
+            content_ids: [nextItem.productId],
+            content_type: 'product',
+            content_name: nextItem.name,
+            currency: 'USD',
+            value: nextItem.priceValue * nextItem.quantity,
         });
 
         return nextItem;
