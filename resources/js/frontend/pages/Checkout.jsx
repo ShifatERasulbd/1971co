@@ -10,8 +10,6 @@ import { featuresFontClass } from '../utils/typography';
 import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const fallbackImage = '';
-const STRIPE_PERCENT_RATE = 0.029;
-const STRIPE_FIXED_FEE = 0.3;
 
 function roundCurrency(value) {
     const numericValue = Number(value);
@@ -20,11 +18,6 @@ function roundCurrency(value) {
     }
 
     return Math.round((numericValue + Number.EPSILON) * 100) / 100;
-}
-
-function calculateStripeCharge(baseAmount) {
-    const amount = Math.max(0, Number(baseAmount) || 0);
-    return roundCurrency((amount * STRIPE_PERCENT_RATE) + STRIPE_FIXED_FEE);
 }
 
 const cardElementOptions = {
@@ -288,8 +281,7 @@ function CheckoutForm() {
     }, [quotedTax]);
 
     const baseTotal = useMemo(() => roundCurrency(subtotal + shipping + tax), [subtotal, shipping, tax]);
-    const stripeCharge = useMemo(() => calculateStripeCharge(baseTotal), [baseTotal]);
-    const total = useMemo(() => roundCurrency(baseTotal + stripeCharge), [baseTotal, stripeCharge]);
+    const total = baseTotal;
 
     const normalizedItems = useMemo(
         () =>
@@ -825,7 +817,7 @@ function CheckoutForm() {
                     total,
                     payment_intent_id: paymentResult.paymentIntent.id,
                     tax,
-                    stripe_charge: stripeCharge,
+                    stripe_charge: 0,
                     fb_event_id: fbEventId,
                 }),
             });
@@ -863,8 +855,8 @@ function CheckoutForm() {
                 subtotal,
                 shipping,
                 tax,
-                stripe_charge: stripeCharge,
-                processing_fee: 0.5,
+                stripe_charge: 0,
+                processing_fee: 0,
                 total,
                 courier_service: '',
                 courier_reference: String(payload?.courier_reference || ''),
