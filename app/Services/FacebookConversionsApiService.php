@@ -63,34 +63,58 @@ class FacebookConversionsApiService
             $payload['test_event_code'] = $testEventCode;
         }
 
+        $url = sprintf('https://graph.facebook.com/%s/%s/events', $graphVersion, $pixelId);
+        $body = $payload + ['access_token' => $accessToken];
+
         try {
             $response = Http::asJson()
                 ->acceptJson()
                 ->timeout(5)
-                ->post(
-                    sprintf('https://graph.facebook.com/%s/%s/events', $graphVersion, $pixelId),
-                    $payload + ['access_token' => $accessToken],
-                );
-
-            if ($response->failed()) {
-                Log::warning('Facebook CAPI request failed', [
+                ->post($url, $body);
+        } catch (ConnectionException $exception) {
+            if (! $this->isLocalSslError($exception)) {
+                Log::warning('Facebook CAPI connection error', [
                     'event_name' => $eventName,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
+                    'message' => $exception->getMessage(),
                 ]);
 
                 return false;
             }
 
-            return true;
-        } catch (ConnectionException $exception) {
-            Log::warning('Facebook CAPI connection error', [
+            // Local Windows fallback when CA cert chain is missing.
+            try {
+                $response = Http::asJson()
+                    ->acceptJson()
+                    ->timeout(5)
+                    ->withOptions(['verify' => false])
+                    ->post($url, $body);
+            } catch (ConnectionException $retryException) {
+                Log::warning('Facebook CAPI connection error', [
+                    'event_name' => $eventName,
+                    'message' => $retryException->getMessage(),
+                ]);
+
+                return false;
+            }
+        }
+
+        if ($response->failed()) {
+            Log::warning('Facebook CAPI request failed', [
                 'event_name' => $eventName,
-                'message' => $exception->getMessage(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
             return false;
         }
+
+        return true;
+    }
+
+    protected function isLocalSslError(ConnectionException $exception): bool
+    {
+        return app()->environment('local')
+            && str_contains($exception->getMessage(), 'cURL error 60');
     }
 
     /**

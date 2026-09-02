@@ -41,14 +41,6 @@ class CheckoutOrder extends Model
         'courier_reference',
         'courier_sync_status',
         'courier_sync_error',
-        'ups_tracking_number',
-        'ups_synced_at',
-        'ups_status',
-        'ups_status_code',
-        'ups_status_message',
-        'ups_error_response',
-        'shipstation_order_id',
-        'shipstation_synced_at',
         'status',
     ];
 
@@ -66,8 +58,8 @@ class CheckoutOrder extends Model
             'processing_fee' => 'decimal:2',
             'total' => 'decimal:2',
             'residential' => 'boolean',
-            'ups_synced_at' => 'datetime',
-            'shipstation_synced_at' => 'datetime',
+          
+          
         ];
     }
 

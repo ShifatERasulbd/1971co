@@ -83,6 +83,17 @@ function formatExpectedDeliveryDate(selectedDeliveryDate, option) {
         return 'Expected date unavailable';
     }
 
+    if (option?.estimated_delivery) {
+        const estimatedDate = new Date(option.estimated_delivery);
+        if (!Number.isNaN(estimatedDate.getTime())) {
+            return estimatedDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        }
+    }
+
     const transitDays = Number(option?.delivery_days);
     const expectedDate = Number.isFinite(transitDays) && transitDays > 0
         ? addBusinessDays(shipDate, transitDays)
@@ -152,13 +163,13 @@ function CheckoutForm() {
     const isCartEmpty = items.length === 0;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
-    const selectedCourier = 'ups';
+
     const [quotedShipping, setQuotedShipping] = useState(0);
     const [shippingOptions, setShippingOptions] = useState([]);
     const [selectedShippingOptionCode, setSelectedShippingOptionCode] = useState('');
     const [selectedDeliveryDate, setSelectedDeliveryDate] = useState('');
     const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('');
-    const [isFetchingShipping, setIsFetchingShipping] = useState(false);
+
     const [shippingError, setShippingError] = useState('');
     const [quotedTax, setQuotedTax] = useState(0);
     const [isFetchingTax, setIsFetchingTax] = useState(false);
@@ -469,102 +480,7 @@ function CheckoutForm() {
         };
     }, [form.state]);
 
-    useEffect(() => {
-        if (subtotal <= 0) {
-            console.log('[UPS shipping quote] skipped: subtotal is zero or negative', { subtotal });
-            setQuotedShipping(0);
-            setQuotedTax(0);
-            setShippingError('');
-            setTaxError('');
-            return;
-        }
-
-        if (!hasCompleteShippingAddress) {
-            console.log('[UPS shipping quote] skipped: shipping address is incomplete', {
-                hasCompleteShippingAddress,
-                form,
-            });
-            setQuotedShipping(0);
-            setQuotedTax(0);
-            setShippingError('');
-            setTaxError('');
-            return;
-        }
-
-        const controller = new AbortController();
-        setIsFetchingShipping(true);
-        setShippingError('');
-
-        const quotePayload = {
-            courier: 'ups',
-            subtotal,
-            city: form.city,
-            state: form.state,
-            postal_code: form.postal_code,
-            country: form.country,
-            residential: isResidentialAddress,
-            service_code: selectedShippingOptionCode || undefined,
-            delivery_date: selectedDeliveryDate || undefined,
-            delivery_time: selectedDeliveryTime || undefined,
-            items: normalizedItems,
-        };
-
-        console.log('[UPS shipping quote] request', quotePayload);
-
-        const timer = setTimeout(async () => {
-            try {
-                const response = await fetch('/api/public/shipping/quote', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                    },
-                    body: JSON.stringify(quotePayload),
-                    signal: controller.signal,
-                });
-
-                const payload = await response.json().catch(() => ({}));
-                console.log('[UPS shipping quote] response', {
-                    status: response.status,
-                    ok: response.ok,
-                    payload,
-                });
-
-                if (!response.ok) {
-                    throw new Error(payload?.error || payload?.message || 'Unable to fetch UPS shipping charge');
-                }
-
-                const nextOptions = Array.isArray(payload?.shipping_options) ? payload.shipping_options : [];
-                if (nextOptions.length > 0) {
-                    setShippingOptions(nextOptions);
-
-                    const defaultCode = payload?.selected_service_code || nextOptions[0]?.code || '';
-                    if (defaultCode) {
-                        setSelectedShippingOptionCode((current) => current || defaultCode);
-                    }
-                }
-
-                setQuotedShipping(Number(payload?.shipping || 0));
-            } catch (error) {
-                console.error('[UPS shipping quote] request failed', error);
-                if (error?.name === 'AbortError') {
-                    return;
-                }
-
-                setShippingError(error?.message || 'Unable to fetch UPS shipping charge');
-                setQuotedShipping(0);
-            } finally {
-                setIsFetchingShipping(false);
-            }
-        }, 350);
-
-        return () => {
-            controller.abort();
-            clearTimeout(timer);
-            setIsFetchingShipping(false);
-        };
-    }, [form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, isResidentialAddress, normalizedItems, selectedDeliveryDate, selectedDeliveryTime, selectedShippingOptionCode, subtotal]);
-
+   
     useEffect(() => {
         if (subtotal <= 0) {
             setQuotedTax(0);
@@ -626,6 +542,84 @@ function CheckoutForm() {
             setIsFetchingTax(false);
         };
     }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
+
+    useEffect(() => {
+        if (!hasCompleteShippingAddress || normalizedItems.length === 0) {
+            setShippingOptions([]);
+            setSelectedShippingOptionCode('');
+            setQuotedShipping(0);
+            setShippingError('');
+            return undefined;
+        }
+
+        const controller = new AbortController();
+        setShippingError('');
+        const timer = setTimeout(async () => {
+            const requestBody = {
+                first_name: form.first_name,
+                last_name: form.last_name,
+                phone: form.phone,
+                address_line_1: form.address_line_1,
+                city: form.city,
+                state: form.state,
+                postal_code: form.postal_code,
+                country: form.country,
+                items: normalizedItems,
+            };
+
+            // eslint-disable-next-line no-console
+            console.log('[Veeqo shipping quote] request payload:', requestBody);
+
+            try {
+                const response = await fetch('/api/public/shipping/quote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: controller.signal,
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                // eslint-disable-next-line no-console
+                console.log('[Veeqo shipping quote] response:', payload);
+
+                if (!response.ok || !payload?.success) {
+                    throw new Error(payload?.message || 'Unable to calculate shipping rates');
+                }
+
+                const rates = Array.isArray(payload?.rates) ? payload.rates : [];
+                setShippingOptions(rates);
+
+                if (rates.length > 0) {
+                    setSelectedShippingOptionCode(rates[0].code);
+                    setQuotedShipping(Number(rates[0].price || 0));
+                } else {
+                    setSelectedShippingOptionCode('');
+                    setQuotedShipping(0);
+                }
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+
+                // eslint-disable-next-line no-console
+                console.log('[Veeqo shipping quote] error:', error?.message || error);
+
+                setShippingOptions([]);
+                setSelectedShippingOptionCode('');
+                setQuotedShipping(0);
+                setShippingError(error?.message || 'Unable to calculate shipping rates');
+            }
+        }, 350);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
+    }, [form.address_line_1, form.city, form.country, form.first_name, form.last_name, form.phone, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems]);
 
     useEffect(() => {
         const city = String(form.city || '').trim();
@@ -817,7 +811,7 @@ function CheckoutForm() {
                 },
                 body: JSON.stringify({
                     ...form,
-                    courier: 'ups',
+                    courier: '',
                     residential: isResidentialAddress,
                     items: normalizedItems,
                     subtotal,
@@ -866,7 +860,7 @@ function CheckoutForm() {
                 stripe_charge: stripeCharge,
                 processing_fee: 0.5,
                 total,
-                courier_service: 'ups',
+                courier_service: '',
                 courier_reference: String(payload?.courier_reference || ''),
                 created_at: new Date().toISOString(),
             };
@@ -1201,12 +1195,7 @@ function CheckoutForm() {
                             <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
                         </div>
                         
-                        {isFetchingShipping ? (
-                            <p className="text-xs text-zinc-500">Fetching UPS shipping quote...</p>
-                        ) : null}
-                        {!isFetchingShipping && shippingError ? (
-                            <p className="text-xs text-red-600">{shippingError}</p>
-                        ) : null}
+                      
                         {isFetchingTax ? (
                             <p className="text-xs text-zinc-500">Calculating tax with Stripe Tax...</p>
                         ) : null}
@@ -1248,10 +1237,10 @@ function CheckoutForm() {
                             </div>
 
                             {shippingOptions.length > 0 ? (
-                                shippingOptions.slice(0, 3).map((option, index) => {
+                                shippingOptions.slice(0, 3).map((option) => {
                                     const isSelected = option.code === selectedShippingOptionCode;
                                     const selectedPrice = Number(option.price || 0);
-                                    const displayLabel = index === 0 ? 'Standard' : index === 1 ? 'Express' : 'Super Express';
+                                    const displayLabel = option.label || option.service || option.carrier || 'Shipping';
 
                                     return (
                                         <button
@@ -1273,22 +1262,24 @@ function CheckoutForm() {
                                                 <span className="text-lg font-semibold text-zinc-900">${selectedPrice.toFixed(2)}</span>
                                             </div>
                                             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
-                                                <span>{option.estimated_delivery || `Estimated delivery: ${option.delivery_days || '1-3 business days'}`}</span>
+                                                <span>Estimated delivery: {formatExpectedDeliveryDate(selectedDeliveryDate, option)}</span>
                                                 {option.delivery_time ? (
                                                     <>
                                                         <span>•</span>
                                                         <span>{option.delivery_time}</span>
                                                     </>
                                                 ) : null}
-                                                <span>•</span>
-                                                <span>{formatExpectedDeliveryDate(selectedDeliveryDate, option)}</span>
                                             </div>
                                         </button>
                                     );
                                 })
                             ) : (
                                 <div className="rounded border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500">
-                                    {hasCompleteShippingAddress ? 'Loading delivery options...' : 'Add your shipping address to see delivery options.'}
+                                    {shippingError
+                                        ? shippingError
+                                        : hasCompleteShippingAddress
+                                            ? 'Loading delivery options...'
+                                            : 'Add your shipping address to see delivery options.'}
                                 </div>
                             )}
                         </div>
@@ -1322,7 +1313,7 @@ function CheckoutForm() {
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
-                        disabled={isSubmitting || !stripe || !elements || isFetchingShipping || isFetchingTax || (subtotal > 0 && hasCompleteShippingAddress && shippingError !== '') || (subtotal > 0 && hasCompleteShippingAddress && taxError !== '')}
+                        disabled={isSubmitting || !stripe || !elements  || isFetchingTax || (subtotal > 0 && hasCompleteShippingAddress && shippingError !== '') || (subtotal > 0 && hasCompleteShippingAddress && taxError !== '')}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}

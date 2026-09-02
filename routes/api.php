@@ -24,7 +24,6 @@ use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SubCategoryController;
 use App\Http\Controllers\Payment\StripeController;
 use App\Http\Controllers\ShipStationController;
-use App\Http\Controllers\UPSCourierController;
 use App\Http\Controllers\UsLocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -62,8 +61,7 @@ Route::get('/public/community-page-sections', [CommunityPageSectionController::c
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
 Route::post('/public/tax/quote', [CheckoutOrderController::class, 'quoteTax']);
-Route::get('/public/shipping/ups-diagnostics', [CheckoutOrderController::class, 'upsDiagnostics']);
-Route::post('/public/shipping/ups-rate-diagnostics', [CheckoutOrderController::class, 'upsRateDiagnostics']);
+
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
 Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
 Route::get('/public/locations/postal-code', [UsLocationController::class, 'postalCodeByCityState']);
@@ -76,7 +74,7 @@ Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(functi
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 Route::post('/shipping/orders', [ShipStationController::class, 'storeOrder']);
-Route::post('/ups/shipments', [UPSCourierController::class, 'storeShipment']);
+
 Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/user', function (Request $request) {
 		return response()->json($request->user());
