@@ -167,6 +167,7 @@ function CheckoutForm() {
     const [quotedShipping, setQuotedShipping] = useState(0);
     const [shippingOptions, setShippingOptions] = useState([]);
     const [selectedShippingOptionCode, setSelectedShippingOptionCode] = useState('');
+    const [isFetchingShipping, setIsFetchingShipping] = useState(false);
     const [selectedDeliveryDate, setSelectedDeliveryDate] = useState('');
     const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('');
 
@@ -549,11 +550,13 @@ function CheckoutForm() {
             setSelectedShippingOptionCode('');
             setQuotedShipping(0);
             setShippingError('');
+            setIsFetchingShipping(false);
             return undefined;
         }
 
         const controller = new AbortController();
         setShippingError('');
+        setIsFetchingShipping(true);
         const timer = setTimeout(async () => {
             const requestBody = {
                 first_name: form.first_name,
@@ -612,12 +615,15 @@ function CheckoutForm() {
                 setSelectedShippingOptionCode('');
                 setQuotedShipping(0);
                 setShippingError(error?.message || 'Unable to calculate shipping rates');
+            } finally {
+                setIsFetchingShipping(false);
             }
         }, 350);
 
         return () => {
             controller.abort();
             clearTimeout(timer);
+            setIsFetchingShipping(false);
         };
     }, [form.address_line_1, form.city, form.country, form.first_name, form.last_name, form.phone, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems]);
 
@@ -1188,12 +1194,20 @@ function CheckoutForm() {
                         </div>
                         <div className="flex items-center justify-between">
                             <span>Shipping</span>
-                            <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                            {isFetchingShipping || shippingOptions.length === 0 ? (
+                                <span className="select-none blur-sm" aria-label="Calculating shipping">
+                                    $0.00
+                                </span>
+                            ) : (
+                                <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                            )}
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span>State Tax</span>
-                            <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
-                        </div>
+                        {String(form.state || '').trim().toUpperCase() === 'MA' ? (
+                            <div className="flex items-center justify-between">
+                                <span>State Tax</span>
+                                <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
+                            </div>
+                        ) : null}
                         
                       
                         {isFetchingTax ? (
@@ -1208,82 +1222,7 @@ function CheckoutForm() {
                         </div>
                     </div>
 
-                    <div className="mt-6 border-t border-zinc-200 pt-5">
-                        <div className="space-y-3">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                                    Delivery options
-                                </h2>
-                                <div className="flex gap-3">
-                                    <select
-                                        value={selectedDeliveryDate}
-                                        onChange={(event) => setSelectedDeliveryDate(event.target.value)}
-                                        className="h-10 border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-zinc-900"
-                                    >
-                                        {deliveryDates.map((day) => (
-                                            <option key={day.value} value={day.value}>{day.label}</option>
-                                        ))}
-                                    </select>
-                                    <select
-                                        value={selectedDeliveryTime}
-                                        onChange={(event) => setSelectedDeliveryTime(event.target.value)}
-                                        className="h-10 border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-zinc-900"
-                                    >
-                                        <option value="morning">Morning</option>
-                                        <option value="afternoon">Afternoon</option>
-                                        <option value="evening">Evening</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {shippingOptions.length > 0 ? (
-                                shippingOptions.slice(0, 3).map((option) => {
-                                    const isSelected = option.code === selectedShippingOptionCode;
-                                    const selectedPrice = Number(option.price || 0);
-                                    const displayLabel = option.label || option.service || option.carrier || 'Shipping';
-
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={option.code}
-                                            onClick={() => {
-                                                setSelectedShippingOptionCode(option.code);
-                                                setQuotedShipping(selectedPrice);
-                                            }}
-                                            className={`w-full border p-4 text-left transition-colors ${isSelected ? 'border-green-500 bg-green-50' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400'}`}
-                                        >
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${isSelected ? 'border-green-500 bg-green-500' : 'border-zinc-300 bg-white'}`}>
-                                                        {isSelected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
-                                                    </span>
-                                                    <span className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-700">{displayLabel}</span>
-                                                </div>
-                                                <span className="text-lg font-semibold text-zinc-900">${selectedPrice.toFixed(2)}</span>
-                                            </div>
-                                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
-                                                <span>Estimated delivery: {formatExpectedDeliveryDate(selectedDeliveryDate, option)}</span>
-                                                {option.delivery_time ? (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span>{option.delivery_time}</span>
-                                                    </>
-                                                ) : null}
-                                            </div>
-                                        </button>
-                                    );
-                                })
-                            ) : (
-                                <div className="rounded border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500">
-                                    {shippingError
-                                        ? shippingError
-                                        : hasCompleteShippingAddress
-                                            ? 'Loading delivery options...'
-                                            : 'Add your shipping address to see delivery options.'}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                   
 
                     <div className="mt-6">
                         <h2 className="text-[0.92rem] font-semibold uppercase tracking-[0.16em] text-black">Payment Details</h2>
