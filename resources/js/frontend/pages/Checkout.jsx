@@ -1088,17 +1088,7 @@ function CheckoutForm() {
                                 />
                                 {fieldErrors.country ? <p className="mt-1 text-xs text-red-500">{fieldErrors.country}</p> : null}
                             </div>
-                            <div className="sm:col-span-2">
-                                <label className="inline-flex cursor-pointer items-center gap-2 text-[0.82rem] text-zinc-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={isResidentialAddress}
-                                        onChange={(event) => setIsResidentialAddress(event.target.checked)}
-                                        className="h-4 w-4 border-zinc-300 text-zinc-900 focus:ring-zinc-900"
-                                    />
-                                    This is a residential address.
-                                </label>
-                            </div>
+                            
                         </div>
                     </div>
 
@@ -1196,14 +1186,14 @@ function CheckoutForm() {
                         </div>
                         {String(form.state || '').trim().toUpperCase() === 'MA' ? (
                             <div className="flex items-center justify-between">
-                                <span>State Tax</span>
+                                <span> Tax</span>
                                 <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
                             </div>
                         ) : null}
                         
                       
                         {isFetchingTax ? (
-                            <p className="text-xs text-zinc-500">Calculating tax with Stripe Tax...</p>
+                           ""
                         ) : null}
                         {!isFetchingTax && taxError ? (
                             <p className="text-xs text-red-600">{taxError}</p>

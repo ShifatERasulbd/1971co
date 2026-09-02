@@ -11,6 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+
+const presetSocialIcons = [
+    { key: 'facebook', label: 'Facebook', path: '/icons/social/facebook.svg' },
+    { key: 'instagram', label: 'Instagram', path: '/icons/social/instagram.svg' },
+    { key: 'tiktok', label: 'TikTok', path: '/icons/social/tiktok.svg' },
+];
 
 const tabs = [
     { key: 'logos', label: 'Logos' },
@@ -178,6 +191,7 @@ export default function SettingsForm({
                                 {socialItems.map((item, index) => {
                                     const localPreview = socialIconPreviews[index];
                                     const iconPreview = localPreview || item.icon || '';
+                                    const selectedPreset = presetSocialIcons.find((preset) => preset.path === item.icon)?.key || '';
 
                                     return (
                                         <div key={`social-${index}`} className="rounded-md border p-3 space-y-3">
@@ -203,8 +217,45 @@ export default function SettingsForm({
                                             </div>
 
                                             <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                                                {iconPreview ? (
+                                                    <img
+                                                        src={iconPreview}
+                                                        alt={`${item.name || 'Social'} icon`}
+                                                        className="h-10 w-10 shrink-0 rounded border bg-muted object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border bg-muted text-[10px] text-muted-foreground">
+                                                        No icon
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    <Label>Default Icon</Label>
+                                                    <Select
+                                                        value={selectedPreset}
+                                                        onValueChange={(value) => {
+                                                            const preset = presetSocialIcons.find((option) => option.key === value);
+                                                            if (!preset) return;
+                                                            onSocialIconChange(index, null);
+                                                            onSocialChange(index, 'icon', preset.path);
+                                                        }}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <SelectTrigger className="w-[160px]">
+                                                            <SelectValue placeholder="Choose icon" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {presetSocialIcons.map((preset) => (
+                                                                <SelectItem key={preset.key} value={preset.key}>
+                                                                    {preset.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
                                                 <div className="space-y-2 md:w-full">
-                                                    <Label>Icon Image</Label>
+                                                    <Label>Or Upload Icon Image</Label>
                                                     <Input
                                                         type="file"
                                                         accept="image/png,image/jpeg,image/jpg,image/webp,image/avif,image/svg+xml"
@@ -222,14 +273,6 @@ export default function SettingsForm({
                                                     Remove
                                                 </Button>
                                             </div>
-
-                                            {iconPreview && (
-                                                <img
-                                                    src={iconPreview}
-                                                    alt={`${item.name || 'Social'} icon`}
-                                                    className="h-16 w-16 rounded border bg-muted object-contain"
-                                                />
-                                            )}
                                         </div>
                                     );
                                 })}

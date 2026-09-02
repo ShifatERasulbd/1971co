@@ -104,6 +104,8 @@ export default function ContactInformationPanel() {
                                     <a
                                         key={label}
                                         href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         aria-label={label}
                                         className="inline-flex size-9 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:border-zinc-900 hover:text-zinc-900"
                                     >
