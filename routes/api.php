@@ -70,6 +70,7 @@ Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(function () {
 	Route::get('/', [CheckoutOrderController::class, 'publicExternalIndex']);
 	Route::get('/{checkoutOrder}', [CheckoutOrderController::class, 'publicExternalShow']);
+	Route::put('/{checkoutOrder}/status', [CheckoutOrderController::class, 'publicExternalUpdateStatus']);
 });
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);

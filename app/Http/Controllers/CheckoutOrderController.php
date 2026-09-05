@@ -393,6 +393,9 @@ class CheckoutOrderController extends Controller
 
         $orderNumber = sprintf('ORD-%s-%04d', now()->format('YmdHis'), random_int(0, 9999));
 
+        // Enrich items with product weight/length/width/height so the stored order snapshot has full package dimensions
+        $enrichedItems = $this->resolveShippingQuoteItems($validated['items']);
+
         $order = CheckoutOrder::create([
             'user_id' => $request->user()?->id,
             'order_number' => $orderNumber,
@@ -416,7 +419,7 @@ class CheckoutOrderController extends Controller
             'stripe_charge' => $stripeCharge,
             'processing_fee' => self::PROCESSING_FEE,
             'total' => $computedTotal,
-            'items' => $validated['items'],
+            'items' => $enrichedItems,
             'status' => 'approved',
             'payment_provider' => 'stripe',
             'payment_status' => 'paid',
@@ -838,6 +841,20 @@ class CheckoutOrderController extends Controller
         return response()->json([
             'success' => true,
             'order' => $this->formatExternalOrder($checkoutOrder),
+        ]);
+    }
+
+    public function publicExternalUpdateStatus(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,approved,processing,shipped,delivered,cancelled,refunded',
+        ]);
+
+        $checkoutOrder->update(['status' => $validated['status']]);
+
+        return response()->json([
+            'success' => true,
+            'order' => $this->formatExternalOrder($checkoutOrder->fresh()),
         ]);
     }
 
