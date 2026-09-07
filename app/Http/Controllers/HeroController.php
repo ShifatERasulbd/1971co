@@ -224,7 +224,11 @@ class HeroController extends Controller
                 $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
             }
         } catch (\Throwable $exception) {
-            report($exception);
+            try {
+                report($exception);
+            } catch (\Throwable) {
+                // Logging itself can fail (e.g. unwritable storage/logs) - never let that mask the real response.
+            }
 
             return response()->json([
                 'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
@@ -258,7 +262,11 @@ class HeroController extends Controller
                 $validated['video'] = trim((string) $validated['video_url']) ?: null;
             }
         } catch (\Throwable $exception) {
-            report($exception);
+            try {
+                report($exception);
+            } catch (\Throwable) {
+                // Logging itself can fail (e.g. unwritable storage/logs) - never let that mask the real response.
+            }
 
             return response()->json([
                 'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
