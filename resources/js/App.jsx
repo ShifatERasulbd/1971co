@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import CartDrawer from './frontend/components/CartDrawer.jsx';
@@ -8,10 +8,10 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
-import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden';
-import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
-import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics';
-import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel';
+import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden.js';
+import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
+import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
+import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel.js';
 
 preventInvalidBodyAriaHidden();
 
@@ -117,13 +117,11 @@ function DocumentBrandingManager() {
             faviconLink.href = favicon;
         }
 
-        // Track page view with Google Analytics
         trackPageView(pathname);
         trackPixelPageView();
     }, [pathname, settings]);
 
     useEffect(() => {
-        // Initialize Google Analytics when GA measurement ID is available
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
         if (gaId && !window.__gaInitialized) {
             initializeGoogleAnalytics(gaId);
@@ -132,7 +130,6 @@ function DocumentBrandingManager() {
     }, [settings]);
 
     useEffect(() => {
-        // Initialize Facebook Pixel once, using the pixel id exposed by the backend
         if (window.__fbPixelInitialized) {
             return;
         }
@@ -150,9 +147,7 @@ function DocumentBrandingManager() {
                 trackPixelPageView();
                 window.__fbPixelInitialized = true;
             })
-            .catch(() => {
-                // Ignore pixel bootstrap failures; analytics should never block the app.
-            });
+            .catch(() => {});
 
         return () => {
             isCancelled = true;
@@ -168,6 +163,15 @@ function withPageFallback(Component) {
             <Component />
         </Suspense>
     );
+}
+
+// Protected Route Component to prevent bypasses
+function ProtectedRoute() {
+    const isAuthenticated = localStorage.getItem('coming_soon_auth') === 'true';
+    if (!isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
+    return <FrontendLayout />;
 }
 
 function FrontendLayout() {
@@ -195,7 +199,9 @@ function AppRouter() {
                 <DocumentBrandingManager />
                 <Routes>
                     <Route path="/" element={withPageFallback(ComingSoonPage)} />
-                    <Route path="/" element={<FrontendLayout />}>
+                    
+                    {/* Protected Routes Wrapper */}
+                    <Route element={<ProtectedRoute />}>
                         <Route path="home" element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
                         <Route path="search/:productSlug" element={withPageFallback(ShopPage)} />
@@ -218,6 +224,7 @@ function AppRouter() {
                         <Route path="register" element={withPageFallback(AuthPage)} />
                         <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />
                     </Route>
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </BrowserRouter>
