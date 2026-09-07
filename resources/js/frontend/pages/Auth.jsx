@@ -1,23 +1,77 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useLocation } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
+import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings';
 
 const AuthLoginForm = lazy(() => import('../components/AuthLoginForm.jsx'));
 const AuthRegisterForm = lazy(() => import('../components/AuthRegisterForm.jsx'));
 
-const authShowcaseImage = '/uploads/heroes/images/hero1.webp';
+const fallbackShowcaseImage = '';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+function resolveGoogleClientId() {
+    const fromVite = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+    if (fromVite) {
+        return fromVite;
+    }
+
+    if (typeof document !== 'undefined') {
+        const fromMeta = document
+            .querySelector('meta[name="google-client-id"]')
+            ?.getAttribute('content');
+
+        if (typeof fromMeta === 'string' && fromMeta.trim()) {
+            return fromMeta.trim();
+        }
+    }
+
+    return '';
+}
 
 export default function AuthPage() {
     const location = useLocation();
     const isRegister = location.pathname.toLowerCase() === '/register';
     const swapSides = false;
+    const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload() || {});
+
+    useEffect(() => {
+        const unsubscribe = onSettingsUpdated((payload) => {
+            setSiteSettings(payload || {});
+        });
+
+        setSiteSettings(getSettingsPayload() || {});
+
+        return unsubscribe;
+    }, []);
+
+    const authShowcaseImage = useMemo(() => {
+        const raw = String(siteSettings?.shop_menu_image || '').trim();
+        if (!raw) {
+            return fallbackShowcaseImage;
+        }
+
+        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+            return raw;
+        }
+
+        return `/${raw.replace(/^\/+/, '')}`;
+    }, [siteSettings]);
+
+    const googleClientId = useMemo(() => resolveGoogleClientId(), []);
+
+    if (!googleClientId) {
+        return (
+            <section className="bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
+                <div className="mx-auto w-full max-w-[760px] border border-amber-300 bg-amber-50 px-6 py-5 text-amber-900">
+                    Google login is temporarily unavailable because the Google client ID is not configured.
+                </div>
+            </section>
+        );
+    }
 
     return (
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <GoogleOAuthProvider clientId={googleClientId}>
         <section className="bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
             <div className="mx-auto grid w-full max-w-[1500px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
                 <div

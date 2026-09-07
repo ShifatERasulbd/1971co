@@ -18,6 +18,7 @@ const initialForm = {
     sku: '',
     color: '',
     size: '',
+    weight: '',
     description: '',
     fit: '',
     fabric_and_care: '',
@@ -52,6 +53,10 @@ function validateForm(form) {
 
     if (form.stock === '' || Number.isNaN(Number(form.stock))) {
         errors.stock = ['The stock field is required.'];
+    }
+
+    if (!form.weight.trim()) {
+        errors.weight = ['The weight field is required.'];
     }
 
     return errors;
@@ -95,6 +100,7 @@ export default function AddProduct() {
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
+    const [colorTrendingMap, setColorTrendingMap] = useState({});
     const [variantRows, setVariantRows] = useState([]);
     const [colorVariantImageMap, setColorVariantImageMap] = useState({});
     const [colorVariantVideoMap, setColorVariantVideoMap] = useState({});
@@ -297,14 +303,16 @@ export default function AddProduct() {
                         size,
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
+                        weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
+                        show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
                 });
             });
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, colorTrendingMap]);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
@@ -428,6 +436,15 @@ export default function AddProduct() {
 
     const handleRemoveColor = (colorToRemove) => {
         setSelectedColors((previous) => previous.filter((color) => color !== colorToRemove));
+        setColorTrendingMap((previous) => {
+            if (!Object.prototype.hasOwnProperty.call(previous, colorToRemove)) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
         setColorVariantImageMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
@@ -482,9 +499,41 @@ export default function AddProduct() {
         setSelectedSizes((previous) => previous.filter((size) => size !== sizeToRemove));
     };
 
+    const handleReorderSizes = (fromSize, toSize) => {
+        if (!fromSize || !toSize || fromSize === toSize) {
+            return;
+        }
+
+        setSelectedSizes((previous) => {
+            const fromIndex = previous.indexOf(fromSize);
+            const toIndex = previous.indexOf(toSize);
+            return reorderItems(previous, fromIndex, toIndex);
+        });
+    };
+
     const handleVariantRowChange = (rowKey, field, value) => {
         setVariantRows((previous) =>
             previous.map((row) => (row.key === rowKey ? { ...row, [field]: value } : row)),
+        );
+    };
+
+    const handleColorTrendingChange = (color, checked) => {
+        const normalizedColor = String(color || '').trim();
+        if (!normalizedColor) {
+            return;
+        }
+
+        setColorTrendingMap((previous) => ({
+            ...previous,
+            [normalizedColor]: Boolean(checked),
+        }));
+
+        setVariantRows((previous) =>
+            previous.map((row) => (
+                String(row.color || '').trim() === normalizedColor
+                    ? { ...row, show_on_best_sellers: Boolean(checked) }
+                    : row
+            )),
         );
     };
 
@@ -581,6 +630,7 @@ export default function AddProduct() {
                     sizeSelectValue={sizeSelectValue}
                     selectedColors={selectedColors}
                     selectedSizes={selectedSizes}
+                    colorTrendingMap={colorTrendingMap}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
                     colorVariantVideoMap={colorVariantVideoMap}
@@ -591,7 +641,9 @@ export default function AddProduct() {
                     onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
+                    onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
+                    onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}
                     onGalleryFilesChange={handleGalleryFilesChange}

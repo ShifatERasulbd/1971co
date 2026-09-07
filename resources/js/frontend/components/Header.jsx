@@ -39,6 +39,7 @@ const utilityIcons = [
 export default function Header() {
     const location = useLocation();
     const navigate = useNavigate();
+    const isBackendRoute = location.pathname.startsWith('/user/') || location.pathname.startsWith('/admin/');
     const { itemCount, openCartDrawer } = useCart();
     const [categories, setCategories] = useState([]);
     const [subCategories, setSubCategories] = useState([]);
@@ -81,17 +82,33 @@ export default function Header() {
         closeSearch();
 
         if (!normalized) {
+            if (isBackendRoute) {
+                window.location.assign('/shop');
+                return;
+            }
+
             navigate('/shop');
             return;
         }
 
         const searchSlug = toSearchSlug(normalized);
         if (!searchSlug) {
+            if (isBackendRoute) {
+                window.location.assign('/shop');
+                return;
+            }
+
             navigate('/shop');
             return;
         }
 
-        navigate(`/search/${encodeURIComponent(searchSlug)}`);
+        const searchPath = `/search/${encodeURIComponent(searchSlug)}`;
+        if (isBackendRoute) {
+            window.location.assign(searchPath);
+            return;
+        }
+
+        navigate(searchPath);
     }
 
     function toggleMobileItem(itemKey) {
@@ -152,15 +169,62 @@ export default function Header() {
         }
     }
 
-    function handleLogoClick(event) {
+    async function isAuthenticatedUser() {
+        try {
+            const response = await fetch('/api/user', {
+                credentials: 'include',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const payload = await response.json().catch(() => null);
+            return Boolean(payload?.id);
+        } catch {
+            return false;
+        }
+    }
+
+    async function handleAccountClick(event) {
         event.preventDefault();
 
         closeShopMenuImmediately();
         closeMobileMenu();
         closeSearch();
 
-        if (location.pathname !== '/') {
-            navigate('/');
+        const isAuthenticated = await isAuthenticatedUser();
+        if (isAuthenticated) {
+            window.location.assign('/user/dashboard');
+            return;
+        }
+
+        if (isBackendRoute) {
+            window.location.assign('/login');
+            return;
+        }
+
+        navigate('/login');
+    }
+
+    async function handleLogoClick(event) {
+        event.preventDefault();
+
+        closeShopMenuImmediately();
+        closeMobileMenu();
+        closeSearch();
+
+        if (isBackendRoute) {
+            window.location.assign('/home');
+            return;
+        }
+
+        if (location.pathname !== '/home') {
+            navigate('/home');
             window.setTimeout(() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }, 40);
@@ -300,8 +364,10 @@ export default function Header() {
                     ? '/shop'
                     : categorySlug === 'new-arrivals'
                     ? '/new-arrivals'
+                    : categorySlug === 'trending'
+                    ? '/trending'
                     : categorySlug === 'best-sellers'
-                    ? '/best-sellers'
+                    ? '/trending'
                     : `/shop?category=${encodeURIComponent(category?.slug || String(category?.id || ''))}`;
                 return {
                     id: category?.id,
@@ -315,7 +381,7 @@ export default function Header() {
                 };
             })
             : [
-                { label: 'Trending', href: '#best-sellers', isRoute: false },
+                { label: 'Trending', href: '/trending', isRoute: true },
                 { label: 'Shop', href: '/shop', isRoute: true, isShop: true },
             ];
 
@@ -336,11 +402,19 @@ export default function Header() {
     );
 
     const shopMegaMenuImage = useMemo(
-        () => normalizeMediaUrl(siteSettings?.shop_menu_image || ''),
+        () =>
+            normalizeMediaUrl(
+                siteSettings?.shop_menu_image
+                || siteSettings?.shop_mega_menu_image
+                || siteSettings?.shopMegaMenuImage
+                || '',
+            ),
         [siteSettings],
     );
 
     const shopMegaMenuCaption = 'Shop New Arrivals';
+
+   
 
     const shopMegaMenuHref = shopNavItem?.href || '/shop';
 
@@ -463,6 +537,92 @@ export default function Header() {
         ).trim();
     }, [siteSettings]);
 
+    function normalizePathname(pathname = '/') {
+        const raw = String(pathname || '/').trim();
+        if (!raw) {
+            return '/';
+        }
+
+        const withoutTrailingSlash = raw.replace(/\/+$/, '');
+        return withoutTrailingSlash === '' ? '/' : withoutTrailingSlash;
+    }
+
+    function isHeaderItemActive(item) {
+        if (!item?.isRoute || !item?.href) {
+            return false;
+        }
+
+        const currentPath = normalizePathname(location.pathname).toLowerCase();
+        const currentSearch = new URLSearchParams(location.search || '');
+
+        if (item.isShop) {
+            if (currentPath === '/new-arrivals' || currentPath === '/trending') {
+                return false;
+            }
+
+            return currentPath === '/shop'
+                || currentPath === '/best-sellers'
+                || currentPath.startsWith('/collection/')
+                || currentPath.startsWith('/search/')
+                || currentPath.startsWith('/product-details/')
+                || currentPath === '/singleproduct';
+        }
+
+        let target;
+        try {
+            target = new URL(String(item.href), window.location.origin);
+        } catch {
+            return false;
+        }
+
+        const targetPath = normalizePathname(target.pathname).toLowerCase();
+        const targetSearch = target.searchParams;
+
+        const pathMatches = targetPath === '/'
+            ? currentPath === '/'
+            : (currentPath === targetPath || currentPath.startsWith(`${targetPath}/`));
+
+        if (!pathMatches) {
+            return false;
+        }
+
+        if (targetSearch.has('category')) {
+            return currentSearch.get('category') === targetSearch.get('category');
+        }
+
+        return true;
+    }
+
+    function isUtilityItemActive(label) {
+        const currentPath = normalizePathname(location.pathname).toLowerCase();
+
+        if (label === 'Account') {
+            return currentPath === '/login' || currentPath === '/register' || currentPath.startsWith('/reset-password');
+        }
+
+        if (label === 'Search') {
+            return isSearchOpen;
+        }
+
+        return false;
+    }
+
+    function RouteAwareLink({ to, className, onClick, children, ...rest }) {
+        if (isBackendRoute) {
+            return (
+                <a href={to} className={className} onClick={onClick} {...rest}>
+                    {children}
+                </a>
+            );
+        }
+
+        return (
+            <Link to={to} className={className} onClick={onClick} {...rest}>
+                {children}
+            </Link>
+        );
+    }
+
     return (
         <>
         <header className={`${timelessFontClass} site-header sticky top-0 z-[300] border-b border-zinc-200 bg-white text-zinc-950 backdrop-blur`}>
@@ -493,6 +653,13 @@ export default function Header() {
                     ) : (
                         navigationItems.map((item) => {
                             const navKey = `${String(item?.id ?? '')}-${String(item?.label ?? '')}-${String(item?.href ?? '')}`;
+                            const isActive = isHeaderItemActive(item);
+                            const navLinkClassName = [
+                                'site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950',
+                                'transition-all duration-200 ease-out',
+                                'hover:-translate-y-1 hover:scale-[1.08] hover:font-semibold hover:text-black',
+                                isActive ? '-translate-y-1 scale-[1.08] font-semibold text-black' : '',
+                            ].join(' ').trim();
 
                             return (
                             item.isShop ? (
@@ -508,15 +675,15 @@ export default function Header() {
                                         }
                                     }}
                                 >
-                                    <Link
+                                    <RouteAwareLink
                                         to={item.href}
-                                        className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                        className={navLinkClassName}
                                         style={{ fontFamily: 'Montserrat, sans-serif' }}
                                         aria-expanded={isShopMegaMenuOpen}
                                         aria-haspopup="menu"
                                     >
                                         {item.label}
-                                    </Link>
+                                    </RouteAwareLink>
 
                                     {/* Mega Menu Dropdown */}
                                     <div
@@ -540,25 +707,25 @@ export default function Header() {
                                                                     className="px-2 py-2"
                                                                 >
                                                                     <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                                                                        <Link
+                                                                        <RouteAwareLink
                                                                             to={column.href}
                                                                             className="transition-colors hover:text-zinc-700"
                                                                             onClick={closeShopMenuImmediately}
                                                                         >
                                                                             {column.title}
-                                                                        </Link>
+                                                                        </RouteAwareLink>
                                                                     </h3>
 
                                                                     <ul className="mt-5 space-y-2 text-[0.98rem] font-medium uppercase leading-7 tracking-[0.01em] text-zinc-600">
                                                                         {column.items.map((megaItem) => (
                                                                             <li key={`${column.title}-${megaItem.label}`}>
-                                                                                <Link
+                                                                                <RouteAwareLink
                                                                                     to={megaItem.href}
                                                                                     className="transition-colors hover:text-zinc-950"
                                                                                     onClick={closeShopMenuImmediately}
                                                                                 >
                                                                                     {megaItem.label}
-                                                                                </Link>
+                                                                                </RouteAwareLink>
                                                                             </li>
                                                                         ))}
                                                                     </ul>
@@ -573,10 +740,10 @@ export default function Header() {
                                                 </div>
 
                                                 {/* Mega Menu Spotlight Image — only rendered when an image is configured in Settings */}
-                                                {shopMegaMenuImage ? (
-                                                <div className="flex w-[260px] flex-none justify-center">
-                                                    <figure className="w-full max-w-[260px] text-center">
-                                                        <Link
+                                                {isShopMegaMenuOpen && shopMegaMenuImage ? (
+                                                <div className="flex w-[420px] flex-none justify-center xl:w-[480px]">
+                                                    <figure className="w-full max-w-[480px] text-center">
+                                                        <RouteAwareLink
                                                             to={shopMegaMenuHref}
                                                             className="block overflow-hidden border border-zinc-200 bg-zinc-100 p-3"
                                                             onClick={closeShopMenuImmediately}
@@ -584,12 +751,13 @@ export default function Header() {
                                                             <img
                                                                 src={shopMegaMenuImage}
                                                                 alt={shopMegaMenuCaption}
-                                                                className="h-[256px] w-full object-cover object-center"
+                                                                loading="lazy"
+                                                                decoding="async"
+                                                                fetchPriority="low"
+                                                                className="h-[300px] w-full object-contain object-center xl:h-[340px]"
                                                             />
-                                                        </Link>
-                                                        <figcaption className="mt-3 text-[0.7rem] uppercase tracking-[0.08em] text-zinc-500">
-                                                            {shopMegaMenuCaption}
-                                                        </figcaption>
+                                                        </RouteAwareLink>
+                                                        
                                                     </figure>
                                                 </div>
                                                 ) : null}
@@ -598,23 +766,23 @@ export default function Header() {
                                     </div>
                                 </div>
                             ) : item.isRoute ? (
-                                <Link
+                                <RouteAwareLink
                                     key={navKey}
                                     to={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
-                                </Link>
+                                </RouteAwareLink>
                             ) : (
-                                <Link
+                                <a
                                     key={navKey}
                                     href={item.href}
-                                    className="site-header-nav-link text-[14px] font-medium uppercase tracking-[0.12em] text-zinc-950 transition-opacity hover:opacity-60"
+                                    className={navLinkClassName}
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     {item.label}
-                                </Link>
+                                </a>
                             )
                             );
                         })
@@ -623,7 +791,7 @@ export default function Header() {
 
                 {/* Logo Area */}
                 <Link
-                    to="/"
+                    to="/home"
                     onClick={handleLogoClick}
                     className="site-header-brand absolute left-1/2 -translate-x-1/2 flex min-w-0 items-center transition-opacity hover:opacity-80 xl:relative xl:left-auto xl:translate-x-0 xl:col-start-2 xl:justify-self-center"
                     aria-label="Home"
@@ -642,14 +810,23 @@ export default function Header() {
                 {/* Utilities / Right Side Tools */}
                 <div className="site-header-tools flex items-center justify-end gap-1 sm:gap-2 xl:col-start-3 xl:justify-self-end xl:gap-8">
                     <div className="hidden items-center gap-1 xl:flex">
-                        {utilityIcons.map(({ label, icon: Icon, href }) => (
+                        {utilityIcons.map(({ label, icon: Icon, href }) => {
+                            const isUtilityActive = isUtilityItemActive(label);
+                            const utilityClassName = [
+                                'inline-flex size-11 items-center justify-center rounded-full text-zinc-950',
+                                'transition-all duration-200 ease-out',
+                                'hover:-translate-y-1 hover:scale-110 hover:bg-zinc-100 hover:text-zinc-900',
+                                isUtilityActive ? '-translate-y-1 scale-110 bg-zinc-100 text-zinc-900' : '',
+                            ].join(' ').trim();
+
+                            return (
                             label === 'Cart' ? (
                                 <button
                                     key={label}
                                     type="button"
                                     aria-label={label}
                                     onClick={handleOpenCart}
-                                    className="relative inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={`relative ${utilityClassName}`}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                     {itemCount > 0 ? (
@@ -664,7 +841,17 @@ export default function Header() {
                                     type="button"
                                     aria-label={label}
                                     onClick={openSearch}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
+                                >
+                                    <Icon className="size-5" strokeWidth={1.75} />
+                                </button>
+                            ) : label === 'Account' ? (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    aria-label={label}
+                                    onClick={handleAccountClick}
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </button>
@@ -673,7 +860,7 @@ export default function Header() {
                                     key={label}
                                     to={href}
                                     aria-label={label}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </Link>
@@ -682,12 +869,13 @@ export default function Header() {
                                     key={label}
                                     href={href}
                                     aria-label={label}
-                                    className="inline-flex size-11 items-center justify-center rounded-full text-zinc-950 transition-colors hover:bg-white/70 hover:text-zinc-700"
+                                    className={utilityClassName}
                                 >
                                     <Icon className="size-5" strokeWidth={1.75} />
                                 </a>
                             )
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="flex items-center gap-1 xl:hidden">
@@ -772,13 +960,13 @@ export default function Header() {
                                     <li key={`mobile-${item.label}`} className="border-b border-zinc-200/80">
                                         <div className="flex items-center justify-between gap-2 px-1 py-4">
                                             {item.isRoute ? (
-                                                <Link
+                                                <RouteAwareLink
                                                     to={item.href}
                                                     onClick={closeMobileMenu}
                                                     className="min-w-0 flex-1 text-[0.88rem] font-semibold uppercase tracking-[0.04em] text-zinc-900"
                                                 >
                                                     <span>{item.label}</span>
-                                                </Link>
+                                                </RouteAwareLink>
                                             ) : (
                                                 <a
                                                     href={item.href}
@@ -818,13 +1006,13 @@ export default function Header() {
                                                     return (
                                                         <li key={`mobile-submenu-${itemKey}-${child.id}`}>
                                                             <div className="flex items-center justify-between gap-2 py-2 pr-1">
-                                                                <Link
+                                                                <RouteAwareLink
                                                                     to={child.href}
                                                                     onClick={closeMobileMenu}
                                                                     className="min-w-0 flex-1 text-[0.8rem] font-medium uppercase tracking-[0.03em] text-zinc-700"
                                                                 >
                                                                     {child.label}
-                                                                </Link>
+                                                                </RouteAwareLink>
 
                                                                 {hasGrandChilds ? (
                                                                     <button
@@ -847,13 +1035,13 @@ export default function Header() {
                                                                 <ul id={`mobile-submenu-${itemKey}-${subItemKey}`} className="pb-1 pl-3">
                                                                     {grandChildItems.map((grandChild) => (
                                                                         <li key={`mobile-grand-child-${itemKey}-${subItemKey}-${grandChild.id}`}>
-                                                                            <Link
+                                                                            <RouteAwareLink
                                                                                 to={grandChild.href}
                                                                                 onClick={closeMobileMenu}
                                                                                 className="block py-1.5 text-[0.74rem] font-medium uppercase tracking-[0.03em] text-zinc-600"
                                                                             >
                                                                                 {grandChild.label}
-                                                                            </Link>
+                                                                            </RouteAwareLink>
                                                                         </li>
                                                                     ))}
                                                                 </ul>
@@ -869,14 +1057,14 @@ export default function Header() {
                         </ul>
 
                         <div className="mt-7 border-t border-zinc-200/80 pt-6">
-                            <Link
-                                to="/login"
-                                onClick={closeMobileMenu}
+                            <button
+                                type="button"
+                                onClick={handleAccountClick}
                                 className="inline-flex items-center gap-2 text-[0.88rem] font-medium uppercase tracking-[0.03em] text-zinc-800"
                             >
                                 <UserCircle2 className="size-4" strokeWidth={1.8} />
                                 Register/ Login
-                            </Link>
+                            </button>
 
                             <button
                                 type="button"
@@ -887,12 +1075,7 @@ export default function Header() {
                             </button>
                         </div>
 
-                        <div className="mt-7 border-t border-zinc-200/80 pt-6">
-                            <p className="text-[0.84rem] text-zinc-500">To More Inquiry</p>
-                            <a href={`tel:${supportPhone}`} className="mt-1 block text-[1.65rem] font-semibold leading-tight text-zinc-900">
-                                {supportPhone}
-                            </a>
-                        </div>
+                      
                     </nav>
                 </div>
             </aside>

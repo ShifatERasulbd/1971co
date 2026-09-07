@@ -74,6 +74,9 @@ export function LoginForm() {
             if (userResponse.ok) {
                 const userPayload = await userResponse.json();
                 setUser(userPayload);
+                const redirectPath = userPayload?.user_type === 'customer' ? '/user/dashboard' : '/admin/dashboard';
+                navigate(redirectPath);
+                return;
             }
 
             navigate('/admin/dashboard');

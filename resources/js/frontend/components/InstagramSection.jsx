@@ -1,6 +1,6 @@
 import { featuresFontClass } from '../utils/typography';
 
-const imageSource = '/uploads/heroes/images/hero1.webp';
+const imageSource = '';
 
 const instagramItems = [
     { id: 1, alt: 'Timeless instagram product 1', position: 'object-[42%_center]' },

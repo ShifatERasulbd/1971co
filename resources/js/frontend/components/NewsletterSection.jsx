@@ -1,9 +1,22 @@
+import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
 
 export default function NewsletterSection({ sectionData }) {
+    const [email, setEmail] = useState('');
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+
+        toast.success('Thank you for subscribing! Stay tuned for drops and restocks.', {
+            style: { color: '#16a34a' },
+        });
+        setEmail('');
+    };
+
     return (
         <section className={`${timelessFontClass} bg-[#f0ede8] py-16 sm:py-20 lg:py-24`}>
             <div className="mx-auto w-full max-w-[640px] px-6 text-center sm:px-8">
@@ -18,7 +31,7 @@ export default function NewsletterSection({ sectionData }) {
 
                 <form
                     className="mt-8 flex items-stretch"
-                    onSubmit={(e) => e.preventDefault()}
+                    onSubmit={handleSubmit}
                 >
                     <label htmlFor="newsletter-email" className="sr-only">
                         Email address
@@ -26,6 +39,8 @@ export default function NewsletterSection({ sectionData }) {
                     <input
                         id="newsletter-email"
                         type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
                         placeholder="Email address"
                         required
                         className="h-12 flex-1 border-b border-zinc-400 bg-transparent px-1 text-[0.9rem] text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
@@ -43,3 +58,4 @@ export default function NewsletterSection({ sectionData }) {
         </section>
     );
 }
+

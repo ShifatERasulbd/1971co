@@ -3,12 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Support\ImageUploadOptimizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class CategoryController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'categories.index';
+
+    public function __construct(private readonly ImageUploadOptimizer $imageUploadOptimizer)
+    {
+    }
+
     private function toResponseArray(Category $category): array
     {
         $data = $category->toArray();
@@ -17,13 +24,31 @@ class CategoryController extends Controller
         return $data;
     }
 
+    private function categoryCacheKey(int $categoryId): string
+    {
+        return 'categories.show.' . $categoryId;
+    }
+
+    private function clearCategoryCache(?int $categoryId = null): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+
+        if ($categoryId !== null) {
+            Cache::forget($this->categoryCacheKey($categoryId));
+        }
+    }
+
     
     public function index():JsonResponse
     {
-        $categories = Category::query()
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Category $category) => $this->toResponseArray($category));
+        $categories = Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Category::query()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Category $category) => $this->toResponseArray($category))
+                ->values()
+                ->all();
+        });
 
         return response()->json($categories);
     }
@@ -38,22 +63,39 @@ class CategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageDirectory = public_path('uploads/category');
-            File::ensureDirectoryExists($imageDirectory);
-            $imageName = time() . '_' . uniqid() . '_category.' . $image->getClientOriginalExtension();
-            $image->move($imageDirectory, $imageName);
-            $validated['image'] = 'uploads/category/' . $imageName;
+            $validated['image'] = ltrim(
+                $this->imageUploadOptimizer->storeAsWebp(
+                    $request->file('image'),
+                    'uploads/category',
+                    'category_',
+                    1600,
+                    1600,
+                    80
+                ),
+                '/'
+            );
         }
 
         $validated['show_homepage'] = $request->boolean('show_homepage');
-        $category =Category::query()->create($validated);
+        $category = Category::query()->create($validated);
+        $this->clearCategoryCache($category->id);
+
         return response()->json($this->toResponseArray($category),201);
     }
 
-    public function show (Category $category): JsonResponse
+    public function show(int $categoryId): JsonResponse
     {
-        return response()->json($this->toResponseArray($category));
+        $category = Cache::rememberForever($this->categoryCacheKey($categoryId), function () use ($categoryId) {
+            $foundCategory = Category::query()->find($categoryId);
+
+            return $foundCategory ? $this->toResponseArray($foundCategory) : null;
+        });
+
+        if ($category === null) {
+            return response()->json(['message' => 'Category not found.'], 404);
+        }
+
+        return response()->json($category);
     }
 
     public function update(Request $request, Category $category): JsonResponse
@@ -73,16 +115,23 @@ class CategoryController extends Controller
                 }
             }
 
-            $image = $request->file('image');
-            $imageDirectory = public_path('uploads/category');
-            File::ensureDirectoryExists($imageDirectory);
-            $imageName = time() . '_' . uniqid() . '_category.' . $image->getClientOriginalExtension();
-            $image->move($imageDirectory, $imageName);
-            $validated['image'] = 'uploads/category/' . $imageName;
+            $validated['image'] = ltrim(
+                $this->imageUploadOptimizer->storeAsWebp(
+                    $request->file('image'),
+                    'uploads/category',
+                    'category_',
+                    1600,
+                    1600,
+                    80
+                ),
+                '/'
+            );
         }
 
         $validated['show_homepage'] = $request->boolean('show_homepage');
         $category->update($validated);
+        $this->clearCategoryCache($category->id);
+
         return response()->json($this->toResponseArray($category->fresh()));
     }
 
@@ -96,6 +145,8 @@ class CategoryController extends Controller
         }
 
         $category->delete();
+        $this->clearCategoryCache($category->id);
+
         return response()->json(null,204);
     }
 }

@@ -24,10 +24,13 @@ use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SubCategoryController;
 use App\Http\Controllers\Payment\StripeController;
 use App\Http\Controllers\ShipStationController;
-use App\Http\Controllers\UPSCourierController;
+use App\Http\Controllers\UsLocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\CompliancePageController;
+use App\Http\Controllers\FacebookPixelController;
+
 
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
@@ -53,18 +56,26 @@ Route::get('/public/grand-childs', [GrandChildController::class, 'index']);
 Route::get('/public/settings', [SettingsController::class, 'publicLatest']);
 Route::get('/public/best-sellers-section', [SettingsController::class, 'publicBestSellersSection']);
 Route::get('/public/stripe-config', [StripeController::class, 'publicConfig']);
-Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
+Route::get('/public/facebook-pixel-config', [FacebookPixelController::class, 'publicConfig']);
 Route::get('/public/community-page-sections', [CommunityPageSectionController::class, 'publicIndex']);
-Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
+Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
+Route::post('/public/tax/quote', [CheckoutOrderController::class, 'quoteTax']);
+
+Route::get('/public/locations/states', [UsLocationController::class, 'states']);
+Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
+Route::get('/public/locations/postal-code', [UsLocationController::class, 'postalCodeByCityState']);
+Route::get('/public/compliance', [App\Http\Controllers\CompliancePageController::class, 'publicIndex']);
+Route::post('/public/orders', [CheckoutOrderController::class, 'store']);
 Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(function () {
 	Route::get('/', [CheckoutOrderController::class, 'publicExternalIndex']);
 	Route::get('/{checkoutOrder}', [CheckoutOrderController::class, 'publicExternalShow']);
+	Route::put('/{checkoutOrder}/status', [CheckoutOrderController::class, 'publicExternalUpdateStatus']);
 });
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 Route::post('/shipping/orders', [ShipStationController::class, 'storeOrder']);
-Route::post('/ups/shipments', [UPSCourierController::class, 'storeShipment']);
+
 Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/user', function (Request $request) {
 		return response()->json($request->user());
@@ -76,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::get('/customer/orders', [CheckoutOrderController::class, 'customerIndex']);
 		Route::get('/customer/orders/{checkoutOrder}', [CheckoutOrderController::class, 'customerShow']);
 		Route::put('/customer/orders/{checkoutOrder}/cancel', [CheckoutOrderController::class, 'customerCancel']);
+		Route::put('/customer/profile', [AuthController::class, 'updateCustomerProfile']);
 	});
 
 	Route::middleware('user-type:admin')->group(function () {
@@ -98,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/community-page-sections', [CommunityPageSectionController::class, 'index']);
 	Route::post('/community-page-sections', [CommunityPageSectionController::class, 'store']);
 	Route::post('/community-page-sections/upload-feature-image', [CommunityPageSectionController::class, 'uploadFeatureImage']);
+	Route::post('/community-page-sections/upload-canvas-image', [CommunityPageSectionController::class, 'uploadCanvasImage']);
 	Route::get('/community-page-sections/{key}', [CommunityPageSectionController::class, 'show']);
 	Route::delete('/community-page-sections/{key}', [CommunityPageSectionController::class, 'destroy']);
 
@@ -111,6 +124,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 	Route::apiResource('/categories', CategoryController::class);
 	Route::apiResource('/sub-categories', SubCategoryController::class);
+	Route::put('/grand-childs/reorder', [GrandChildController::class, 'reorder']);
 	Route::apiResource('/grand-childs', GrandChildController::class);
 
 	Route::get('/inventory/canada-warehouse-stocks', [CanadaWarehouseStockController::class, 'index']);
@@ -142,6 +156,9 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/public-api-keys', [PublicApiKeyController::class, 'store']);
 	Route::delete('/public-api-keys/{publicApiKey}', [PublicApiKeyController::class, 'destroy']);
 	});
+
+	// Compliance Management
+	Route::apiResource('/compliance', \App\Http\Controllers\CompliancePageController::class);
 	
 });
 

@@ -15,6 +15,7 @@ class GrandChilds extends Model
         'slug',
         'child_id',
         'category_id',
+        'position',
     ];
 
     protected $appends = [

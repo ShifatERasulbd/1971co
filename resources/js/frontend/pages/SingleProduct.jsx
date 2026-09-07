@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import SectionSkeleton from '../components/SectionSkeleton.jsx';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const SingleProductMainSection = lazy(() => import('../components/SingleProductMainSection.jsx'));
 // const SingleProductInfoTabs = lazy(() => import('../components/SingleProductInfoTabs.jsx'));
@@ -135,6 +136,20 @@ export default function SingleProductPage() {
         const colorParam = String(routeColor || searchParams.get('color') || '').trim().replace(/-/g, ' ');
         return colorParam;
     }, [routeColor, searchParams]);
+
+    useEffect(() => {
+        if (!currentProduct) {
+            return;
+        }
+
+        trackPixelEvent('ViewContent', {
+            content_ids: [String(currentProduct.id || currentProduct.slug || '')],
+            content_type: 'product',
+            content_name: currentProduct.name,
+            currency: 'USD',
+            value: Number(currentProduct.priceValue ?? currentProduct.price ?? 0),
+        });
+    }, [currentProduct]);
 
     const relatedProducts = useMemo(() => {
         if (!currentProduct) {

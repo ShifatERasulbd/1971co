@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
 
@@ -15,6 +16,62 @@ function toNumberPrice(value) {
     }
 
     return 0;
+}
+
+function normalizeWeightValue(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const text = String(value).trim();
+    if (!text) {
+        return '';
+    }
+
+    return text;
+}
+
+function parseVariantTokens(value) {
+    return String(value || '')
+        .split(',')
+        .map((token) => token.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function findVariantRowValue(product, selectedColor, selectedSize, selectedSku = '', field = 'weight') {
+    const rows = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (rows.length === 0) {
+        return '';
+    }
+
+    const selectedSkuToken = String(selectedSku || '').trim().toLowerCase();
+    if (selectedSkuToken) {
+        const rowBySku = rows.find((row) => String(row?.sku || '').trim().toLowerCase() === selectedSkuToken);
+        if (rowBySku) {
+            return normalizeWeightValue(rowBySku?.[field]);
+        }
+    }
+
+    const selectedColorToken = String(selectedColor || '').trim().toLowerCase();
+    const selectedSizeToken = String(selectedSize || '').trim().toLowerCase();
+
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') {
+            continue;
+        }
+
+        const rowColorTokens = parseVariantTokens(row.color);
+        const rowSizeTokens = parseVariantTokens(row.size);
+
+        const colorMatches = selectedColorToken ? rowColorTokens.includes(selectedColorToken) : true;
+        const sizeMatches = selectedSizeToken ? rowSizeTokens.includes(selectedSizeToken) : true;
+
+        if (colorMatches && sizeMatches) {
+            return normalizeWeightValue(row?.[field]);
+        }
+    }
+
+    return '';
 }
 
 function normalizeCartItem(product, options = {}) {
@@ -36,6 +93,23 @@ function normalizeCartItem(product, options = {}) {
             : '';
 
     const priceValue = toNumberPrice(product?.priceValue ?? product?.price);
+    const variantSku = String(options.sku || '').trim();
+    const variantWeight = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'weight');
+    const variantLength = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'length');
+    const variantWidth = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'width');
+    const variantHeight = findVariantRowValue(product, selectedColor, selectedSize, variantSku, 'height');
+    const weight = normalizeWeightValue(options.weight)
+        || variantWeight
+        || normalizeWeightValue(product?.weight);
+    const length = normalizeWeightValue(options.length)
+        || variantLength
+        || normalizeWeightValue(product?.length);
+    const width = normalizeWeightValue(options.width)
+        || variantWidth
+        || normalizeWeightValue(product?.width);
+    const height = normalizeWeightValue(options.height)
+        || variantHeight
+        || normalizeWeightValue(product?.height);
 
     return {
         lineId,
@@ -47,6 +121,11 @@ function normalizeCartItem(product, options = {}) {
         quantity,
         selectedColor,
         selectedSize,
+        sku: variantSku || String(product?.sku || '').trim(),
+        weight,
+        length,
+        width,
+        height,
         slug: String(product?.slug || '').trim(),
     };
 }
@@ -94,6 +173,14 @@ export function CartProvider({ children }) {
                 quantity: updated[index].quantity + nextItem.quantity,
             };
             return updated;
+        });
+
+        trackPixelEvent('AddToCart', {
+            content_ids: [nextItem.productId],
+            content_type: 'product',
+            content_name: nextItem.name,
+            currency: 'USD',
+            value: nextItem.priceValue * nextItem.quantity,
         });
 
         return nextItem;

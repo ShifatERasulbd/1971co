@@ -36,7 +36,7 @@ const defaultHeroDraft = {
     title: 'Custom apparel solutions',
     description:
         'Elevate your brand with premium customized apparel designed for teams, events, corporate identity, and professional wear.',
-    image_url: '/uploads/heroes/images/hero1.webp',
+    image_url: '',
     video_url: '',
     title_display_mode: 'double',
     title_font_size: 124,
@@ -92,32 +92,32 @@ const defaultCollectionsDraft = {
         {
             name: 'New Arrivals',
             slug: 'new-arrivals',
-            image: '/uploads/heroes/images/hero1.webp',
+            image: '',
             productIds: [],
         },
         {
             name: 'Essentials',
             slug: 'essentials',
-            image: '/uploads/heroes/images/hero1.webp',
+            image: '',
             productIds: [],
         },
         {
             name: 'Tees',
             slug: 'tees',
-            image: '/uploads/heroes/images/hero1.webp',
+            image: '',
             productIds: [],
         },
         {
             name: 'Bottoms',
             slug: 'bottoms',
-            image: '/uploads/heroes/images/hero1.webp',
+            image: '',
             productIds: [],
         },
     ],
 };
 
 const defaultOurStoryDraft = {
-    story_image: '/uploads/heroes/images/hero1.webp',
+    story_image: '',
     story_logo: '',
     section_title: 'Our Story',
     title: 'Heritage, Refined.',
@@ -132,7 +132,7 @@ const defaultHomeBackgroundDraft = {
     items: [
         {
             id: 1,
-            image: '/uploads/heroes/images/hero1.webp',
+            image: '',
             title: 'Built For Everyday Confidence',
             description:
                 'Elevated essentials with clean cuts, durable fabrics, and a refined streetwear silhouette.',
@@ -308,7 +308,7 @@ export default function HomePageBuilder() {
                         Array.isArray(payload.items) && payload.items.length > 0
                             ? payload.items.map((item, index) => ({
                                   id: item.id || index + 1,
-                                  image: item.image || '/uploads/heroes/images/hero1.webp',
+                                  image: item.image || '',
                                   title: item.title || '',
                                   description: item.description || '',
                                   button_text: item.button_text || 'Explore The Drop',
@@ -1155,7 +1155,7 @@ export default function HomePageBuilder() {
                 {
                     name: `Collection ${previous.items.length + 1}`,
                     slug: `collection-${previous.items.length + 1}`,
-                    image: '/uploads/heroes/images/hero1.webp',
+                    image: '',
                     productIds: [],
                 },
             ],
@@ -1268,7 +1268,7 @@ export default function HomePageBuilder() {
                 ...previous.items,
                 {
                     id: previous.items.length + 1,
-                    image: '/uploads/heroes/images/hero1.webp',
+                    image: '',
                     title: 'New slide title',
                     description: 'Add your slide description.',
                     button_text: 'Explore The Drop',
@@ -1338,7 +1338,7 @@ export default function HomePageBuilder() {
                         Array.isArray(saved.items) && saved.items.length > 0
                             ? saved.items.map((item, index) => ({
                                   id: item.id || index + 1,
-                                  image: item.image || '/uploads/heroes/images/hero1.webp',
+                                  image: item.image || '',
                                   title: item.title || '',
                                   description: item.description || '',
                                   button_text: item.button_text || 'Explore The Drop',

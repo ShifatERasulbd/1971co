@@ -13,7 +13,7 @@ import { useCart } from '../context/CartContext';
 import ProductVariantModal from './ProductVariantModal.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function normalizeProductColors(value) {
     if (Array.isArray(value)) {
@@ -158,101 +158,74 @@ function collectVariantImages(product) {
     return images;
 }
 
-function groupProductsByName(products) {
-    if (!Array.isArray(products)) return [];
-    
-    const grouped = new Map();
+function isTruthyFlag(value) {
+    if (value === true || value === 1) return true;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+    }
+    return false;
+}
 
-    products.forEach((product, index) => {
-        const name = String(product?.name || '').trim();
-        const key = name.toLowerCase() || `unnamed-${product?.id ?? index}`;
-        const existing = grouped.get(key);
+function buildTrendingDisplayProducts(products) {
+    if (!Array.isArray(products)) return [];
+
+    const expanded = [];
+
+    products.forEach((product, productIndex) => {
         const productColors = normalizeProductColors(product?.color);
-        const productSizes = [
-            ...normalizeProductSizes(product?.sizes),
-            ...normalizeProductSizes(product?.size_variants),
-            ...normalizeProductSizes(product?.size_variant?.size),
-            ...normalizeProductSizes(product?.size),
-            ...((Array.isArray(product?.variant_rows)
-                ? product.variant_rows.map((row) => row?.size)
-                : []).flatMap((value) => normalizeProductSizes(value))),
-        ];
-        const productImageCandidates = collectVariantImages(product);
-        const directVariantImages =
+        const productColorSet = new Set(productColors.map((item) => String(item || '').trim()).filter(Boolean));
+        const variantRows = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+        const trendingColorSet = new Set();
+
+        variantRows.forEach((row) => {
+            if (!row || typeof row !== 'object') return;
+            if (!isTruthyFlag(row.show_on_best_sellers)) return;
+
+            const colorKey = String(row.color || '').trim();
+            if (!colorKey) return;
+
+            if (productColorSet.size === 0 || productColorSet.has(colorKey)) {
+                trendingColorSet.add(colorKey);
+            }
+        });
+
+        const colorVariantImages =
             product?.color_variant_images && typeof product.color_variant_images === 'object'
                 ? product.color_variant_images
                 : {};
 
-        if (!existing) {
-            const next = {
-                ...product,
-                color: [...productColors],
-                sizes: [...new Set(productSizes)],
-                image_gallery: [],
-                color_variant_images: {},
-            };
+        const imageCandidates = collectVariantImages(product);
 
-            grouped.set(key, next);
+        if (trendingColorSet.size > 0) {
+            [...trendingColorSet].forEach((colorKey, colorIndex) => {
+                const selectedImages = Array.isArray(colorVariantImages[colorKey])
+                    ? colorVariantImages[colorKey].filter(Boolean)
+                    : [];
+
+                const nextGallery = selectedImages.length > 0 ? selectedImages : imageCandidates;
+
+                expanded.push({
+                    ...product,
+                    ui_variant_key: `${product?.id || productIndex}-trending-${colorKey}-${colorIndex}`,
+                    color: [colorKey],
+                    image_gallery: [...new Set(nextGallery)],
+                    cover_image: selectedImages[0] || product?.cover_image || imageCandidates[0] || fallbackImage,
+                    color_variant_images: {
+                        [colorKey]: selectedImages.length > 0 ? selectedImages : nextGallery,
+                    },
+                    trending_color: colorKey,
+                });
+            });
+
+            return;
         }
-
-        const target = grouped.get(key);
-        const mergedColors = new Set(normalizeProductColors(target.color));
-        productColors.forEach((color) => mergedColors.add(color));
-        target.color = [...mergedColors];
-
-        const mergedSizes = new Set(normalizeProductSizes(target.sizes));
-        productSizes.forEach((size) => mergedSizes.add(size));
-        target.sizes = [...mergedSizes];
-
-        const mergedGallery = new Set(Array.isArray(target.image_gallery) ? target.image_gallery.filter(Boolean) : []);
-        productImageCandidates.forEach((image) => mergedGallery.add(image));
-        target.image_gallery = [...mergedGallery];
-
-        if (!target.cover_image && product?.cover_image) {
-            target.cover_image = product.cover_image;
-        }
-
-        const variantMap = {
-            ...(target.color_variant_images && typeof target.color_variant_images === 'object' ? target.color_variant_images : {}),
-        };
-
-        productColors.forEach((color) => {
-            const mappedImages = Array.isArray(directVariantImages[color]) ? directVariantImages[color].filter(Boolean) : [];
-            const fallbackImages = mappedImages.length > 0 ? mappedImages : productImageCandidates;
-            const merged = new Set(Array.isArray(variantMap[color]) ? variantMap[color].filter(Boolean) : []);
-
-            fallbackImages.forEach((image) => merged.add(image));
-            if (merged.size > 0) {
-                variantMap[color] = [...merged];
-            }
-        });    
-
-        target.color_variant_images = variantMap;
     });
 
-    return [...grouped.values()];
+    return expanded;
 }
 
-function ColorSwatch({ color, active, onClick, colorLookup }) {
-    const swatchColor = getSwatchColor(color, colorLookup);
-    const borderClass = getSwatchBorderClass(swatchColor);
 
-    return (
-        <button
-            type="button"
-            title={color}
-            onClick={onClick}
-            className={`inline-flex size-5 items-center justify-center rounded-full bg-white p-[2px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-transform hover:scale-110 sm:size-[1.35rem] ${
-                active ? 'ring-1 ring-zinc-900/25' : borderClass
-            }`}
-        >
-            <span
-                className="block size-full rounded-full"
-                style={{ backgroundColor: swatchColor }}
-            />
-        </button>
-    );
-}
 
 function toAbsoluteImageUrl(path) {
     if (!path || typeof path !== 'string') {
@@ -373,9 +346,18 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
 
     const productSlug = String(product?.slug || '').trim();
     const productName = String(product?.name || '').trim();
-    const productLink = productSlug
-        ? `/product-details/${encodeURIComponent(productSlug)}`
-        : `/product-details/${encodeURIComponent(productName)}`;
+    const productLink = useMemo(() => {
+        const base = productSlug
+            ? `/product-details/${encodeURIComponent(productSlug)}`
+            : `/product-details/${encodeURIComponent(productName)}`;
+
+        const colorValue = String(selectedColor || '').trim();
+        if (!colorValue) {
+            return base;
+        }
+
+        return `${base}/${encodeURIComponent(colorValue)}`;
+    }, [productSlug, productName, selectedColor]);
 
     function handleAddToCart(event) {
         event.preventDefault();
@@ -394,12 +376,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
         navigate(productLink);
     }
 
-    function handleWishlist(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toast.info('Wishlist will be available soon');
-    }
-
+ 
     return (
         <article className="group w-full cursor-pointer">
             <Link to={productLink} className="block">
@@ -419,14 +396,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
                             >
                                 Add to cart
                             </button>
-                            <button
-                                type="button"
-                                onClick={handleWishlist}
-                                aria-label="Add to wishlist"
-                                className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                            >
-                                <Heart className="size-4" />
-                            </button>
+                        
                             <button
                                 type="button"
                                 onClick={handleQuickView}
@@ -462,19 +432,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
             </Link>
 
             <div className="space-y-1 pt-3.5">
-                {colors.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {colors.slice(0, 6).map((c, i) => (
-                            <ColorSwatch
-                                key={`${c}-${i}`}
-                                color={c}
-                                active={selectedColor === c}
-                                colorLookup={colorLookup}
-                                onClick={(event) => handleSelectColor(c, event)}
-                            />
-                        ))}
-                    </div>
-                )}
+       
 
                 <Link to={productLink} className="block">
                     <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
@@ -638,7 +596,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
     }, [isBuilderPreview]);
 
     // Derived collection purely from live fetched state
-    const displayProducts = loading ? [] : groupProductsByName(products);
+    const displayProducts = loading ? [] : buildTrendingDisplayProducts(products);
 
     function handleAddToCart(product, options = {}) {
         setVariantModalState({
@@ -669,8 +627,18 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
             style={{ backgroundColor: '#ffffff' }}
             onClick={() => notifyBuilderSelection(null)}
         >
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes lightWaveSweep {
+                    0%   { transform: translateX(-220%); }
+                    100% { transform: translateX(420%); }
+                }
+                .wave-outer, .wave-mid, .wave-core, .wave-hotspot {
+                    animation: lightWaveSweep 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+            `}} />
+
             <div className="mx-auto w-full max-w-[1700px] px-6 sm:px-8 lg:px-12">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+                <div className="relative mb-6 flex flex-wrap items-center justify-between gap-3 pb-4 sm:mb-8">
                     <h2 className={`${sectionTypography.sectionHeader} text-zinc-900`}>
                         {sectionTitle}
                     </h2>
@@ -691,10 +659,17 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                         </button>
                         <Link
                             to="/shop"
-                            className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-zinc-500 transition-colors hover:text-zinc-900`}
+                            className={`${sectionTypography.sectionHeaderActionLink} section-header-cta-glow text-black transition-colors hover:text-zinc-900`}
                         >
                             Shop All
                         </Link>
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 h-[2px] w-full overflow-hidden bg-zinc-300">
+                        <div className="wave-outer absolute inset-y-0 w-[55%] bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[3px]" />
+                        <div className="wave-mid absolute inset-y-0 w-[35%] bg-gradient-to-r from-transparent via-white/80 to-transparent blur-[1.5px]" />
+                        <div className="wave-core absolute inset-y-0 w-[18%] bg-gradient-to-r from-transparent via-white to-transparent" />
+                        <div className="wave-hotspot absolute inset-y-0 w-[7%] bg-gradient-to-r from-transparent via-white to-transparent brightness-[2]" />
                     </div>
                 </div>
 
@@ -724,7 +699,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                     >
                         {displayProducts.map((product, index) => (
                             <SwiperSlide
-                                key={product.id || `${product.name}-${index}`}
+                                key={product.ui_variant_key || product.id || `${product.name}-${index}`}
                                 className="h-auto"
                                 onClick={(event) => {
                                     if (!isBuilderPreview) {
@@ -739,7 +714,7 @@ export default function BestSellersSection({ sectionTitle = 'Trending' }) {
                                 <ProductCard
                                     product={product}
                                     autoPlay={isBuilderPreview}
-                                    colorLookup={colorLookup}
+                                   
                                     onAddToCart={handleAddToCart}
                                     allowAddToCart={!loading}
                                 />

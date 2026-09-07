@@ -3,7 +3,7 @@ import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function toImageUrl(value) {
     if (typeof value !== 'string' || !value.trim()) {
@@ -105,6 +105,12 @@ export default function CartDrawer() {
                                     <p className="text-[0.92rem] text-zinc-500">
                                         {item.priceLabel}
                                     </p>
+
+                                    <div className="mt-1 flex flex-wrap gap-2 text-[0.72rem] text-zinc-500">
+                                        {item.selectedColor ? <span>Color: {item.selectedColor}</span> : null}
+                                        {item.selectedSize ? <span>Size: {item.selectedSize}</span> : null}
+                                        {item.weight ? <span>Weight: {item.weight} Lbs</span> : null}
+                                    </div>
 
                                     <div className="mt-2 flex items-center justify-between">
                                         <div className="flex items-center border">

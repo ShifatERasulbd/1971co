@@ -14,7 +14,7 @@ export const communitySections = [
         key: 'features',
         title: 'Impact Features',
         description: 'Education, care, and opportunity cards.',
-        featureImage: '/uploads/heroes/images/hero1.webp',
+        featureImage: '',
         featureItems: [
             {
                 id: 'education',
@@ -39,6 +39,7 @@ export const communitySections = [
         buttonUrl: '/about',
         status: 'active',
     },
+    
     {
         key: 'community-center',
         title: 'Community Center',
@@ -126,6 +127,14 @@ export const communitySections = [
         ],
         buttonText: 'View Gallery',
         buttonUrl: '#gallery',
+        status: 'active',
+    },
+    {
+        key: 'canvas',
+        title: 'Community Canvas',
+        description: 'Editable canvas image showcased in the community page builder.',
+        canvasImage: '',
+        canvasImages: [],
         status: 'active',
     },
     {

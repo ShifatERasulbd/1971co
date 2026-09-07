@@ -1,0 +1,42 @@
+[21-Jul-2026 10:39:04 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22
+[21-Jul-2026 10:39:51 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22
+[21-Jul-2026 10:39:53 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22
+[21-Jul-2026 10:39:54 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22
+[21-Jul-2026 10:39:54 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22
+[21-Jul-2026 10:39:54 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.3.0". You are running 8.2.31. in /home/arbehamu/1971co.com/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/arbehamu/1971co.com/vendor/composer/autoload_real.php(25): require()
+#1 /home/arbehamu/1971co.com/vendor/autoload.php(22): ComposerAutoloaderInit10ce2582bb093948206a0874536e4ca9::getLoader()
+#2 /home/arbehamu/1971co.com/public/index.php(14): require('/home/arbehamu/...')
+#3 {main}
+  thrown in /home/arbehamu/1971co.com/vendor/composer/platform_check.php on line 22

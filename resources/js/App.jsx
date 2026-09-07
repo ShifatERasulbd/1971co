@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import CartDrawer from './frontend/components/CartDrawer.jsx';
@@ -8,19 +8,25 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
-import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings';
-import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics';
+import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden.js';
+import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
+import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
+import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel.js';
+
+preventInvalidBodyAriaHidden();
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
+const ComingSoonPage = lazy(() => import('./frontend/pages/Coming_soon.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
-const SingleProductPage = lazy(() => import('./frontend/pages/singleProduct.jsx'));
-const AboutPage = lazy(() => import('./frontend/pages/about.jsx'));
-const ContactPage = lazy(() => import('./frontend/pages/contact.jsx'));
+const SingleProductPage = lazy(() => import('./frontend/pages/SingleProduct.jsx'));
+const AboutPage = lazy(() => import('./frontend/pages/About.jsx'));
+const ContactPage = lazy(() => import('./frontend/pages/Contact.jsx'));
 const AuthPage = lazy(() => import('./frontend/pages/Auth.jsx'));
 const ResetPasswordPage = lazy(() => import('./frontend/pages/ResetPassword.jsx'));
 const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
 const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.jsx'));
+const CompliancePolicyPage = lazy(() => import('./frontend/pages/CompliancePolicyPage.jsx'));
 
 const BRAND_NAME = '1971Co';
 
@@ -44,11 +50,13 @@ function normalizeAssetPath(value) {
 function resolvePageLabel(pathname) {
     const path = String(pathname || '/').toLowerCase();
 
-    if (path === '/') return 'Home';
+    if (path === '/') return 'Coming Soon';
+    if (path === '/home') return 'Home';
     if (path === '/shop') return 'Shop';
     if (path.startsWith('/search/')) return 'Search';
     if (path.startsWith('/collection/')) return 'Collection';
     if (path === '/new-arrivals') return 'Collection';
+    if (path === '/trending') return 'Trending';
     if (path === '/best-sellers') return 'Best Sellers';
     if (path.startsWith('/product-details/')) return 'Product Details';
     if (path === '/singleproduct') return 'Product Details';
@@ -58,6 +66,9 @@ function resolvePageLabel(pathname) {
     if (path === '/together-we-grow') return 'Together We Grow';
     if (path === '/checkout') return 'Checkout';
     if (path === '/order-confirmation') return 'Order Confirmation';
+    if (path === '/shipping') return 'Shipping';
+    if (path === '/privacy') return 'Privacy Policy';
+    if (path === '/terms') return 'Terms & Conditions';
     if (path === '/login') return 'Login';
     if (path === '/register') return 'Register';
     if (path.startsWith('/reset-password')) return 'Reset Password';
@@ -100,24 +111,48 @@ function DocumentBrandingManager() {
         const pageLabel = resolvePageLabel(pathname);
         document.title = `${pageLabel} | ${BRAND_NAME}`;
 
-        const favicon = normalizeAssetPath(settings?.header_logo || '');
+        const favicon = normalizeAssetPath(settings?.favicon || settings?.header_logo || '');
         if (favicon) {
             const faviconLink = ensureFaviconLink();
             faviconLink.href = favicon;
         }
 
-        // Track page view with Google Analytics
         trackPageView(pathname);
+        trackPixelPageView();
     }, [pathname, settings]);
 
     useEffect(() => {
-        // Initialize Google Analytics when GA measurement ID is available
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
         if (gaId && !window.__gaInitialized) {
             initializeGoogleAnalytics(gaId);
             window.__gaInitialized = true;
         }
     }, [settings]);
+
+    useEffect(() => {
+        if (window.__fbPixelInitialized) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        fetch('/api/public/facebook-pixel-config')
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload) => {
+                if (isCancelled || !payload?.pixelId) {
+                    return;
+                }
+
+                initializeFacebookPixel(payload.pixelId);
+                trackPixelPageView();
+                window.__fbPixelInitialized = true;
+            })
+            .catch(() => {});
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
 
     return null;
 }
@@ -130,11 +165,20 @@ function withPageFallback(Component) {
     );
 }
 
+// Protected Route Component to prevent bypasses
+function ProtectedRoute() {
+    const isAuthenticated = localStorage.getItem('coming_soon_auth') === 'true';
+    if (!isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
+    return <FrontendLayout />;
+}
+
 function FrontendLayout() {
     return (
-        <div className="min-h-screen bg-white text-zinc-950">
+        <div className="flex min-h-screen flex-col bg-white text-zinc-950">
             <Header />
-            <main>
+            <main className="flex-1">
                 <Outlet />
             </main>
             <Footer />
@@ -154,12 +198,16 @@ function AppRouter() {
             <BrowserRouter>
                 <DocumentBrandingManager />
                 <Routes>
-                    <Route path="/" element={<FrontendLayout />}>
-                        <Route index element={withPageFallback(HomePage)} />
+                    <Route path="/" element={withPageFallback(ComingSoonPage)} />
+                    
+                    {/* Protected Routes Wrapper */}
+                    <Route element={<ProtectedRoute />}>
+                        <Route path="home" element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
                         <Route path="search/:productSlug" element={withPageFallback(ShopPage)} />
                         <Route path="collection/:slug" element={withPageFallback(ShopPage)} />
                         <Route path="new-arrivals" element={withPageFallback(ShopPage)} />
+                        <Route path="trending" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />
                         <Route path=":subCategorySlug/:grandChildSlug?" element={withPageFallback(ShopPage)} />
                         <Route path="product-details/:slug/:color?" element={withPageFallback(SingleProductPage)} />
@@ -169,10 +217,14 @@ function AppRouter() {
                         <Route path="together-we-grow" element={withPageFallback(TogetherWeGrowPage)} />
                         <Route path="checkout" element={withPageFallback(CheckoutPage)} />
                         <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
+                        <Route path="shipping" element={withPageFallback(CompliancePolicyPage)} />
+                        <Route path="privacy" element={withPageFallback(CompliancePolicyPage)} />
+                        <Route path="terms" element={withPageFallback(CompliancePolicyPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />
                         <Route path="register" element={withPageFallback(AuthPage)} />
                         <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />
                     </Route>
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </BrowserRouter>

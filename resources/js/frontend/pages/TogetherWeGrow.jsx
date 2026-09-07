@@ -2,15 +2,18 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 
 import TogetherWeGrowHeroSection from '../components/TogetherWeGrowHeroSection';
 
+const TogetherWeGrowFeaturesSection = lazy(() => import('../components/TogetherWeGrowFeaturesSection.jsx'));
 const TogetherWeGrowCommunityCenterSection = lazy(() => import('../components/TogetherWeGrowCommunityCenterSection.jsx'));
 const TogetherWeGrowGallerySection = lazy(() => import('../components/TogetherWeGrowGallerySection.jsx'));
+const TogetherWeGrowCanvas = lazy(() => import('../components/TogetherWeGrowCanvas.jsx'));
 const NewsletterSection = lazy(() => import('../components/NewsletterSection.jsx'));
+
 
 function SectionFallback({ minHeight = 'min-h-[220px]' }) {
     return <div className={`${minHeight} animate-pulse bg-zinc-100`} aria-hidden="true" />;
 }
 
-const KNOWN_SECTION_KEYS = ['hero', 'community-center', 'gallery', 'newsletter'];
+const KNOWN_SECTION_KEYS = ['hero', 'features', 'community-center', 'gallery','canvas', 'newsletter'];
 
 export default function TogetherWeGrowPage() {
     const [sectionOrder, setSectionOrder] = useState(KNOWN_SECTION_KEYS);
@@ -19,6 +22,8 @@ export default function TogetherWeGrowPage() {
 
     // Fetch community page sections from API
     useEffect(() => {
+        document.title = 'Together We Grow | 1971Co';
+
         fetch('/api/public/community-page-sections', {
             headers: {
                 'Accept': 'application/json',
@@ -49,6 +54,12 @@ export default function TogetherWeGrowPage() {
                             : Array.isArray(section.feature_items)
                               ? section.feature_items
                               : [],
+                                        canvasImage: section.canvasImage || section.canvas_image,
+                                        canvasImages: Array.isArray(section.canvasImages)
+                                                ? section.canvasImages
+                                                : Array.isArray(section.canvas_images)
+                                                    ? section.canvas_images
+                                                    : [],
                                                 communityImage: section.communityImage || section.community_image,
                                                 communityItems: Array.isArray(section.communityItems)
                                                         ? section.communityItems
@@ -116,17 +127,63 @@ export default function TogetherWeGrowPage() {
         };
     }, []);
 
+    function handleCanvasImagesReorder(nextItems) {
+        const normalized = Array.isArray(nextItems)
+            ? nextItems.map((item, index) => ({
+                  ...item,
+                  id: item?.id || `community-canvas-${index}`,
+                  src: item?.src || '',
+                  sort_order: index,
+              }))
+            : [];
+
+        setSectionsData((previous) => ({
+            ...previous,
+            canvas: {
+                ...(previous.canvas || {}),
+                canvasImages: normalized,
+                canvasImage: normalized[0]?.src || '',
+            },
+        }));
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+                {
+                    type: 'TIMLESS_PAGE_BUILDER_TOGETHER_CANVAS_REORDER',
+                    payload: {
+                        canvasImages: normalized,
+                    },
+                },
+                window.location.origin,
+            );
+        }
+    }
+
     const sectionNodes = useMemo(
         () => ({
             hero: <TogetherWeGrowHeroSection sectionData={sectionsData.hero} />,
+            features: (
+                <Suspense fallback={<SectionFallback minHeight="min-h-[320px]" />}>
+                    <TogetherWeGrowFeaturesSection sectionData={sectionsData.features} />
+                </Suspense>
+            ),
             'community-center': (
                 <Suspense fallback={<SectionFallback minHeight="min-h-[480px]" />}>
                     <TogetherWeGrowCommunityCenterSection sectionData={sectionsData['community-center']} />
                 </Suspense>
             ),
-            gallery: (
+             gallery: (
                 <Suspense fallback={<SectionFallback minHeight="min-h-[420px]" />}>
                     <TogetherWeGrowGallerySection sectionData={sectionsData.gallery} />
+                </Suspense>
+            ),
+            canvas: (
+                <Suspense fallback={<SectionFallback minHeight="min-h-[420px]" />}>
+                    <TogetherWeGrowCanvas
+                        sectionData={sectionsData.canvas}
+                        isBuilderPreview={isBuilderPreview}
+                        onReorderImages={handleCanvasImagesReorder}
+                    />
                 </Suspense>
             ),
             newsletter: (

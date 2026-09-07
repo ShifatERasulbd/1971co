@@ -7,9 +7,30 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class FeatureController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'features.index';
+
+    private function clearFeatureCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Feature::query()
+                ->orderByRaw('COALESCE(sort_order, id) asc')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Feature $feature) => $this->toResponse($feature))
+                ->values()
+                ->all();
+        });
+    }
+
     private function resolveAssetUrl(?string $asset): ?string
     {
         if (! $asset) {
@@ -99,14 +120,7 @@ class FeatureController extends Controller
 
     public function index(): JsonResponse
     {
-        $features = Feature::query()
-            ->orderByRaw('COALESCE(sort_order, id) asc')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Feature $feature) => $this->toResponse($feature))
-            ->values();
-
-        return response()->json($features);
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -128,7 +142,7 @@ class FeatureController extends Controller
         $validated['description'] = trim((string) ($validated['description'] ?? $validated['short_description'] ?? '')) ?: null;
 
         $feature = Feature::query()->create($validated);
-
+        $this->clearFeatureCache();
         return response()->json($this->toResponse($feature), 201);
     }
 
@@ -155,6 +169,7 @@ class FeatureController extends Controller
 
         $feature->update($validated);
 
+        $this->clearFeatureCache();
         return response()->json($this->toResponse($feature->fresh()));
     }
 
@@ -162,6 +177,7 @@ class FeatureController extends Controller
     {
         $this->deleteAssetIfLocal($feature->icon);
         $feature->delete();
+        $this->clearFeatureCache();
 
         return response()->json(['success' => true]);
     }

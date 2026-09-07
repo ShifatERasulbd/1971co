@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Eye, Heart, PackageSearch, SlidersHorizontal, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -9,7 +9,7 @@ import ProductVariantModal from './ProductVariantModal.jsx';
 import ShopSidebar from './ShopSidebar.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
 
-const productImage = '/uploads/heroes/images/hero1.webp';
+const productImage = '';
 const PRODUCTS_PER_PAGE = 12;
 
 function parseSizeList(value) {
@@ -293,17 +293,56 @@ function createVariantCardId(product, color, index) {
     return `${baseId}__${colorSlug || 'default'}__${index}`;
 }
 
+function isVariantTrending(product, seedColor = '') {
+    if (!product || typeof product !== 'object') {
+        return false;
+    }
+
+    const rows = Array.isArray(product.variant_rows) ? product.variant_rows : [];
+    if (rows.length === 0) {
+        return false;
+    }
+
+    const normalizedSeed = normalizeQueryValue(String(seedColor || ''));
+
+    if (normalizedSeed) {
+        return rows.some((row) => (
+            normalizeQueryValue(String(row?.color || '')) === normalizedSeed
+            && (row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1)
+        ));
+    }
+
+    return rows.some((row) => row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1);
+}
+
+function isBundleLikeProduct(product) {
+    const name = String(product?.name || '').trim().toLowerCase();
+    const sku = String(product?.sku || '').trim().toLowerCase();
+
+    return name.includes('bundle') || sku.includes('bundle');
+}
+
 function expandProductsByColorVariants(products) {
     if (!Array.isArray(products)) {
         return [];
     }
 
     return products.flatMap((product, productIndex) => {
+        if (isBundleLikeProduct(product)) {
+            return [{
+                ...product,
+                variant_seed_color: null,
+                base_product_id: product?.id ?? productIndex,
+                tag: isVariantTrending(product) ? 'Trending' : null,
+            }];
+        }
+
         const colors = normalizeProductColors(product?.color);
         if (colors.length === 0) {
             return [{
                 ...product,
                 variant_seed_color: null,
+                tag: isVariantTrending(product) ? 'Trending' : null,
             }];
         }
 
@@ -312,6 +351,7 @@ function expandProductsByColorVariants(products) {
             id: createVariantCardId(product, color, colorIndex),
             variant_seed_color: color,
             base_product_id: product?.id ?? productIndex,
+            tag: isVariantTrending(product, color) ? 'Trending' : null,
         }));
     });
 }
@@ -351,7 +391,7 @@ function normalizeProducts(payload, colorNameLookup = {}, sizeNameLookup = {}, s
             sizes: extractSizeIds(item, sizeNameLookup, sizeIdByNameLookup),
             stockValue: getProductStock(item),
             grand_child_id: item?.grand_child_id != null ? String(item.grand_child_id) : '',
-            tag: item?.show_on_best_sellers ? 'Trending' : null,
+            tag: null,
         };
     });
 
@@ -499,11 +539,21 @@ function isBestSellerProduct(product) {
         return false;
     }
 
-    if (product.show_on_best_sellers === true) {
-        return true;
+    const variantRows = Array.isArray(product.variant_rows) ? product.variant_rows : [];
+    const normalizedSeedColor = normalizeQueryValue(String(product.variant_seed_color || ''));
+
+    if (variantRows.length > 0) {
+        if (normalizedSeedColor) {
+            return variantRows.some((row) => (
+                normalizeQueryValue(String(row?.color || '')) === normalizedSeedColor
+                && (row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1)
+            ));
+        }
+
+        return variantRows.some((row) => row?.show_on_best_sellers === true || Number(row?.show_on_best_sellers) === 1);
     }
 
-    return Number(product.show_on_best_sellers) === 1;
+    return false;
 }
 
 function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {} }) {
@@ -522,9 +572,21 @@ function ColorSwatch({ color, active, onClick, colorLookup, colorNameLookup = {}
     );
 }
 
-function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart }) {
+function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToCart, seedColorOnly = false, hideColorSwatches = false }) {
     const navigate = useNavigate();
-    const colors = useMemo(() => normalizeProductColors(product.color), [product.color]);
+    const colors = useMemo(() => {
+        const normalized = normalizeProductColors(product.color);
+        if (!seedColorOnly) {
+            return normalized;
+        }
+
+        const seededColor = String(product?.variant_seed_color || '').trim();
+        if (!seededColor) {
+            return normalized;
+        }
+
+        return normalized.includes(seededColor) ? [seededColor] : [seededColor];
+    }, [product.color, product?.variant_seed_color, seedColorOnly]);
 
     const galleryImages = useMemo(() => {
         const rawGallery = Array.isArray(product.image_gallery) ? product.image_gallery : [];
@@ -682,129 +744,105 @@ function ProductCard({ product, colorLookup = {}, colorNameLookup = {}, onAddToC
         navigate(productLink);
     }
 
-    function handleWishlist(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toast.info('Wishlist will be available soon');
-    }
-
+   
+    
     return (
-        <article className="group overflow-hidden border border-zinc-200 bg-white">
-            <Link to={productLink} className="block">
-                <div className="relative overflow-hidden bg-zinc-100">
-                    <img
-                        src={imageSrc}
-                        alt={product.name}
-                        className="h-[250px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[320px]"
-                    />
+       <article className="group h-[520px] w-[310px] overflow-hidden border border-zinc-200 bg-white">
+    <Link to={productLink} className="block">
+        <div className="relative h-[400px] w-[310px] overflow-hidden bg-zinc-100">
+            <img
+                src={imageSrc}
+                alt={product.name}
+                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            />
 
-                    <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                        <button
-                            type="button"
-                            onClick={handleAddToCart}
-                            className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
-                        >
-                            Add to cart
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleWishlist}
-                            aria-label="Add to wishlist"
-                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                        >
-                            <Heart className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleQuickView}
-                            aria-label="Preview product"
-                            className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                        >
-                            <Eye className="size-4" />
-                        </button>
-                    </div>
-
-                    {product.tag ? (
-                        <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white">
-                            {product.tag}
-                        </span>
-                    ) : null}
-
-                    {galleryImages.length > 1 ? (
-                        <>
-                            <button
-                                type="button"
-                                aria-label="Previous image"
-                                onClick={handlePrevImage}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
-                            >
-                                <ChevronLeft className="size-4" />
-                            </button>
-                            <button
-                                type="button"
-                                aria-label="Next image"
-                                onClick={handleNextImage}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
-                            >
-                                <ChevronRight className="size-4" />
-                            </button>
-
-                            {/* <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1">
-                                {galleryImages.map((_, index) => (
-                                    <button
-                                        key={`image-dot-${index}`}
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            setCurrentImageIndex(index);
-                                        }}
-                                        className={`size-1.5 rounded-full ${
-                                            currentImageIndex === index ? 'bg-white' : 'bg-white/50'
-                                        }`}
-                                        aria-label={`Go to image ${index + 1}`}
-                                    />
-                                ))}
-                            </div> */}
-                        </>
-                    ) : null}
-                </div>
-            </Link>
-
-            <div className="space-y-1 p-4 pt-3.5">
-                {colors.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {colors.slice(0, 6).map((c, i) => (
-                            <ColorSwatch
-                                key={`${c}-${i}`}
-                                color={c}
-                                active={selectedColor === c}
-                                colorLookup={colorLookup}
-                                colorNameLookup={colorNameLookup}
-                                onClick={(event) => handleSelectColor(c, event)}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                  <Link to={productLink} className="block">
-                    <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
-                        {product.name}
-                    </h3>
-                </Link>
-
-                <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
-                    ${Number(product.priceValue).toFixed(2)}
-                </p>
+            {/* Hover CTA buttons */}
+            <div className="product-hover-cta absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
+                >
+                    Add to cart
+                </button>
+                <button
+                    type="button"
+                    onClick={handleQuickView}
+                    aria-label="Preview product"
+                    className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
+                >
+                    <Eye className="size-4" />
+                </button>
             </div>
-        </article>
-    );
-}
+
+            {/* Product Tag */}
+            {product.tag ? (
+                <span className="absolute left-3 top-3 bg-zinc-950 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">
+                    {product.tag}
+                </span>
+            ) : null}
+
+            {/* Gallery Navigation */}
+            {galleryImages.length > 1 ? (
+                <>
+                    <button
+                        type="button"
+                        aria-label="Previous image"
+                        onClick={handlePrevImage}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    >
+                        <ChevronLeft className="size-4" />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Next image"
+                        onClick={handleNextImage}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-zinc-800 opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    >
+                        <ChevronRight className="size-4" />
+                    </button>
+                </>
+            ) : null}
+        </div>
+    </Link>
+
+    {/* Information Container - Reduced height to 120px to remove excess space under price */}
+    <div className="h-[120px] flex flex-col justify-start p-4 pt-3.5 space-y-2">
+        {colors.length > 0 && !hideColorSwatches && (
+            <div className="flex flex-wrap items-center gap-2">
+                {colors.slice(0, 6).map((c, i) => (
+                    <ColorSwatch
+                        key={`${c}-${i}`}
+                        color={c}
+                        active={selectedColor === c}
+                        colorLookup={colorLookup}
+                        colorNameLookup={colorNameLookup}
+                        onClick={(event) => handleSelectColor(c, event)}
+                    />
+                ))}
+            </div>
+        )}
+
+        <Link to={productLink} className="block">
+            <h3 className={`${sectionTypography.productName} line-clamp-2 text-[0.95rem] font-medium leading-[1.15] text-zinc-900 transition-opacity hover:opacity-70 sm:text-[1.02rem]`}>
+                {product.name}
+            </h3>
+        </Link>
+
+        <p className={`${sectionTypography.productPrice} text-[1.2rem] font-semibold leading-none text-zinc-800 sm:text-[.95rem]`}>
+            ${Number(product.priceValue).toFixed(2)}
+        </p>
+    </div>
+</article>
+            );
+        }
 
 function ShopProductsGrid({
-    products = [],
+   products = [],
     colorLookup = {},
     colorNameLookup = {},
+    seedColorOnly = false,
+    hideColorSwatches = false,
     currentPage = 1,
     totalPages = 1,
     totalResults = 0,
@@ -813,16 +851,16 @@ function ShopProductsGrid({
     onOpenFilters,
 }) {
     const visibleProducts = Array.isArray(products) ? products : [];
+    const PRODUCTS_PER_PAGE = 12; // Ensure this constant is defined
     const start = visibleProducts.length > 0 ? (currentPage - 1) * PRODUCTS_PER_PAGE + 1 : 0;
     const end = visibleProducts.length > 0 ? start + visibleProducts.length - 1 : 0;
 
     return (
         <div>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3  py-4">
-                <p className="text-[0.88rem]  tracking-[0.07em] text-slate-600">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 py-4">
+                <p className="text-[0.88rem] tracking-[0.07em] text-slate-600">
                     Showing {start}-{end} of {totalResults} results
                 </p>
-
                 <button
                     type="button"
                     onClick={() => onOpenFilters?.()}
@@ -834,20 +872,30 @@ function ShopProductsGrid({
             </div>
 
             {visibleProducts.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                <div
+                    className="grid justify-center gap-4"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, 310px)' }}
+                >
                     {visibleProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} colorLookup={colorLookup} colorNameLookup={colorNameLookup} onAddToCart={onAddToCart} />
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            colorLookup={colorLookup}
+                            colorNameLookup={colorNameLookup}
+                            onAddToCart={onAddToCart}
+                            seedColorOnly={seedColorOnly}
+                            hideColorSwatches={hideColorSwatches}
+                        />
                     ))}
                 </div>
             ) : (
                 <div className="flex min-h-[420px] flex-col items-center justify-center rounded-md border border-zinc-200 bg-white text-center">
                     <PackageSearch className="mb-4 size-24 text-zinc-300" strokeWidth={1.5} />
                     <h3 className="text-[1.1rem] font-semibold uppercase tracking-[0.08em] text-zinc-700">No product found</h3>
-                    <p className="mt-2 text-sm text-zinc-500">Try changing filters or search keywords.</p>
                 </div>
             )}
 
-            {totalPages > 1 ? (
+            {totalPages > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-2">
                     {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
                         <button
@@ -864,10 +912,11 @@ function ShopProductsGrid({
                         </button>
                     ))}
                 </div>
-            ) : null}
+            )}
         </div>
     );
 }
+
 
 export default function ShopCatalogSection() {
     const { addToCart, openCartDrawer } = useCart();
@@ -894,6 +943,19 @@ export default function ShopCatalogSection() {
     const [variantModalState, setVariantModalState] = useState(null);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [collectionItems, setCollectionItems] = useState([]);
+    const catalogTopRef = useRef(null);
+
+    function handlePageChange(page) {
+        setCurrentPage(page);
+
+        const target = catalogTopRef.current;
+        if (target && typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     const collectionSlug = useMemo(() => {
         const segments = String(location.pathname || '').split('/').filter(Boolean);
@@ -916,13 +978,19 @@ export default function ShopCatalogSection() {
 
     const isBestSellersView = useMemo(() => {
         const pathName = String(location.pathname || '').toLowerCase();
-        if (pathName === '/best-sellers') {
+        if (pathName === '/best-sellers' || pathName === '/trending') {
             return true;
         }
 
         const params = new URLSearchParams(location.search);
-        return normalizeQueryValue(params.get('category')) === 'best-sellers';
+        const category = normalizeQueryValue(params.get('category'));
+        return category === 'best-sellers' || category === 'trending';
     }, [location.pathname, location.search]);
+
+    const isTrendingPath = useMemo(() => {
+        const pathName = String(location.pathname || '').toLowerCase();
+        return pathName === '/trending';
+    }, [location.pathname]);
 
     useEffect(() => {
         let ignore = false;
@@ -1099,7 +1167,7 @@ export default function ShopCatalogSection() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const pathName = String(location.pathname || '').toLowerCase();
-        const categoryValueFromPath = pathName === '/best-sellers' ? 'best-sellers' : '';
+        const categoryValueFromPath = pathName === '/best-sellers' || pathName === '/trending' ? 'best-sellers' : '';
         const pathSegments = pathName.split('/').filter(Boolean);
         const isSearchPath = pathSegments.length >= 2 && pathSegments[0] === 'search';
         const searchPathToken = isSearchPath
@@ -1111,7 +1179,7 @@ export default function ShopCatalogSection() {
                 }
             })()
             : '';
-        const isShopPathSegment = !['collection', 'best-sellers', 'shop', 'search'].includes(pathSegments[0]);
+        const isShopPathSegment = !['collection', 'best-sellers', 'trending', 'shop', 'search'].includes(pathSegments[0]);
         const subCategoryValueFromPath = pathSegments.length >= 1 && isShopPathSegment ? pathSegments[0] : '';
         const grandChildValueFromPath = pathSegments.length >= 2 && isShopPathSegment ? pathSegments[1] : '';
         const categoryValue = categoryValueFromPath || params.get('category');
@@ -1338,7 +1406,7 @@ export default function ShopCatalogSection() {
     }
 
     return (
-        <section className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+        <section ref={catalogTopRef} className={`${featuresFontClass} px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1709px] gap-8 lg:grid-cols-[360px_1fr] lg:gap-10">
                 <div className="hidden lg:block">
                     <ShopSidebar
@@ -1367,10 +1435,12 @@ export default function ShopCatalogSection() {
                     products={paginatedProducts}
                     colorLookup={colorLookup}
                     colorNameLookup={colorNameLookup}
+                    seedColorOnly={isBestSellersView}
+                    hideColorSwatches={isTrendingPath}
                     currentPage={safeCurrentPage}
                     totalPages={totalPages}
                     totalResults={filteredProducts.length}
-                    onPageChange={setCurrentPage}
+                    onPageChange={handlePageChange}
                     onAddToCart={handleAddToCart}
                     onOpenFilters={() => setIsMobileFiltersOpen(true)}
                 />

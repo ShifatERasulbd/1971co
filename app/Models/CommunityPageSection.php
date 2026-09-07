@@ -17,6 +17,8 @@ class CommunityPageSection extends Model
         'button_url',
         'feature_image',
         'feature_items',
+        'canvas_image',
+        'canvas_images',
         'community_image',
         'community_items',
         'gallery_items',
@@ -25,6 +27,7 @@ class CommunityPageSection extends Model
 
     protected $casts = [
         'feature_items' => 'array',
+        'canvas_images' => 'array',
         'community_items' => 'array',
         'gallery_items' => 'array',
         'created_at' => 'datetime',

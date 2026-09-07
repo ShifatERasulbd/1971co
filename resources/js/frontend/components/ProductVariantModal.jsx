@@ -1,7 +1,7 @@
 import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
 
 function toAbsoluteImageUrl(path) {
     if (!path || typeof path !== 'string') {
@@ -151,6 +151,28 @@ function collectGalleryImages(product, selectedColor) {
 function toPrice(value) {
     const next = Number(value);
     return Number.isFinite(next) ? next : 0;
+}
+
+function resolveSelectedVariantRow(product, selectedColor, selectedSize) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    if (variants.length === 0) {
+        return null;
+    }
+
+    const selectedColorToken = String(selectedColor || '').trim().toLowerCase();
+    const selectedSizeToken = String(selectedSize || '').trim().toLowerCase();
+
+    const matched = variants.find((row) => {
+        const rowColors = parseList(row?.color).map((item) => String(item || '').trim().toLowerCase());
+        const rowSizes = parseList(row?.size).map((item) => String(item || '').trim().toLowerCase());
+
+        const colorMatch = selectedColorToken ? rowColors.includes(selectedColorToken) : true;
+        const sizeMatch = selectedSizeToken ? rowSizes.includes(selectedSizeToken) : true;
+
+        return colorMatch && sizeMatch;
+    });
+
+    return matched || null;
 }
 
 function resolveOptionValue(preferredValue, options = [], labelLookup = {}) {
@@ -365,6 +387,11 @@ export default function ProductVariantModal({
         };
     }, [isOpen, onClose]);
 
+    const selectedVariantRow = useMemo(
+        () => resolveSelectedVariantRow(product, selectedColor, selectedSize),
+        [product, selectedColor, selectedSize],
+    );
+
     if (!isOpen || !product) {
         return null;
     }
@@ -377,7 +404,7 @@ export default function ProductVariantModal({
     const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
 
     return (
-        <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
             <button
                 type="button"
                 aria-label="Close product options"
@@ -385,7 +412,8 @@ export default function ProductVariantModal({
                 className="absolute inset-0"
             />
 
-            <div className="relative z-[1501] grid h-[min(96svh,900px)] w-full max-w-[980px] overflow-y-auto border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr] lg:overflow-hidden">
+            {/* MODAL CONTAINER - updated max-h for scrolling */}
+            <div className="relative z-[1501] grid h-[min(96svh,900px)] w-full max-w-[980px] overflow-hidden border border-zinc-200 bg-white shadow-2xl lg:grid-cols-[1fr_1.1fr]">
                 <button
                     type="button"
                     onClick={onClose}
@@ -395,7 +423,7 @@ export default function ProductVariantModal({
                     <X className="size-5" />
                 </button>
 
-                <div className="bg-zinc-100">
+                <div className="bg-zinc-100 lg:overflow-y-auto">
                     <img
                         src={mainImage}
                         alt={name}
@@ -418,7 +446,7 @@ export default function ProductVariantModal({
                     ) : null}
                 </div>
 
-                <div className="flex flex-col p-4 sm:p-6 lg:p-8">
+                <div className="flex min-h-0 flex-col overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <button
                         type="button"
                         onClick={onClose}
@@ -518,6 +546,11 @@ export default function ProductVariantModal({
                                         selectedSize,
                                         quantity,
                                         image: mainImage,
+                                        sku: String(selectedVariantRow?.sku || product?.sku || '').trim(),
+                                        weight: String(selectedVariantRow?.weight || product?.weight || '').trim(),
+                                        length: String(selectedVariantRow?.length || product?.length || '').trim(),
+                                        width: String(selectedVariantRow?.width || product?.width || '').trim(),
+                                        height: String(selectedVariantRow?.height || product?.height || '').trim(),
                                     });
                                 }}
                                 className="inline-flex h-12 w-full flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400 sm:text-[0.8rem] sm:tracking-[0.14em]"

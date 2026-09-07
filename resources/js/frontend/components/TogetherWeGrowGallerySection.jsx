@@ -86,24 +86,19 @@ export default function TogetherWeGrowGallerySection({ sectionData }) {
         <section className={`${timelessFontClass} bg-white px-4 py-12 sm:px-6 sm:py-16 lg:px-10`}>
             <div className="mx-auto w-full max-w-[1920px] border border-zinc-200 bg-white p-3 sm:p-5 lg:p-6">
                 <div className="flex items-start justify-between gap-4">
-                    <h2 className="max-w-[340px] text-[1.9rem] font-black uppercase leading-[0.9] tracking-[-0.01em] text-zinc-950 sm:text-[2.3rem]">
+                    <h2 className="max-w-[540px] text-[1.9rem] font-black uppercase leading-[0.9] tracking-[-0.01em] text-zinc-950 sm:text-[2.3rem]">
                         Moments From
-                        <br />
+                      
                         The Community.
                     </h2>
 
-                    <button
-                        type="button"
-                        className="mt-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-zinc-900"
-                    >
-                        View All Photos
-                    </button>
+                   
                 </div>
 
                 <div className="relative mt-4 overflow-hidden bg-zinc-100">
                     <img
                         src={safeActiveItem.src}
-                        alt={safeActiveItem.alt || 'Community gallery image'}
+                        alt={safeActiveItem.alt || ''}
                         className="h-[340px] w-full object-contain sm:h-[430px] lg:h-[560px] xl:h-[620px]"
                     />
 
@@ -112,11 +107,9 @@ export default function TogetherWeGrowGallerySection({ sectionData }) {
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-3 sm:p-4">
                         <div>
                             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/85">
-                                {safeActiveItem.label || 'Community'}
+                                {safeActiveItem.label || ''}
                             </p>
-                            <p className="mt-1 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-white/75">
-                                {formatDate(safeActiveItem.date || '')}
-                            </p>
+                           
                         </div>
 
                         <div className="flex items-center gap-1.5">

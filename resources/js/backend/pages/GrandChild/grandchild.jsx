@@ -15,7 +15,21 @@ import {
 } from '@/components/ui/alert-dialog';
 import GrandChildTable from '@/components/grandchild/table';
 
-import { deleteGrandChild, fetchGrandChilds } from './api';
+import { deleteGrandChild, fetchGrandChilds, reorderGrandChilds } from './api';
+
+function moveItemById(items = [], sourceId, targetId) {
+    const sourceIndex = items.findIndex((item) => Number(item?.id) === Number(sourceId));
+    const targetIndex = items.findIndex((item) => Number(item?.id) === Number(targetId));
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        return items;
+    }
+
+    const next = [...items];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    return next;
+}
 
 export default function GrandChilds() {
     const navigate = useNavigate();
@@ -25,6 +39,7 @@ export default function GrandChilds() {
     const [errorMessage, setErrorMessage] = useState('');
     const [deletingId, setDeletingId] = useState(null);
     const [grandChildToDelete, setGrandChildToDelete] = useState(null);
+    const [isReordering, setIsReordering] = useState(false);
 
     useEffect(() => {
         setPageTitle('GrandChilds');
@@ -87,6 +102,41 @@ export default function GrandChilds() {
         }
     };
 
+    const handleReorder = async (sourceId, targetId) => {
+        if (isReordering || !sourceId || !targetId || sourceId === targetId) {
+            return;
+        }
+
+        const previous = grandChilds;
+        const reordered = moveItemById(previous, sourceId, targetId);
+        if (reordered === previous) {
+            return;
+        }
+
+        setGrandChilds(reordered);
+        setIsReordering(true);
+        setErrorMessage('');
+
+        try {
+            const payload = await reorderGrandChilds(reordered.map((item) => Number(item.id)));
+            if (Array.isArray(payload)) {
+                setGrandChilds(payload);
+            }
+            toast.success('GrandChild order updated.', {
+                style: { color: '#16a34a' },
+            });
+        } catch (error) {
+            setGrandChilds(previous);
+            const message = error.message || 'Failed to reorder grandchild entries.';
+            setErrorMessage(message);
+            toast.error(message, {
+                style: { color: '#dc2626' },
+            });
+        } finally {
+            setIsReordering(false);
+        }
+    };
+
     return (
         <>
             <div className="space-y-5">
@@ -96,10 +146,12 @@ export default function GrandChilds() {
                     <GrandChildTable
                         grandChilds={grandChilds}
                         isLoading={isLoading}
+                        isReordering={isReordering}
                         deletingId={deletingId}
                         onAdd={() => navigate('/admin/grand-child/add')}
                         onEdit={(id) => navigate(`/admin/grand-child/${id}/edit`)}
                         onRequestDelete={setGrandChildToDelete}
+                        onReorder={handleReorder}
                     />
                 </div>
 

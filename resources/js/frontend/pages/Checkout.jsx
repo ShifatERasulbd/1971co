@@ -5,10 +5,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useCart } from '../context/CartContext';
-import { calculateShippingCost, normalizeCountryCode } from '../utils/shipping';
+import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
-const fallbackImage = '/uploads/heroes/images/hero1.webp';
+const fallbackImage = '';
+
+function roundCurrency(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return 0;
+    }
+
+    return Math.round((numericValue + Number.EPSILON) * 100) / 100;
+}
 
 const cardElementOptions = {
     hidePostalCode: true,
@@ -36,6 +46,57 @@ function toImageUrl(value) {
     }
 
     return `/${value.replace(/^\/+/, '')}`;
+}
+
+function addBusinessDays(startDate, businessDays) {
+    const result = new Date(startDate);
+    if (!Number.isFinite(businessDays) || businessDays <= 0) {
+        return result;
+    }
+
+    let added = 0;
+    while (added < businessDays) {
+        result.setDate(result.getDate() + 1);
+        const day = result.getDay();
+        if (day !== 0 && day !== 6) {
+            added += 1;
+        }
+    }
+
+    return result;
+}
+
+function formatExpectedDeliveryDate(selectedDeliveryDate, option) {
+    if (!selectedDeliveryDate) {
+        return 'Expected date unavailable';
+    }
+
+    const shipDate = new Date(`${selectedDeliveryDate}T00:00:00`);
+    if (Number.isNaN(shipDate.getTime())) {
+        return 'Expected date unavailable';
+    }
+
+    if (option?.estimated_delivery) {
+        const estimatedDate = new Date(option.estimated_delivery);
+        if (!Number.isNaN(estimatedDate.getTime())) {
+            return estimatedDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        }
+    }
+
+    const transitDays = Number(option?.delivery_days);
+    const expectedDate = Number.isFinite(transitDays) && transitDays > 0
+        ? addBusinessDays(shipDate, transitDays)
+        : shipDate;
+
+    return expectedDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
 }
 
 function LazyCheckoutImage({ src, alt, className }) {
@@ -92,12 +153,26 @@ function CheckoutForm() {
     const stripe = useStripe();
     const elements = useElements();
     const { items, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
+    const isCartEmpty = items.length === 0;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
-    const [selectedCourier, setSelectedCourier] = useState('shipstation');
-    const [quotedShipping, setQuotedShipping] = useState(null);
+
+    const [quotedShipping, setQuotedShipping] = useState(0);
+    const [shippingOptions, setShippingOptions] = useState([]);
+    const [selectedShippingOptionCode, setSelectedShippingOptionCode] = useState('');
     const [isFetchingShipping, setIsFetchingShipping] = useState(false);
+    const [selectedDeliveryDate, setSelectedDeliveryDate] = useState('');
+    const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('');
+
     const [shippingError, setShippingError] = useState('');
+    const [quotedTax, setQuotedTax] = useState(0);
+    const [isFetchingTax, setIsFetchingTax] = useState(false);
+    const [taxError, setTaxError] = useState('');
+    const [isResidentialAddress, setIsResidentialAddress] = useState(false);
+    const [stateOptions, setStateOptions] = useState([]);
+    const [cityOptions, setCityOptions] = useState([]);
+    const [isLoadingStates, setIsLoadingStates] = useState(false);
+    const [isLoadingCities, setIsLoadingCities] = useState(false);
     const [form, setForm] = useState({
         first_name: '',
         last_name: '',
@@ -112,36 +187,101 @@ function CheckoutForm() {
         notes: '',
     });
 
-    if (items.length === 0) {
-        return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
-                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
-                        Checkout
-                    </h1>
-                    <p className="mt-4 text-zinc-600">Your cart is empty. Add products before checkout.</p>
-                    <Link
-                        to="/shop"
-                        className="mt-6 inline-flex h-11 items-center justify-center bg-zinc-900 px-7 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black"
-                    >
-                        Go To Shop
-                    </Link>
-                </div>
-            </section>
-        );
-    }
+    useEffect(() => {
+        let ignore = false;
 
-    const shipping = useMemo(
-        () => {
-            if (selectedCourier === 'ups' && quotedShipping !== null) {
-                return quotedShipping;
+        async function prefillFromLoggedInProfile() {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok || ignore) {
+                    return;
+                }
+
+                const payload = await response.json().catch(() => null);
+                if (!payload || ignore) {
+                    return;
+                }
+
+                const fallbackName = String(payload?.name || '').trim();
+                const fallbackNameParts = fallbackName ? fallbackName.split(/\s+/) : [];
+                const fallbackFirstName = fallbackNameParts[0] || '';
+                const fallbackLastName = fallbackNameParts.slice(1).join(' ');
+
+                const profileValues = {
+                    first_name: String(payload?.first_name || fallbackFirstName || '').trim(),
+                    last_name: String(payload?.last_name || fallbackLastName || '').trim(),
+                    email: String(payload?.email || '').trim(),
+                    phone: String(payload?.phone || payload?.phone_number || '').trim(),
+                    address_line_1: String(payload?.address_line_1 || payload?.address1 || '').trim(),
+                    address_line_2: String(payload?.address_line_2 || payload?.address2 || '').trim(),
+                    city: String(payload?.city || '').trim(),
+                    state: String(payload?.state || '').trim(),
+                    postal_code: String(payload?.postal_code || payload?.zip || '').trim(),
+                    country: String(payload?.country || '').trim(),
+                };
+
+                if (payload?.residential !== undefined && payload?.residential !== null) {
+                    setIsResidentialAddress(Boolean(payload.residential));
+                }
+
+                setForm((previous) => {
+                    const next = { ...previous };
+                    let changed = false;
+
+                    Object.entries(profileValues).forEach(([field, value]) => {
+                        if (!value) {
+                            return;
+                        }
+
+                        const current = String(previous[field] || '').trim();
+                        if (current) {
+                            return;
+                        }
+
+                        next[field] = value;
+                        changed = true;
+                    });
+
+                    return changed ? next : previous;
+                });
+            } catch {
+                // Prefill is best-effort only.
             }
+        }
 
-            return calculateShippingCost({ country: form.country, state: form.state }, subtotal);
-        },
-        [form.country, form.state, quotedShipping, selectedCourier, subtotal],
-    );
-    const total = subtotal + shipping;
+        prefillFromLoggedInProfile();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    const hasCompleteShippingAddress = useMemo(() => Boolean(
+        String(form.state || '').trim()
+        && String(form.city || '').trim()
+        && String(form.postal_code || '').trim()
+        && String(form.country || '').trim(),
+    ), [form.state, form.city, form.postal_code, form.country]);
+
+    const shipping = useMemo(() => {
+        const value = Number(quotedShipping);
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }, [quotedShipping]);
+
+    const tax = useMemo(() => {
+        const value = Number(quotedTax);
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }, [quotedTax]);
+
+    const baseTotal = useMemo(() => roundCurrency(subtotal + shipping + tax), [subtotal, shipping, tax]);
+    const total = baseTotal;
 
     const normalizedItems = useMemo(
         () =>
@@ -154,9 +294,28 @@ function CheckoutForm() {
                 image: item.image,
                 selectedColor: item.selectedColor,
                 selectedSize: item.selectedSize,
+                weight: item.weight,
+                length: item.length,
+                width: item.width,
+                height: item.height,
             })),
         [items],
     );
+
+    useEffect(() => {
+        if (isCartEmpty) {
+            return;
+        }
+
+        trackPixelEvent('InitiateCheckout', {
+            content_ids: items.map((item) => item.productId),
+            content_type: 'product',
+            currency: 'USD',
+            value: subtotal,
+            num_items: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     function validateFormValues(values) {
         const errors = {};
@@ -201,7 +360,7 @@ function CheckoutForm() {
     }
 
     function inputClass(field) {
-        return `h-11 w-full border px-3 text-[0.9rem] text-zinc-900 outline-none focus:border-zinc-900 transition-colors ${
+        return `font-monstrate h-11 w-full border px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900 transition-colors ${
             fieldErrors[field] ? 'border-red-400 bg-red-50' : 'border-zinc-200 bg-white hover:border-zinc-400'
         }`;
     }
@@ -220,22 +379,191 @@ function CheckoutForm() {
     }
 
     useEffect(() => {
-        if (subtotal <= 0) {
-            setQuotedShipping(0);
-            setShippingError('');
+        let ignore = false;
+
+        async function loadStates() {
+            setIsLoadingStates(true);
+
+            try {
+                const response = await fetch('/api/public/locations/states', {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setStateOptions([]);
+                    }
+                    return;
+                }
+
+                const payload = await response.json().catch(() => []);
+                if (!ignore) {
+                    setStateOptions(Array.isArray(payload) ? payload : []);
+                }
+            } catch {
+                if (!ignore) {
+                    setStateOptions([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingStates(false);
+                }
+            }
+        }
+
+        loadStates();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        const selectedState = String(form.state || '').trim();
+
+        if (!selectedState) {
+            setCityOptions([]);
             return;
         }
 
-        if (selectedCourier !== 'ups') {
-            setQuotedShipping(null);
-            setShippingError('');
+        let ignore = false;
+        const controller = new AbortController();
+
+        async function loadCities() {
+            setIsLoadingCities(true);
+
+            try {
+                const params = new URLSearchParams({ state: selectedState });
+                const response = await fetch(`/api/public/locations/cities?${params.toString()}`, {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    if (!ignore) {
+                        setCityOptions([]);
+                    }
+                    return;
+                }
+
+                const payload = await response.json().catch(() => []);
+                if (!ignore) {
+                    setCityOptions(Array.isArray(payload) ? payload : []);
+                }
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+
+                if (!ignore) {
+                    setCityOptions([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingCities(false);
+                }
+            }
+        }
+
+        loadCities();
+
+        return () => {
+            ignore = true;
+            controller.abort();
+        };
+    }, [form.state]);
+
+   
+    useEffect(() => {
+        if (subtotal <= 0) {
+            setQuotedTax(0);
+            setTaxError('');
+            return;
+        }
+
+        if (!hasCompleteShippingAddress) {
+            setQuotedTax(0);
+            setTaxError('');
             return;
         }
 
         const controller = new AbortController();
+        setIsFetchingTax(true);
+        setTaxError('');
         const timer = setTimeout(async () => {
-            setIsFetchingShipping(true);
+            try {
+                const response = await fetch('/api/public/tax/quote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        subtotal,
+                        shipping,
+                        city: form.city,
+                        state: form.state,
+                        postal_code: form.postal_code,
+                        country: form.country,
+                        address_line_1: form.address_line_1,
+                        items: normalizedItems,
+                    }),
+                    signal: controller.signal,
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload?.error || payload?.message || 'Unable to calculate tax');
+                }
+
+                setQuotedTax(Number(payload?.tax || 0));
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+
+                setTaxError(error?.message || 'Unable to calculate tax');
+                setQuotedTax(0);
+            } finally {
+                setIsFetchingTax(false);
+            }
+        }, 350);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+            setIsFetchingTax(false);
+        };
+    }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
+
+    useEffect(() => {
+        if (!hasCompleteShippingAddress || normalizedItems.length === 0) {
+            setShippingOptions([]);
+            setSelectedShippingOptionCode('');
+            setQuotedShipping(0);
             setShippingError('');
+            setIsFetchingShipping(false);
+            return undefined;
+        }
+
+        const controller = new AbortController();
+        setShippingError('');
+        setIsFetchingShipping(true);
+        const timer = setTimeout(async () => {
+            const requestBody = {
+                first_name: form.first_name,
+                last_name: form.last_name,
+                phone: form.phone,
+                address_line_1: form.address_line_1,
+                city: form.city,
+                state: form.state,
+                postal_code: form.postal_code,
+                country: form.country,
+                items: normalizedItems,
+            };
+
+            // eslint-disable-next-line no-console
+            console.log('[Veeqo shipping quote] request payload:', requestBody);
 
             try {
                 const response = await fetch('/api/public/shipping/quote', {
@@ -244,31 +572,41 @@ function CheckoutForm() {
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
                     },
-                    body: JSON.stringify({
-                        courier: 'ups',
-                        subtotal,
-                        city: form.city,
-                        state: form.state,
-                        postal_code: form.postal_code,
-                        country: form.country,
-                        items: normalizedItems,
-                    }),
+                    body: JSON.stringify(requestBody),
                     signal: controller.signal,
                 });
 
                 const payload = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(payload?.message || 'Unable to fetch UPS shipping charge');
+
+                // eslint-disable-next-line no-console
+                console.log('[Veeqo shipping quote] response:', payload);
+
+                if (!response.ok || !payload?.success) {
+                    throw new Error(payload?.message || 'Unable to calculate shipping rates');
                 }
 
-                setQuotedShipping(Number(payload?.shipping || 0));
+                const rates = Array.isArray(payload?.rates) ? payload.rates : [];
+                setShippingOptions(rates);
+
+                if (rates.length > 0) {
+                    setSelectedShippingOptionCode(rates[0].code);
+                    setQuotedShipping(Number(rates[0].price || 0));
+                } else {
+                    setSelectedShippingOptionCode('');
+                    setQuotedShipping(0);
+                }
             } catch (error) {
                 if (error?.name === 'AbortError') {
                     return;
                 }
 
-                setShippingError(error?.message || 'Unable to fetch UPS shipping charge');
-                setQuotedShipping(calculateShippingCost({ country: form.country, state: form.state }, subtotal, 'ups'));
+                // eslint-disable-next-line no-console
+                console.log('[Veeqo shipping quote] error:', error?.message || error);
+
+                setShippingOptions([]);
+                setSelectedShippingOptionCode('');
+                setQuotedShipping(0);
+                setShippingError(error?.message || 'Unable to calculate shipping rates');
             } finally {
                 setIsFetchingShipping(false);
             }
@@ -277,8 +615,114 @@ function CheckoutForm() {
         return () => {
             controller.abort();
             clearTimeout(timer);
+            setIsFetchingShipping(false);
         };
-    }, [form.city, form.country, form.postal_code, form.state, normalizedItems, selectedCourier, subtotal]);
+    }, [form.address_line_1, form.city, form.country, form.first_name, form.last_name, form.phone, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems]);
+
+    useEffect(() => {
+        const city = String(form.city || '').trim();
+        const state = String(form.state || '').trim();
+        const postalCode = String(form.postal_code || '').trim();
+        const country = String(form.country || '').trim().toLowerCase();
+
+        if (!city || !state) {
+            return;
+        }
+
+        if (postalCode) {
+            return;
+        }
+
+        if (country && country !== 'us' && country !== 'usa' && country !== 'united states') {
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams({ city, state });
+                const response = await fetch(`/api/public/locations/postal-code?${params.toString()}`, {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json().catch(() => ({}));
+                const nextPostalCode = String(payload?.postal_code || '').trim();
+
+                if (!nextPostalCode) {
+                    return;
+                }
+
+                setForm((previous) => {
+                    if (String(previous.postal_code || '').trim()) {
+                        return previous;
+                    }
+
+                    return {
+                        ...previous,
+                        postal_code: nextPostalCode,
+                    };
+                });
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+            }
+        }, 300);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
+    }, [form.city, form.country, form.postal_code, form.state]);
+
+    const deliveryDates = useMemo(() => {
+        const days = [];
+        const base = new Date();
+
+        for (let index = 0; index < 5; index += 1) {
+            const value = new Date(base);
+            value.setDate(base.getDate() + index);
+            days.push({
+                value: value.toISOString().slice(0, 10),
+                label: value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+            });
+        }
+
+        return days;
+    }, []);
+
+    useEffect(() => {
+        if (!selectedDeliveryDate && deliveryDates[0]) {
+            setSelectedDeliveryDate(deliveryDates[0].value);
+        }
+        if (!selectedDeliveryTime) {
+            setSelectedDeliveryTime('morning');
+        }
+    }, [deliveryDates, selectedDeliveryDate, selectedDeliveryTime]);
+
+    if (isCartEmpty) {
+        return (
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+                <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        Checkout
+                    </h1>
+                    <p className="mt-4 text-zinc-600">Your cart is empty. Add products before checkout.</p>
+                    <Link
+                        to="/shop"
+                        className="mt-6 inline-flex h-11 items-center justify-center bg-zinc-900 px-7 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black"
+                    >
+                        Go To Shop
+                    </Link>
+                </div>
+            </section>
+        );
+    }
 
     async function handlePlaceOrder() {
         if (isSubmitting) {
@@ -300,6 +744,9 @@ function CheckoutForm() {
         setFieldErrors({});
 
         setIsSubmitting(true);
+        const fbEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `fb-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         try {
             const paymentIntentResponse = await fetch('/api/create-payment-intent', {
                 method: 'POST',
@@ -362,12 +809,16 @@ function CheckoutForm() {
                 },
                 body: JSON.stringify({
                     ...form,
-                    courier: selectedCourier,
+                    courier: '',
+                    residential: isResidentialAddress,
                     items: normalizedItems,
                     subtotal,
                     shipping,
                     total,
                     payment_intent_id: paymentResult.paymentIntent.id,
+                    tax,
+                    stripe_charge: 0,
+                    fb_event_id: fbEventId,
                 }),
             });
 
@@ -385,9 +836,54 @@ function CheckoutForm() {
                 return;
             }
 
+            const cachedInvoice = {
+                order_number: String(payload?.order_number || ''),
+                status: 'approved',
+                first_name: String(form.firstName || ''),
+                last_name: String(form.lastName || ''),
+                email: String(form.email || '').trim(),
+                phone: String(form.phone || ''),
+                address_line_1: String(form.address1 || ''),
+                address_line_2: String(form.address2 || ''),
+                city: String(form.city || ''),
+                state: String(form.state || ''),
+                postal_code: String(form.postalCode || ''),
+                country: String(form.country || ''),
+                notes: String(form.notes || ''),
+                items: normalizedItems,
+                items_count: normalizedItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0),
+                subtotal,
+                shipping,
+                tax,
+                stripe_charge: 0,
+                processing_fee: 0,
+                total,
+                courier_service: '',
+                courier_reference: String(payload?.courier_reference || ''),
+                created_at: new Date().toISOString(),
+            };
+
+            try {
+                sessionStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
+                localStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
+            } catch {
+                // Ignore storage failures and continue normal flow.
+            }
+
+            trackPixelEvent('Purchase', {
+                content_ids: normalizedItems.map((item) => item.productId),
+                content_type: 'product',
+                currency: 'USD',
+                value: total,
+                num_items: normalizedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+                order_id: String(payload?.order_number || ''),
+            }, payload?.fb_event_id || fbEventId);
+
             clearCart();
             toast.success('Payment successful and order placed');
-            navigate(`/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}`);
+            navigate(
+                `/order-confirmation?order=${encodeURIComponent(String(payload?.order_number || ''))}&email=${encodeURIComponent(String(form.email || '').trim())}`,
+            );
         } catch {
             toast.error('Unable to place order right now. Please try again.');
         } finally {
@@ -396,11 +892,11 @@ function CheckoutForm() {
     }
 
     return (
-        <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+        <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1500px] gap-8 lg:grid-cols-[1.35fr_0.9fr] lg:gap-10">
                 <div className="bg-white p-5 shadow-sm sm:p-8">
                     <div className="border-b border-zinc-200 pb-5">
-                        <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                        <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                             Checkout
                         </h1>
                         <p className="mt-1 text-[0.85rem] text-zinc-400 uppercase tracking-[0.12em]">Complete your order</p>
@@ -491,30 +987,82 @@ function CheckoutForm() {
                                 />
                                 {fieldErrors.address_line_2 ? <p className="mt-1 text-xs text-red-500">{fieldErrors.address_line_2}</p> : null}
                             </div>
+                             <div>
+                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                    State <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={form.state}
+                                    onChange={(event) => {
+                                        const nextState = event.target.value;
+                                        setForm((previous) => ({
+                                            ...previous,
+                                            state: nextState,
+                                            city: '',
+                                            postal_code: '',
+                                        }));
+
+                                        setFieldErrors((previous) => {
+                                            const next = { ...previous };
+                                            delete next.state;
+                                            delete next.city;
+                                            delete next.postal_code;
+                                            return next;
+                                        });
+                                    }}
+                                    className={inputClass('state')}
+                                    disabled={isLoadingStates}
+                                >
+                                    <option value="">{isLoadingStates ? 'Loading states...' : 'Select state'}</option>
+                                    {stateOptions.map((state) => (
+                                        <option key={state.state_code} value={state.state_code}>
+                                            {state.state_name} ({state.state_code})
+                                        </option>
+                                    ))}
+                                </select>
+                                {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
+                            </div>
+                           
                             <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     City <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                                <select
                                     value={form.city}
-                                    onChange={(event) => updateField('city', event.target.value)}
-                                    placeholder="New York"
+                                    onChange={(event) => {
+                                        const nextCity = event.target.value;
+                                        setForm((previous) => ({
+                                            ...previous,
+                                            city: nextCity,
+                                            postal_code: '',
+                                        }));
+
+                                        setFieldErrors((previous) => {
+                                            const next = { ...previous };
+                                            delete next.city;
+                                            delete next.postal_code;
+                                            return next;
+                                        });
+                                    }}
                                     className={inputClass('city')}
-                                />
+                                    disabled={!form.state || isLoadingCities}
+                                >
+                                    <option value="">
+                                        {!form.state
+                                            ? 'Select state first'
+                                            : isLoadingCities
+                                            ? 'Loading cities...'
+                                            : 'Select city'}
+                                    </option>
+                                    {cityOptions.map((city) => (
+                                        <option key={city} value={city}>
+                                            {city}
+                                        </option>
+                                    ))}
+                                </select>
                                 {fieldErrors.city ? <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p> : null}
                             </div>
-                            <div>
-                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
-                                    State <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    value={form.state}
-                                    onChange={(event) => updateField('state', event.target.value)}
-                                    placeholder="NY"
-                                    className={inputClass('state')}
-                                />
-                                {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
-                            </div>
+                          
                             <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     Postal Code <span className="text-red-500">*</span>
@@ -531,14 +1079,16 @@ function CheckoutForm() {
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     Country <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                               <input
                                     value={form.country}
                                     onChange={(event) => updateField('country', event.target.value)}
                                     placeholder="United States"
                                     className={inputClass('country')}
+                                    readOnly // This makes the field non-editable
                                 />
                                 {fieldErrors.country ? <p className="mt-1 text-xs text-red-500">{fieldErrors.country}</p> : null}
                             </div>
+                            
                         </div>
                     </div>
 
@@ -554,47 +1104,16 @@ function CheckoutForm() {
                                 onChange={(event) => updateField('notes', event.target.value)}
                                 placeholder="Special delivery instructions, gift messages, etc."
                                 rows={3}
-                                className="w-full resize-none border border-zinc-300 px-3 py-2.5 text-[0.9rem] text-zinc-900 outline-none focus:border-zinc-900"
+                                className="font-monstrate w-full resize-none border border-zinc-300 px-3 py-2.5 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
                             />
                         </div>
                     </div>
                 </div>
 
                 <aside className="bg-white p-5 shadow-sm sm:p-7">
-                    <h2 className="frontend-title-font text-[1.5rem] uppercase tracking-[0.05em] text-zinc-900">Order Summary</h2>
+                    <h2 className="font-monstrate text-[1.5rem] uppercase tracking-[0.05em] text-zinc-900">Order Summary</h2>
 
-                    <div className="mt-4 rounded border border-zinc-200 p-3">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Courier Service</p>
-                        <div className="mt-3 space-y-2">
-                            <label className="flex cursor-pointer items-center gap-2 text-[0.85rem] text-zinc-700">
-                                <input
-                                    type="radio"
-                                    name="courier"
-                                    value="ups"
-                                    checked={selectedCourier === 'ups'}
-                                    onChange={() => setSelectedCourier('ups')}
-                                    className="h-4 w-4 accent-zinc-900"
-                                />
-                                <span>Ship with UPS</span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2 text-[0.85rem] text-zinc-700">
-                                <input
-                                    type="radio"
-                                    name="courier"
-                                    value="shipstation"
-                                    checked={selectedCourier === 'shipstation'}
-                                    onChange={() => setSelectedCourier('shipstation')}
-                                    className="h-4 w-4 accent-zinc-900"
-                                />
-                                <span>Ship with ShipStation</span>
-                            </label>
-                        </div>
-                        {selectedCourier === 'ups' && isFetchingShipping ? (
-                            <p className="mt-2 text-xs text-zinc-500">Fetching UPS shipment charge...</p>
-                        ) : null}
-                        {shippingError ? <p className="mt-2 text-xs text-amber-600">{shippingError}</p> : null}
-                    </div>
-
+                
                     <div className="mt-6 space-y-4">
                         {items.map((item) => (
                             <article key={item.lineId} className="flex gap-3 border border-zinc-200 p-3 sm:p-4">
@@ -613,6 +1132,7 @@ function CheckoutForm() {
                                     <div className="mt-2 flex flex-wrap gap-2 text-[0.74rem] text-zinc-500">
                                         {item.selectedColor ? <span>Color: {item.selectedColor}</span> : null}
                                         {item.selectedSize ? <span>Size: {item.selectedSize}</span> : null}
+                                        {item.weight ? <span>Weight: {item.weight} Lbs</span> : null}
                                     </div>
 
                                     <div className="mt-3 flex items-center justify-between gap-3">
@@ -656,16 +1176,38 @@ function CheckoutForm() {
                         </div>
                         <div className="flex items-center justify-between">
                             <span>Shipping</span>
-                            <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                            {isFetchingShipping || shippingOptions.length === 0 ? (
+                                <span className="select-none blur-sm" aria-label="Calculating shipping">
+                                    $0.00
+                                </span>
+                            ) : (
+                                <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                            )}
                         </div>
+                        {String(form.state || '').trim().toUpperCase() === 'MA' ? (
+                            <div className="flex items-center justify-between">
+                                <span> Tax</span>
+                                <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
+                            </div>
+                        ) : null}
+                        
+                      
+                        {isFetchingTax ? (
+                           ""
+                        ) : null}
+                        {!isFetchingTax && taxError ? (
+                            <p className="text-xs text-red-600">{taxError}</p>
+                        ) : null}
                         <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
                             <span>Total</span>
                             <span>${total.toFixed(2)}</span>
                         </div>
                     </div>
 
+                   
+
                     <div className="mt-6">
-                        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">Payment Details</h2>
+                        <h2 className="text-[0.92rem] font-semibold uppercase tracking-[0.16em] text-black">Payment Details</h2>
                         <div className="mt-3">
                             <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                 Card Information <span className="text-red-500">*</span>
@@ -676,10 +1218,23 @@ function CheckoutForm() {
                         </div>
                     </div>
 
+                    <div className="mt-4">
+                        <p className="mb-1.5 text-[0.92rem] font-semibold text-black uppercase tracking-[0.16em]">
+                            We Accept
+                        </p>
+                        <div className="overflow-hidden border border-zinc-200 bg-white">
+                        <img
+                            src="/cardImage.png"
+                            alt="Accepted payment cards"
+                            className="h-10 w-full object-contain object-center px-2"
+                        />
+                        </div>
+                    </div>
+
                     <button
                         type="button"
                         onClick={handlePlaceOrder}
-                        disabled={isSubmitting || !stripe || !elements || (selectedCourier === 'ups' && isFetchingShipping)}
+                        disabled={isSubmitting || !stripe || !elements  || isFetchingTax || (subtotal > 0 && hasCompleteShippingAddress && shippingError !== '') || (subtotal > 0 && hasCompleteShippingAddress && taxError !== '')}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}
@@ -735,9 +1290,9 @@ export default function CheckoutPage() {
 
     if (isStripeLoading) {
         return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
                     </h1>
                     <p className="mt-4 text-zinc-600">Loading secure payment...</p>
@@ -748,9 +1303,9 @@ export default function CheckoutPage() {
 
     if (!stripePromise) {
         return (
-            <section className={`${featuresFontClass} bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
-                    <h1 className="frontend-title-font text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
                     </h1>
                     <p className="mt-4 text-zinc-600">

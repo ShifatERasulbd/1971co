@@ -6,6 +6,7 @@ import {
     LogOut,
     Settings,
     ShoppingBag,
+    FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -59,19 +60,32 @@ const SettingsItems = [
     { title: 'Public API Keys', icon: Settings, path: '/admin/public-api-keys' },
 ];
 
+const complianceItems = [
+    { title: 'Compliance', icon: FileText, path: '/admin/compliance' },
+];
 
 
 
 export function AppSidebar(props) {
-        const isMenuItemActive = (path) => {
-            return location.pathname === path || location.pathname.startsWith(`${path}/`);
-        };
+    const toScopedPath = (path, isCustomer) => {
+        if (typeof path !== 'string') {
+            return path;
+        }
+
+        return isCustomer ? path.replace('/admin/', '/user/') : path;
+    };
+
+    const isMenuItemActive = (path, isCustomer) => {
+        const scopedPath = toScopedPath(path, isCustomer);
+        return location.pathname === scopedPath || location.pathname.startsWith(`${scopedPath}/`);
+    };
 
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAppContext();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const isCustomer = user?.user_type === 'customer';
+    const dashboardPath = isCustomer ? '/user/dashboard' : '/admin/dashboard';
 
    
     
@@ -109,10 +123,10 @@ export function AppSidebar(props) {
     return (
         <Sidebar collapsible="icon" variant="sidebar" {...props}>
             <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
-                <div className="flex items-center gap-2 px-1">
+                <Link to={dashboardPath} className="flex items-center gap-2 px-1">
                     <span className="inline-flex size-4 rounded-full border border-sidebar-foreground/60" />
                     <span className="text-sm font-semibold">1971co</span>
-                </div>
+                </Link>
             </SidebarHeader>
 
             <SidebarContent className="scrollbar-hidden py-3">
@@ -126,9 +140,9 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
-                                            <Link to={item.path}>
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
@@ -151,9 +165,9 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
-                                            <Link to={item.path}>
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
@@ -176,9 +190,9 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
-                                            <Link to={item.path}>
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
@@ -203,9 +217,9 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
-                                            <Link to={item.path}>
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
@@ -227,9 +241,9 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
-                                            isActive={isMenuItemActive(item.path)}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
                                         >
-                                            <Link to={item.path}>
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
                                                 <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
                                                 <span>{item.title}</span>
                                             </Link>
@@ -251,6 +265,30 @@ export function AppSidebar(props) {
                                         <SidebarMenuButton
                                             asChild
                                             tooltip={item.title}
+                                            isActive={isMenuItemActive(item.path, isCustomer)}
+                                        >
+                                            <Link to={toScopedPath(item.path, isCustomer)}>
+                                                <item.icon className="size-4 shrink-0 text-sidebar-foreground" />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                {!isCustomer && complianceItems.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Compliance</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {complianceItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.title}
                                             isActive={isMenuItemActive(item.path)}
                                         >
                                             <Link to={item.path}>
@@ -267,16 +305,18 @@ export function AppSidebar(props) {
 
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-sidebar-border">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout" onClick={handleLogout} disabled={isLoggingOut}>
-                            <LogOut className="size-4 shrink-0 text-sidebar-foreground" />
-                            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarFooter>
+            {!isCustomer ? (
+                <SidebarFooter className="border-t border-sidebar-border">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Logout" onClick={handleLogout} disabled={isLoggingOut}>
+                                <LogOut className="size-4 shrink-0 text-sidebar-foreground" />
+                                <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarFooter>
+            ) : null}
         </Sidebar>
     );
 }

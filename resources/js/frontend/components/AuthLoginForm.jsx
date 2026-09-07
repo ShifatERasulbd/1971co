@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 
+const AUTH_USER_STORAGE_KEY = 'backend-auth-user-v1';
+
+function cacheBackendUser(user) {
+    try {
+        if (user && typeof user === 'object') {
+            sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+        }
+    } catch {
+        // Ignore cache failures.
+    }
+}
+
 function readCookie(name) {
     const escapedName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
@@ -63,7 +75,9 @@ export default function AuthLoginForm() {
                 return;
             }
 
-            window.location.assign('/admin/dashboard');
+            cacheBackendUser(payload?.user);
+
+            window.location.assign('/user/dashboard');
         } catch {
             setErrorMessage('Unable to reach the server. Please try again.');
         } finally {
@@ -92,7 +106,9 @@ export default function AuthLoginForm() {
                 return;
             }
 
-            window.location.assign('/admin/dashboard');
+            cacheBackendUser(payload?.user);
+
+            window.location.assign('/user/dashboard');
         } catch {
             setErrorMessage('Unable to complete Google login. Please try again.');
         } finally {

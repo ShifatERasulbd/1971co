@@ -26,6 +26,7 @@ export default function EditForm({
     sizeSelectValue = '',
     selectedColors = [],
     selectedSizes = [],
+    colorTrendingMap = {},
     variantRows = [],
     colorVariantImageMap = {},
     colorVariantVideoMap = {},
@@ -42,7 +43,9 @@ export default function EditForm({
     onReorderColors,
     onAddSize,
     onRemoveSize,
+    onReorderSizes,
     onVariantRowChange,
+    onColorTrendingChange,
     onColorVariantImagesChange,
     onColorVariantVideosChange,
     onColorVariantSizeChartsChange,
@@ -72,6 +75,7 @@ export default function EditForm({
     const [activeColorForSizeCharts, setActiveColorForSizeCharts] = useState('');
     const [draftSizeChartValues, setDraftSizeChartValues] = useState([]);
     const [draggingColor, setDraggingColor] = useState('');
+    const [draggingSize, setDraggingSize] = useState('');
     const [draggingGalleryItem, setDraggingGalleryItem] = useState(null);
 
     const colorLabelById = useMemo(() => {
@@ -224,6 +228,33 @@ export default function EditForm({
 
     const handleColorDragEnd = () => {
         setDraggingColor('');
+    };
+
+    const handleSizeDragStart = (event, size) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', size);
+        setDraggingSize(size);
+    };
+
+    const handleSizeDragOver = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleSizeDrop = (event, size) => {
+        event.preventDefault();
+        const draggedSize = event.dataTransfer.getData('text/plain') || draggingSize;
+        if (!draggedSize || draggedSize === size) {
+            setDraggingSize('');
+            return;
+        }
+
+        onReorderSizes?.(draggedSize, size);
+        setDraggingSize('');
+    };
+
+    const handleSizeDragEnd = () => {
+        setDraggingSize('');
     };
 
     const handleGalleryDragStart = (event, source, index) => {
@@ -638,6 +669,62 @@ export default function EditForm({
                                     </div>
                                 </div>
 
+
+                                 <h3 className="text-sm font-semibold text-foreground">Dimention</h3>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="length">
+                                            Length <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="length"
+                                            name="length"
+                                            type="number"
+                                            min="0"
+                                            value={form.length ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0"
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.length && <p className="text-xs text-destructive">{errors.length[0]}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-width">
+                                            Width <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="width"
+                                            name="width"
+                                            type="number"
+                                            min="0"
+                                            value={form.width ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0"
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.width && <p className="text-xs text-destructive">{errors.width[0]}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="product-height">
+                                            Height <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="height"
+                                            name="height"
+                                            type="number"
+                                            min="0"
+                                            value={form.height ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0"
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.height && <p className="text-xs text-destructive">{errors.height[0]}</p>}
+                                    </div>
+
+                                    
+                                    
+                                </div>
+
                                 <h3 className="text-sm font-semibold text-foreground">Variation</h3>
                                 <div className="flex items-center gap-2 rounded-md border bg-muted/10 px-3 py-2">
                                     <Input
@@ -650,9 +737,12 @@ export default function EditForm({
                                         className="h-4 w-4"
                                     />
                                     <Label htmlFor="product-best-sellers" className="cursor-pointer">
-                                        Show on Best Sellers
+                                        Show on Home Page
                                     </Label>
                                 </div>
+
+                                  
+
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
@@ -744,16 +834,29 @@ export default function EditForm({
                                         {selectedSizes.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pt-1">
                                                 {selectedSizes.map((size) => (
-                                                    <Button
+                                                    <div
                                                         key={size}
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => onRemoveSize?.(size)}
-                                                        disabled={isSubmitting}
+                                                        draggable={!isSubmitting}
+                                                        onDragStart={(event) => handleSizeDragStart(event, size)}
+                                                        onDragOver={handleSizeDragOver}
+                                                        onDrop={(event) => handleSizeDrop(event, size)}
+                                                        onDragEnd={handleSizeDragEnd}
+                                                        className={`inline-flex items-center gap-2 rounded-md border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground ${
+                                                            draggingSize === size ? 'opacity-60' : ''
+                                                        } ${isSubmitting ? 'cursor-not-allowed' : 'cursor-move'}`}
+                                                        title="Drag to reorder"
                                                     >
-                                                        {getSizeLabel(size)} x
-                                                    </Button>
+                                                        <span>{getSizeLabel(size)}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onRemoveSize?.(size)}
+                                                            disabled={isSubmitting}
+                                                            className="text-[11px] leading-none opacity-70 transition-opacity hover:opacity-100"
+                                                            aria-label={`Remove ${getSizeLabel(size)}`}
+                                                        >
+                                                            x
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
@@ -793,6 +896,23 @@ export default function EditForm({
                                         />
                                         {errors.price && <p className="text-xs text-destructive">{errors.price[0]}</p>}
                                     </div>
+
+                                      <div className="space-y-2">
+                                        <Label htmlFor="product-discount_price">
+                                            Discount Price <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            id="product-discount_price"
+                                            name="discount_price"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.discount_price ?? ''}
+                                            onChange={onChange}
+                                            placeholder="0.00"
+                                        />
+                                        {errors.discount_price && <p className="text-xs text-destructive">{errors.discount_price[0]}</p>}
+                                    </div>
                                 </div>
                             </div>
 
@@ -810,7 +930,8 @@ export default function EditForm({
                                                     <th className="py-2 pr-2">Size</th>
                                                     <th className="py-2 pr-2">SKU</th>
                                                     <th className="py-2 pr-2">Stock</th>
-                                                    <th className="py-2 pr-2">Price</th>
+                                                    <th className="py-2 pr-2">Weight<br /><span>(in Lbs)</span></th>
+                                                    <th className="py-2">Trending</th>
                                                     <th className="py-2">Color Images</th>
                                                     <th className="py-2">Color Videos</th>
                                                     <th className="py-2">Size Charts</th>
@@ -841,11 +962,31 @@ export default function EditForm({
                                                             <Input
                                                                 type="number"
                                                                 min="0"
+                                                                name='weight'
                                                                 step="0.01"
-                                                                value={row.price ?? ''}
-                                                                onChange={(event) => onVariantRowChange?.(row.key, 'price', event.target.value)}
+                                                                value={row.weight ?? ''}
+                                                                onChange={(event) => onVariantRowChange?.(row.key, 'weight', event.target.value)}
                                                                 disabled={isSubmitting}
                                                             />
+                                                        </td>
+                                                        <td className="py-2 align-top">
+                                                            {firstColorRowKeys[row.key] ? (
+                                                                <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1">
+                                                                    <Input
+                                                                        id={`variant-trending-${row.key}`}
+                                                                        type="checkbox"
+                                                                        checked={Boolean(colorTrendingMap[row.color])}
+                                                                        onChange={(event) => onColorTrendingChange?.(row.color, event.target.checked)}
+                                                                        disabled={isSubmitting}
+                                                                        className="h-4 w-4"
+                                                                    />
+                                                                    <Label htmlFor={`variant-trending-${row.key}`} className="cursor-pointer text-xs text-muted-foreground">
+                                                                        Trending
+                                                                    </Label>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} trend flag</p>
+                                                            )}
                                                         </td>
                                                         <td className="py-2">
                                                             {firstColorRowKeys[row.key] ? (

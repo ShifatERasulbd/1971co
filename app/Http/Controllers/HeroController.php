@@ -3,13 +3,38 @@
 namespace App\Http\Controllers;
 
 use App\Models\Hero;
+use App\Support\ImageUploadOptimizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class HeroController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'heroes.index';
+
+    public function __construct(private readonly ImageUploadOptimizer $imageUploadOptimizer)
+    {
+    }
+
+    private function clearHeroCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Hero::query()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Hero $hero) => $this->toResponse($hero))
+                ->values()
+                ->all();
+        });
+    }
+
     private function ensureDefaultHero(): Hero
     {
         $hero = Hero::query()->orderBy('id')->first();
@@ -18,7 +43,7 @@ class HeroController extends Controller
             $hero = Hero::query()->create([
                 'title' => 'Custom apparel solutions',
                 'description' => 'Elevate your brand with premium customized apparel designed for teams, events, corporate identity, and professional wear.',
-                'image' => '/uploads/heroes/images/hero1.webp',
+                'image' => '',
                 'video' => null,
                 'title_display_mode' => 'double',
                 'title_font_size' => 124,
@@ -65,12 +90,29 @@ class HeroController extends Controller
 
     private function storeAssetInPublicDir(UploadedFile $uploadedFile, string $folder, string $prefix): string
     {
-        $directory = public_path($folder);
-        File::ensureDirectoryExists($directory);
+        return $this->imageUploadOptimizer->storeAsWebp(
+            $uploadedFile,
+            $folder,
+            $prefix,
+            2200,
+            2200,
+            82
+        );
+    }
 
-        $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'bin');
-        $filename = time() . '_' . uniqid($prefix, true) . '.' . $extension;
-        $uploadedFile->move($directory, $filename);
+    private function storeVideoInPublicDir(UploadedFile $uploadedFile, string $folder, string $prefix): string
+    {
+        $directory = public_path($folder);
+
+        try {
+            File::ensureDirectoryExists($directory);
+
+            $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'bin');
+            $filename = time() . '_' . uniqid($prefix, true) . '.' . $extension;
+            $uploadedFile->move($directory, $filename);
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException("Unable to save upload to \"{$folder}\": {$exception->getMessage()}", 0, $exception);
+        }
 
         return '/' . trim($folder, '/') . '/' . $filename;
     }
@@ -150,11 +192,7 @@ class HeroController extends Controller
 
     public function index(): JsonResponse
     {
-        $this->ensureDefaultHero();
-
-        $heroes = Hero::query()->orderBy('id')->get()->map(fn (Hero $hero) => $this->toResponse($hero));
-
-        return response()->json($heroes->values());
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -173,21 +211,34 @@ class HeroController extends Controller
     {
         $validated = $this->validatePayload($request);
 
-        if ($request->hasFile('image_file')) {
-            $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
-        } else {
-            $validated['image'] = trim((string) ($validated['image_url'] ?? '')) ?: null;
-        }
+        try {
+            if ($request->hasFile('image_file')) {
+                $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
+            } else {
+                $validated['image'] = trim((string) ($validated['image_url'] ?? '')) ?: null;
+            }
 
-        if ($request->hasFile('video_file')) {
-            $validated['video'] = $this->storeAssetInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
-        } else {
-            $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
+            if ($request->hasFile('video_file')) {
+                $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            } else {
+                $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
+            }
+        } catch (\Throwable $exception) {
+            try {
+                report($exception);
+            } catch (\Throwable) {
+                // Logging itself can fail (e.g. unwritable storage/logs) - never let that mask the real response.
+            }
+
+            return response()->json([
+                'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
+            ], 500);
         }
 
         unset($validated['image_url'], $validated['video_url'], $validated['image_file'], $validated['video_file']);
 
         $hero = Hero::query()->create($validated);
+        $this->clearHeroCache();
 
         return response()->json($this->toResponse($hero), 201);
     }
@@ -196,24 +247,37 @@ class HeroController extends Controller
     {
         $validated = $this->validatePayload($request);
 
-        if ($request->hasFile('image_file')) {
-            $this->deleteAssetIfLocal($hero->image);
-            $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
-        } elseif (array_key_exists('image_url', $validated)) {
-            $validated['image'] = trim((string) $validated['image_url']) ?: null;
-        }
+        try {
+            if ($request->hasFile('image_file')) {
+                $this->deleteAssetIfLocal($hero->image);
+                $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
+            } elseif (array_key_exists('image_url', $validated)) {
+                $validated['image'] = trim((string) $validated['image_url']) ?: null;
+            }
 
-        if ($request->hasFile('video_file')) {
-            $this->deleteAssetIfLocal($hero->video);
-            $validated['video'] = $this->storeAssetInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
-        } elseif (array_key_exists('video_url', $validated)) {
-            $validated['video'] = trim((string) $validated['video_url']) ?: null;
+            if ($request->hasFile('video_file')) {
+                $this->deleteAssetIfLocal($hero->video);
+                $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            } elseif (array_key_exists('video_url', $validated)) {
+                $validated['video'] = trim((string) $validated['video_url']) ?: null;
+            }
+        } catch (\Throwable $exception) {
+            try {
+                report($exception);
+            } catch (\Throwable) {
+                // Logging itself can fail (e.g. unwritable storage/logs) - never let that mask the real response.
+            }
+
+            return response()->json([
+                'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
+            ], 500);
         }
 
         unset($validated['image_url'], $validated['video_url'], $validated['image_file'], $validated['video_file']);
 
         $hero->update($validated);
 
+        $this->clearHeroCache();
         return response()->json($this->toResponse($hero->fresh()));
     }
 }

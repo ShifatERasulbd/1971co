@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import App from './App.jsx';
+import { preventInvalidBodyAriaHidden } from '../utils/preventInvalidBodyAriaHidden';
+
+preventInvalidBodyAriaHidden();
 
 const rootElement = document.getElementById('app');
 

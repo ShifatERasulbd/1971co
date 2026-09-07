@@ -26,12 +26,17 @@ const initialForm = {
     long_description: '',
     additional_information: '',
     price: '',
+    discount_price:'',
+    length: '',
+    width: '',
+    height: '',
     cover_image: '',
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
     grand_child_id: '',
     stock: '',
+    weight: '',
     show_on_best_sellers: false,
 };
 
@@ -133,6 +138,7 @@ export default function EditProduct() {
     const [sizeSelectValue, setSizeSelectValue] = useState('');
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
+    const [colorTrendingMap, setColorTrendingMap] = useState({});
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -420,7 +426,9 @@ export default function EditProduct() {
                             : (variant?.color || ''),
                         size: variant?.size || '',
                         stock: variant?.stock ?? 0,
+                        weight: variant?.weight ?? '',
                         price: variant?.price ?? 0,
+                        discount_price:variant?.discount_price??0,
                     }));
 
                     setForm({
@@ -429,6 +437,7 @@ export default function EditProduct() {
                         sku: data?.sku || '',
                         color: data?.color || '',
                         size: data?.size || '',
+                        weight: data?.weight || '',
                         description: data?.description || '',
                         fit: data?.fit || data?.long_description || '',
                         fabric_and_care: data?.fabric_and_care || data?.additional_information || '',
@@ -437,6 +446,10 @@ export default function EditProduct() {
                         long_description: data?.long_description || '',
                         additional_information: data?.additional_information || '',
                         price: data?.price ?? '',
+                        discount_price:data?.discount_price??'',
+                        length: data?.length ?? '',
+                        width: data?.width ?? '',
+                        height: data?.height ?? '',
                         cover_image: data?.cover_image || '',
                         size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
@@ -477,16 +490,85 @@ export default function EditProduct() {
                             color: String(row?.color || '').trim(),
                             size: String(row?.size || '').trim(),
                             stock: row?.stock ?? '',
+                            weight: row?.weight ?? '',
                             price: row?.price ?? '',
+                            show_on_best_sellers: Boolean(row?.show_on_best_sellers),
                         }));
 
+                        const nextTrendingMap = {};
+                        nextRows.forEach((row) => {
+                            const colorKey = String(row.color || '').trim();
+                            if (!colorKey) {
+                                return;
+                            }
+
+                            if (!Object.prototype.hasOwnProperty.call(nextTrendingMap, colorKey)) {
+                                nextTrendingMap[colorKey] = false;
+                            }
+
+                            if (row.show_on_best_sellers === true) {
+                                nextTrendingMap[colorKey] = true;
+                            }
+                        });
+
                         setVariantRows(nextRows);
-                        setSelectedColors([...new Set(nextRows.map((row) => row.color).filter(Boolean))]);
-                        setSelectedSizes([...new Set(nextRows.map((row) => row.size).filter(Boolean))]);
+                        setColorTrendingMap(nextTrendingMap);
+
+                        const savedColorOrder = parseSelectionValues(data?.color);
+                        const savedSizeOrder = parseSelectionValues(data?.size);
+                        const variantColorValues = [...new Set(nextRows.map((row) => row.color).filter(Boolean))];
+                        const variantSizeValues = [...new Set(nextRows.map((row) => row.size).filter(Boolean))];
+
+                        setSelectedColors(
+                            savedColorOrder.length > 0
+                                ? [...new Set([...savedColorOrder.filter((value) => variantColorValues.includes(value)), ...variantColorValues.filter((value) => !savedColorOrder.includes(value))])]
+                                : variantColorValues,
+                        );
+                        setSelectedSizes(
+                            savedSizeOrder.length > 0
+                                ? [...new Set([...savedSizeOrder.filter((value) => variantSizeValues.includes(value)), ...variantSizeValues.filter((value) => !savedSizeOrder.includes(value))])]
+                                : variantSizeValues,
+                        );
                     } else if (fallbackVariants.length > 0) {
-                        setVariantRows(fallbackVariants);
-                        setSelectedColors([...new Set(fallbackVariants.map((row) => row.color).filter(Boolean))]);
-                        setSelectedSizes([...new Set(fallbackVariants.map((row) => row.size).filter(Boolean))]);
+                        const nextRows = fallbackVariants.map((row) => ({
+                            ...row,
+                            show_on_best_sellers: Boolean(row?.show_on_best_sellers),
+                        }));
+
+                        const nextTrendingMap = {};
+                        nextRows.forEach((row) => {
+                            const colorKey = String(row.color || '').trim();
+                            if (!colorKey) {
+                                return;
+                            }
+
+                            if (!Object.prototype.hasOwnProperty.call(nextTrendingMap, colorKey)) {
+                                nextTrendingMap[colorKey] = false;
+                            }
+
+                            if (row.show_on_best_sellers === true) {
+                                nextTrendingMap[colorKey] = true;
+                            }
+                        });
+
+                        setColorTrendingMap(nextTrendingMap);
+                        setVariantRows(nextRows);
+
+                        const savedColorOrder = parseSelectionValues(data?.color);
+                        const savedSizeOrder = parseSelectionValues(data?.size);
+                        const variantColorValues = [...new Set(nextRows.map((row) => row.color).filter(Boolean))];
+                        const variantSizeValues = [...new Set(nextRows.map((row) => row.size).filter(Boolean))];
+
+                        setSelectedColors(
+                            savedColorOrder.length > 0
+                                ? [...new Set([...savedColorOrder.filter((value) => variantColorValues.includes(value)), ...variantColorValues.filter((value) => !savedColorOrder.includes(value))])]
+                                : variantColorValues,
+                        );
+                        setSelectedSizes(
+                            savedSizeOrder.length > 0
+                                ? [...new Set([...savedSizeOrder.filter((value) => variantSizeValues.includes(value)), ...variantSizeValues.filter((value) => !savedSizeOrder.includes(value))])]
+                                : variantSizeValues,
+                        );
                     } else {
                         const fallbackColorValues = parseSelectionValues(data?.color);
                         const fallbackSizeValues = parseSelectionValues(data?.size);
@@ -497,10 +579,18 @@ export default function EditProduct() {
                             color: data?.color || '',
                             size: data?.size || '',
                             stock: data?.stock ?? '',
+                            weight: data?.weight ?? '',
                             price: data?.price ?? '',
+                            discount_price:data?.discount_price??'',
+                            show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                         };
 
                         setVariantRows([singleRow]);
+                        setColorTrendingMap(
+                            singleRow.color
+                                ? { [String(singleRow.color).trim()]: Boolean(singleRow.show_on_best_sellers) }
+                                : {},
+                        );
                         setSelectedColors(
                             fallbackColorValues.length > 0
                                 ? fallbackColorValues
@@ -598,6 +688,21 @@ export default function EditProduct() {
             return next;
         });
 
+        setColorTrendingMap((previous) => {
+            const next = {};
+
+            Object.entries(previous || {}).forEach(([colorKey, isTrending]) => {
+                const colorId = resolveColorId(colorKey);
+                if (!colorId) {
+                    return;
+                }
+
+                next[colorId] = Boolean(isTrending);
+            });
+
+            return next;
+        });
+
         setForm((previous) => ({
             ...previous,
             color: normalizeIdList(parseSelectionValues(previous.color), resolveColorId).join(', '),
@@ -636,14 +741,20 @@ export default function EditProduct() {
                         size,
                         sku: existing?.sku || (form.sku ? `${form.sku}-${defaultSkuSuffix}` : ''),
                         stock: pickVariantNumberValue(existing?.stock, form.stock),
+                        weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
+                        discount_price: pickVariantNumberValue(existing?.discount_price, form.discount_price),
+                        length: pickVariantNumberValue(existing?.length, form.length),
+                        width: pickVariantNumberValue(existing?.width, form.width),
+                        height: pickVariantNumberValue(existing?.height, form.height),
+                        show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
                     });
                 });
             });
 
             return next;
         });
-    }, [selectedColors, selectedSizes, form.sku, form.stock, form.price, isGroupEdit, colorLabelById, sizeLabelById]);
+    }, [selectedColors, selectedSizes, form.sku, form.stock, form.weight, form.price, form.discount_price, isGroupEdit, colorLabelById, sizeLabelById, colorTrendingMap]);
 
     useEffect(() => {
         const validValues = new Set(galleryPreviewItems.map((item) => item.value));
@@ -776,6 +887,15 @@ export default function EditProduct() {
 
     const handleRemoveColor = (colorToRemove) => {
         setSelectedColors((previous) => previous.filter((color) => color !== colorToRemove));
+        setColorTrendingMap((previous) => {
+            if (!Object.prototype.hasOwnProperty.call(previous, colorToRemove)) {
+                return previous;
+            }
+
+            const next = { ...previous };
+            delete next[colorToRemove];
+            return next;
+        });
         setColorVariantImageMap((previous) => {
             if (!previous[colorToRemove]) {
                 return previous;
@@ -828,6 +948,18 @@ export default function EditProduct() {
 
     const handleRemoveSize = (sizeToRemove) => {
         setSelectedSizes((previous) => previous.filter((size) => size !== sizeToRemove));
+    };
+
+    const handleReorderSizes = (fromSize, toSize) => {
+        if (!fromSize || !toSize || fromSize === toSize) {
+            return;
+        }
+
+        setSelectedSizes((previous) => {
+            const fromIndex = previous.indexOf(fromSize);
+            const toIndex = previous.indexOf(toSize);
+            return reorderItems(previous, fromIndex, toIndex);
+        });
     };
 
     const handleGalleryFilesChange = (event) => {
@@ -955,6 +1087,26 @@ export default function EditProduct() {
         });
     };
 
+    const handleColorTrendingChange = (color, checked) => {
+        const normalizedColor = String(color || '').trim();
+        if (!normalizedColor) {
+            return;
+        }
+
+        setColorTrendingMap((previous) => ({
+            ...previous,
+            [normalizedColor]: Boolean(checked),
+        }));
+
+        setVariantRows((previous) =>
+            previous.map((row) => (
+                String(row.color || '').trim() === normalizedColor
+                    ? { ...row, show_on_best_sellers: Boolean(checked) }
+                    : row
+            )),
+        );
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -1066,6 +1218,7 @@ export default function EditProduct() {
                     sizeSelectValue={sizeSelectValue}
                     selectedColors={selectedColors}
                     selectedSizes={selectedSizes}
+                    colorTrendingMap={colorTrendingMap}
                     variantRows={variantRows}
                     colorVariantImageMap={colorVariantImageMap}
                     colorVariantVideoMap={colorVariantVideoMap}
@@ -1079,7 +1232,9 @@ export default function EditProduct() {
                     onReorderColors={handleReorderColors}
                     onAddSize={handleAddSize}
                     onRemoveSize={handleRemoveSize}
+                    onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
+                    onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}
                     onColorVariantSizeChartsChange={handleColorVariantSizeChartsChange}

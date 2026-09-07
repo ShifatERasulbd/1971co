@@ -1,5 +1,6 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Heading2, Undo2, Redo2 } from 'lucide-react';
@@ -19,6 +20,17 @@ export default function RichTextEditor({
             onChange?.(editor.getHTML());
         },
     });
+
+    useEffect(() => {
+        if (!editor) {
+            return;
+        }
+
+        const normalizedValue = value || '';
+        if (editor.getHTML() !== normalizedValue) {
+            editor.commands.setContent(normalizedValue, false);
+        }
+    }, [editor, value]);
 
     if (!editor) {
         return null;

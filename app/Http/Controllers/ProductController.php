@@ -13,18 +13,32 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'products.index';
+
+    private function clearProductCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return Product::orderByRaw('position IS NULL')
+                ->orderBy('position')
+                ->orderByDesc('updated_at')
+                ->get()
+                ->toArray();
+        });
+    }
+
     public function index(): JsonResponse
     {
-        $products = Product::query()
-            ->orderByRaw('position IS NULL')
-            ->orderBy('position')
-            ->orderByDesc('updated_at')
-            ->get();
        
-        return response()->json($products);
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -40,6 +54,9 @@ class ProductController extends Controller
             'long_description',
             'additional_information',
             'price',
+            'length',
+            'width',
+            'height',
             'cover_image',
             'size_chart_image',
             'size_chart_images',
@@ -49,6 +66,7 @@ class ProductController extends Controller
             'color_variant_videos',
             'color_variant_size_charts',
             'size',
+            'weight',
             'variant_rows',
             'available_products',
             'category_id',
@@ -62,13 +80,37 @@ class ProductController extends Controller
             $columns[] = 'slug';
         }
 
+        if (Schema::hasColumn('products', 'discount_price')) {
+            $columns[] = 'discount_price';
+        }
+
         $products = Product::select($columns)
-            ->where('show_on_best_sellers', true)
             ->orderByRaw('position IS NULL')
             ->orderBy('position')
             ->orderByDesc('created_at')
-            ->limit(12)
-            ->get();
+            ->get()
+            ->filter(function (Product $product): bool {
+                $rows = is_array($product->variant_rows) ? $product->variant_rows : [];
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+
+                    $variantTrending = filter_var(
+                        $row['show_on_best_sellers'] ?? false,
+                        FILTER_VALIDATE_BOOLEAN,
+                        FILTER_NULL_ON_FAILURE,
+                    );
+
+                    if ($variantTrending === true) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->values()
+            ->take(24);
 
         return response()->json($products);
     }
@@ -87,6 +129,10 @@ class ProductController extends Controller
             'long_description',
             'additional_information',
             'price',
+            'weight',
+            'length',
+            'width',
+            'height',
             'cover_image',
             'size_chart_image',
             'size_chart_images',
@@ -105,6 +151,10 @@ class ProductController extends Controller
 
         if (Schema::hasColumn('products', 'slug')) {
             $columns[] = 'slug';
+        }
+
+        if (Schema::hasColumn('products', 'discount_price')) {
+            $columns[] = 'discount_price';
         }
 
         $products = Product::query()
@@ -133,6 +183,7 @@ class ProductController extends Controller
             'sku' => 'required|string|max:255',
             'color' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
+            'weight' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
             'fabric_and_care' => 'nullable|string',
@@ -143,6 +194,10 @@ class ProductController extends Controller
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
             'price' => 'required|numeric',
+            'discount_price' => 'nullable|numeric',
+            'length' => 'nullable|integer',
+            'width' => 'nullable|integer',
+            'height' => 'nullable|integer',
             'cover_image' => 'nullable|string',
             'size_chart_image' => 'nullable|string',
             'size_chart_images' => 'nullable|array',
@@ -168,6 +223,8 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.weight' => 'nullable|string|max:255',
+            'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -266,6 +323,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
+        
         $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
         $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
 
@@ -277,6 +335,7 @@ class ProductController extends Controller
             'size' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'fit' => 'nullable|string',
+            'weight' => 'nullable|string|max:255',
             'fabric_and_care' => 'nullable|string',
             'product_features' => 'nullable|array',
             'product_features.*.icon' => 'nullable|string|max:100',
@@ -285,6 +344,10 @@ class ProductController extends Controller
             'long_description' => 'nullable|string',
             'additional_information' => 'nullable|string',
             'price' => 'required|numeric',
+            'discount_price' => 'nullable|numeric',
+            'length' => 'nullable|integer',
+            'width' => 'nullable|integer',
+            'height' => 'nullable|integer',
             'cover_image' => 'nullable|string',
             'size_chart_image' => 'nullable|string',
             'size_chart_images' => 'nullable|array',
@@ -319,6 +382,8 @@ class ProductController extends Controller
             'variant_rows.*.sku' => 'nullable|string|max:255',
             'variant_rows.*.stock' => 'nullable',
             'variant_rows.*.price' => 'nullable',
+            'variant_rows.*.weight' => 'nullable|string|max:255',
+            'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -329,6 +394,10 @@ class ProductController extends Controller
             'color_variant_size_charts.*' => 'nullable|array',
             'color_variant_size_charts.*.*' => 'nullable|string|max:2048',
         ]);
+
+        if (! Schema::hasColumn('products', 'discount_price')) {
+            unset($validated['discount_price']);
+        }
 
         if ($request->hasFile('thumbnail_image')) {
             $validated['cover_image'] = $this->uploadThumbnailImage($request, $product->cover_image);
@@ -444,7 +513,7 @@ class ProductController extends Controller
             : array_values(array_filter([$product->size_chart_image]));
 
         $product->update($validated);
-
+        $this->clearProductCache();
         if (array_key_exists('image_gallery', $validated)) {
             $this->deleteRemovedUploadedFiles(
                 $oldGallery,
@@ -493,6 +562,7 @@ class ProductController extends Controller
             }
         } else {
             $product->delete();
+            $this->clearProductCache();
             $deletedCount = 1;
         }
 
@@ -768,6 +838,12 @@ class ProductController extends Controller
                 'sku' => (string) ($row['sku'] ?? ''),
                 'stock' => $row['stock'] ?? '',
                 'price' => $row['price'] ?? '',
+                'weight' => $row['weight'] ?? '',
+                'show_on_best_sellers' => filter_var(
+                    $row['show_on_best_sellers'] ?? false,
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE,
+                ) === true,
             ];
         }, $variantRows));
     }

@@ -11,13 +11,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+
+const presetSocialIcons = [
+    { key: 'facebook', label: 'Facebook', path: '/icons/social/facebook.svg' },
+    { key: 'instagram', label: 'Instagram', path: '/icons/social/instagram.svg' },
+    { key: 'tiktok', label: 'TikTok', path: '/icons/social/tiktok.svg' },
+];
 
 const tabs = [
     { key: 'logos', label: 'Logos' },
     { key: 'social', label: 'Social Media' },
     { key: 'contact', label: 'Contact & Currency' },
     { key: 'analytics', label: 'Analytics' },
-    { key: 'frontend-utils', label: 'Frontend Utils' },
+  
 ];
 
 function previewFor(file) {
@@ -30,17 +43,21 @@ export default function SettingsForm({
     isSubmitting = false,
     headerLogoPreview = '',
     footerLogoPreview = '',
+    faviconPreview = '',
     shopMenuImagePreview = '',
     socialIconPreviews = {},
     onChange,
+
+    
     onHeaderLogoChange,
     onFooterLogoChange,
+    onFaviconChange,
     onShopMenuImageChange,
     onSocialChange,
     onSocialIconChange,
     onAddSocial,
     onRemoveSocial,
-    onFrontendUtilsChange,
+   
     onSubmit,
     onCancel,
     submitLabel = 'Save Settings',
@@ -78,7 +95,7 @@ export default function SettingsForm({
                     </div>
 
                     {activeTab === 'logos' && (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                             <div className="space-y-2">
                                 <Label htmlFor="header-logo">Header Logo</Label>
                                 <Input
@@ -115,6 +132,25 @@ export default function SettingsForm({
                                     />
                                 )}
                                 {errors.footer_logo && <p className="text-xs text-destructive">{errors.footer_logo[0]}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="settings-favicon">Favicon</Label>
+                                <Input
+                                    id="settings-favicon"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp,image/avif,image/svg+xml,image/x-icon,.ico"
+                                    onChange={onFaviconChange}
+                                    disabled={isSubmitting}
+                                />
+                                {(faviconPreview || form.favicon) && (
+                                    <img
+                                        src={faviconPreview || form.favicon}
+                                        alt="Favicon"
+                                        className="h-24 w-full rounded border bg-muted object-contain"
+                                    />
+                                )}
+                                {errors.favicon && <p className="text-xs text-destructive">{errors.favicon[0]}</p>}
                             </div>
 
                             <div className="space-y-2">
@@ -155,6 +191,7 @@ export default function SettingsForm({
                                 {socialItems.map((item, index) => {
                                     const localPreview = socialIconPreviews[index];
                                     const iconPreview = localPreview || item.icon || '';
+                                    const selectedPreset = presetSocialIcons.find((preset) => preset.path === item.icon)?.key || '';
 
                                     return (
                                         <div key={`social-${index}`} className="rounded-md border p-3 space-y-3">
@@ -180,8 +217,45 @@ export default function SettingsForm({
                                             </div>
 
                                             <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                                                {iconPreview ? (
+                                                    <img
+                                                        src={iconPreview}
+                                                        alt={`${item.name || 'Social'} icon`}
+                                                        className="h-10 w-10 shrink-0 rounded border bg-muted object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border bg-muted text-[10px] text-muted-foreground">
+                                                        No icon
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    <Label>Default Icon</Label>
+                                                    <Select
+                                                        value={selectedPreset}
+                                                        onValueChange={(value) => {
+                                                            const preset = presetSocialIcons.find((option) => option.key === value);
+                                                            if (!preset) return;
+                                                            onSocialIconChange(index, null);
+                                                            onSocialChange(index, 'icon', preset.path);
+                                                        }}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <SelectTrigger className="w-[160px]">
+                                                            <SelectValue placeholder="Choose icon" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {presetSocialIcons.map((preset) => (
+                                                                <SelectItem key={preset.key} value={preset.key}>
+                                                                    {preset.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
                                                 <div className="space-y-2 md:w-full">
-                                                    <Label>Icon Image</Label>
+                                                    <Label>Or Upload Icon Image</Label>
                                                     <Input
                                                         type="file"
                                                         accept="image/png,image/jpeg,image/jpg,image/webp,image/avif,image/svg+xml"
@@ -199,14 +273,6 @@ export default function SettingsForm({
                                                     Remove
                                                 </Button>
                                             </div>
-
-                                            {iconPreview && (
-                                                <img
-                                                    src={iconPreview}
-                                                    alt={`${item.name || 'Social'} icon`}
-                                                    className="h-16 w-16 rounded border bg-muted object-contain"
-                                                />
-                                            )}
                                         </div>
                                     );
                                 })}
@@ -217,6 +283,19 @@ export default function SettingsForm({
 
                     {activeTab === 'contact' && (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="settings-phone">Phone Number</Label>
+                                <Input
+                                    id="settings-phone"
+                                    name="contact_phone"
+                                    value={form.contact_phone || ''}
+                                    onChange={onChange}
+                                    placeholder="(202) 123-4567"
+                                    disabled={isSubmitting}
+                                />
+                                {errors.contact_phone && <p className="text-xs text-destructive">{errors.contact_phone[0]}</p>}
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="settings-email">Email Address</Label>
                                 <Input
@@ -280,70 +359,7 @@ export default function SettingsForm({
                         </div>
                     )}
 
-                    {activeTab === 'frontend-utils' && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="frontend-timeless-font">Timeless Font Family</Label>
-                                    <Input
-                                        id="frontend-timeless-font"
-                                        value={form.frontend_utils?.timeless_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('timeless_font_family', event.target.value)}
-                                        placeholder='e.g. "Bebas Neue"'
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="frontend-features-font">Features Font Family</Label>
-                                    <Input
-                                        id="frontend-features-font"
-                                        value={form.frontend_utils?.features_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('features_font_family', event.target.value)}
-                                        placeholder='e.g. "Inter", ui-sans-serif, system-ui, sans-serif'
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-default-font">Hero Default Font Key</Label>
-                                    <Input
-                                        id="frontend-hero-default-font"
-                                        value={form.frontend_utils?.hero_default_font_family || ''}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_default_font_family', event.target.value)}
-                                        placeholder="e.g. instrument-sans"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-options">Hero Font Options (JSON)</Label>
-                                    <textarea
-                                        id="frontend-hero-options"
-                                        value={form.frontend_utils?.hero_font_family_options_json || '[]'}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_font_family_options_json', event.target.value)}
-                                        placeholder='[{"label":"Bebas Neue","value":"Bebas Neue"}]'
-                                        rows={5}
-                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="frontend-hero-css-map">Hero Font CSS Map (JSON)</Label>
-                                    <textarea
-                                        id="frontend-hero-css-map"
-                                        value={form.frontend_utils?.hero_font_family_css_map_json || '{}'}
-                                        onChange={(event) => onFrontendUtilsChange?.('hero_font_family_css_map_json', event.target.value)}
-                                        placeholder='{"Bebas Neue":"\"Bebas Neue\""}'
-                                        rows={6}
-                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    
                 </CardContent>
 
                 <Separator />

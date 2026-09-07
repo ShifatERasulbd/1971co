@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { timelessFontClass } from '../utils/typography';
+import { buildOptimizedImageUrl } from '../utils/media';
 
-const DEFAULT_BACKGROUND_IMAGE = '/uploads/heroes/images/hero1.webp';
+const DEFAULT_BACKGROUND_IMAGE = '';
 const DEFAULT_ITEM = {
     image: DEFAULT_BACKGROUND_IMAGE,
     title: 'Built For Everyday Confidence',
@@ -304,6 +305,14 @@ export default function HomeBackgroundImageSection() {
         Number.isInteger(pendingSlideIndex) && pendingSlideIndex >= 0
             ? slides[pendingSlideIndex]
             : null;
+    const activeSlideImage = useMemo(
+        () => buildOptimizedImageUrl(activeSlide?.image || DEFAULT_BACKGROUND_IMAGE, { w: 1280, q: 74 }),
+        [activeSlide?.image]
+    );
+    const pendingSlideImage = useMemo(
+        () => buildOptimizedImageUrl(pendingSlide?.image || DEFAULT_BACKGROUND_IMAGE, { w: 1280, q: 74 }),
+        [pendingSlide?.image]
+    );
 
     function handleSectionSelect(event) {
         if (!isBuilderPreview) {
@@ -339,13 +348,13 @@ export default function HomeBackgroundImageSection() {
 
                 <div className="relative z-10 mx-auto grid min-h-[560px] w-full max-w-[1700px] gap-8 px-5 py-10 sm:px-8 sm:py-12 lg:min-h-[700px] lg:grid-cols-[minmax(0,1fr)_minmax(560px,760px)] lg:items-center lg:gap-10 lg:px-14 lg:py-16">
                     <div className="max-w-[620px] lg:pr-4">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+                        <p className="font-monstrate text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-zinc-600">
                             {activeSlide.label || 'New Season'}
                         </p>
-                        <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.9] tracking-[0.01em] text-zinc-900 sm:text-[2.7rem] lg:text-[3.4rem]">
+                        <h2 className="font-monstrate mt-3 text-[2rem] font-black uppercase leading-[0.9] tracking-[0.01em] text-zinc-900 sm:text-[2.7rem] lg:text-[3.4rem]">
                             {activeSlide.title}
                         </h2>
-                        <p className="mt-4 max-w-[500px] text-[0.98rem] font-medium text-zinc-700 sm:text-[1.08rem]">
+                        <p className="font-monstrate mt-4 max-w-[500px] text-[0.98rem] font-medium text-zinc-700 sm:text-[1.08rem]">
                             {activeSlide.description}
                         </p>
 
@@ -394,7 +403,7 @@ export default function HomeBackgroundImageSection() {
                         <div className="relative overflow-hidden border border-zinc-200/80 bg-white shadow-[0_28px_65px_-30px_rgba(15,23,42,0.55)]">
                             <div className="book-page-frame relative aspect-[4/3] min-h-[300px] sm:min-h-[380px] lg:min-h-[500px]">
                                 <img
-                                    src={activeSlide.image || DEFAULT_BACKGROUND_IMAGE}
+                                    src={activeSlideImage || activeSlide.image || DEFAULT_BACKGROUND_IMAGE}
                                     alt="Background showcase"
                                     className={`absolute inset-0 h-full w-full object-cover ${
                                         isTurning
@@ -409,7 +418,7 @@ export default function HomeBackgroundImageSection() {
 
                                 {isTurning && pendingSlide ? (
                                     <img
-                                        src={pendingSlide.image || DEFAULT_BACKGROUND_IMAGE}
+                                        src={pendingSlideImage || pendingSlide.image || DEFAULT_BACKGROUND_IMAGE}
                                         alt="Background showcase"
                                         className={`absolute inset-0 h-full w-full object-cover ${
                                             turnDirection === 'next' ? 'book-page-in-next' : 'book-page-in-prev'

@@ -6,16 +6,18 @@ use App\Models\AboutMissionSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class AboutMissionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'about_mission.index';
     private function ensureSection(): AboutMissionSection
     {
         $section = AboutMissionSection::query()->first();
 
         if (!$section) {
             $section = AboutMissionSection::query()->create([
-                'background_image' => '/uploads/heroes/images/hero1.webp',
+                'background_image' => '',
                 'title' => 'Our Mission',
                 'description' => 'Our mission is to make personalized fashion accessible, premium, and expressive. We aim to deliver apparel that combines comfort, durability, and modern design while giving customers the freedom to create styles that represent their identity.',
                 'items' => [
@@ -28,6 +30,17 @@ class AboutMissionController extends Controller
         }
 
         return $section;
+    }
+    private function clearAboutMissionCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
     }
 
     private function resolveAssetUrl(?string $asset): ?string
@@ -104,9 +117,7 @@ class AboutMissionController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+        return response()->json($this->cachedResponse());
     }
 
     public function publicIndex(): JsonResponse
@@ -161,6 +172,7 @@ class AboutMissionController extends Controller
             'description' => $validated['description'] ?? '',
             'items' => $items,
         ]);
+        $this->clearAboutMissionCache();
 
         return response()->json($this->toResponse($section->fresh()));
     }

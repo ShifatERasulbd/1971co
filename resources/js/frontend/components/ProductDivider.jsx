@@ -325,11 +325,7 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
         navigate(productLink);
     }, [navigate, productLink]);
 
-    const handleWishlist = useCallback((event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        toast.info('Wishlist will be available soon');
-    }, []);
+   
 
     return (
         <article className="group w-full cursor-pointer">
@@ -340,10 +336,10 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
                             src={imageSrc}
                             alt={product.name}
                             loading="lazy"
-                            className="h-[290px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[360px] lg:h-[430px]"
+                            className="h-[340px] w-full object-cover object-center transition-transform duration-500 group-hover:scale-105 sm:h-[420px] lg:h-[520px]"
                         />
                     ) : (
-                        <div className="h-[290px] w-full bg-transparent sm:h-[360px] lg:h-[430px]" />
+                        <div className="h-[340px] w-full bg-transparent sm:h-[420px] lg:h-[520px]" />
                     )}
 
                     {allowAddToCart && (
@@ -351,18 +347,11 @@ function ProductCard({ product, autoPlay = false, colorLookup = {}, onAddToCart,
                             <button
                                 type="button"
                                 onClick={handleAddToCartClick}
-                                className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
+                                className="inline-flex h-9 items-center justify-center bg-zinc-900 px-4 text-[0.82rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:bg-zinc-800"
                             >
                                 Add to cart
                             </button>
-                            <button
-                                type="button"
-                                onClick={handleWishlist}
-                                aria-label="Add to wishlist"
-                                className="inline-flex size-9 items-center justify-center border border-zinc-200 bg-white text-zinc-700 transition-colors duration-200 hover:text-zinc-950"
-                            >
-                                <Heart className="size-4" />
-                            </button>
+                           
                             <button
                                 type="button"
                                 onClick={handleQuickView}
@@ -475,14 +464,14 @@ export default function ProductDividerSection({ sectionTitle = '' }) {
         async function load() {
             try {
                 const [resResult, colorResult] = await Promise.allSettled([
-                    fetch('/api/public/products', { headers: { Accept: 'application/json' } }),
+                    fetch('/api/public/shop-products', { headers: { Accept: 'application/json' } }),
                     fetch('/api/public/colors', { headers: { Accept: 'application/json' } })
                 ]);
 
                 let finalProducts = [];
                 if (resResult.status === 'fulfilled' && resResult.value.ok) {
                     const data = await resResult.value.json();
-                    finalProducts = normalizeProductList(data);
+                    finalProducts = normalizeProductList(data).filter(isBestSeller);
                 }
 
                 if (isBuilderPreview && finalProducts.length === 0) {

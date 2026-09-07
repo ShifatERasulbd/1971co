@@ -28,6 +28,7 @@ export default function AddForm({
     sizeSelectValue = '',
     selectedColors = [],
     selectedSizes = [],
+    colorTrendingMap = {},
     variantRows = [],
     colorVariantImageMap = {},
     colorVariantVideoMap = {},
@@ -40,7 +41,9 @@ export default function AddForm({
     onReorderColors,
     onAddSize,
     onRemoveSize,
+    onReorderSizes,
     onVariantRowChange,
+    onColorTrendingChange,
     onColorVariantImagesChange,
     onColorVariantVideosChange,
     onColorVariantSizeChartsChange,
@@ -69,6 +72,7 @@ export default function AddForm({
     const [activeColorForSizeCharts, setActiveColorForSizeCharts] = useState('');
     const [draftSizeChartValues, setDraftSizeChartValues] = useState([]);
     const [draggingColor, setDraggingColor] = useState('');
+    const [draggingSize, setDraggingSize] = useState('');
     const [draggingGalleryIndex, setDraggingGalleryIndex] = useState(-1);
 
     const colorLabelById = useMemo(() => {
@@ -223,6 +227,33 @@ export default function AddForm({
 
     const handleColorDragEnd = () => {
         setDraggingColor('');
+    };
+
+    const handleSizeDragStart = (event, size) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', size);
+        setDraggingSize(size);
+    };
+
+    const handleSizeDragOver = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleSizeDrop = (event, size) => {
+        event.preventDefault();
+        const draggedSize = event.dataTransfer.getData('text/plain') || draggingSize;
+        if (!draggedSize || draggedSize === size) {
+            setDraggingSize('');
+            return;
+        }
+
+        onReorderSizes?.(draggedSize, size);
+        setDraggingSize('');
+    };
+
+    const handleSizeDragEnd = () => {
+        setDraggingSize('');
     };
 
     const handleGalleryDragStart = (event, index) => {
@@ -596,8 +627,26 @@ export default function AddForm({
                                         className="h-4 w-4"
                                     />
                                     <Label htmlFor="product-best-sellers" className="cursor-pointer">
-                                        Show on Best Sellers
+                                        Show on Home Page
                                     </Label>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="product-weight">
+                                        Product Weight (in LBS) <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Input
+                                        id="product-weight"
+                                        name="weight"
+                                        type="number"
+                                        min="0"
+                                        step="any" 
+                                        value={form.weight ?? ''}
+                                        onChange={onChange}
+                                        placeholder="0.00"
+                                        disabled={isSubmitting}
+                                    />
+                                    {errors.weight && <p className="text-xs text-destructive">{errors.weight[0]}</p>}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -690,16 +739,29 @@ export default function AddForm({
                                         {selectedSizes.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pt-1">
                                                 {selectedSizes.map((size) => (
-                                                    <Button
+                                                    <div
                                                         key={size}
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => onRemoveSize?.(size)}
-                                                        disabled={isSubmitting}
+                                                        draggable={!isSubmitting}
+                                                        onDragStart={(event) => handleSizeDragStart(event, size)}
+                                                        onDragOver={handleSizeDragOver}
+                                                        onDrop={(event) => handleSizeDrop(event, size)}
+                                                        onDragEnd={handleSizeDragEnd}
+                                                        className={`inline-flex items-center gap-2 rounded-md border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground ${
+                                                            draggingSize === size ? 'opacity-60' : ''
+                                                        } ${isSubmitting ? 'cursor-not-allowed' : 'cursor-move'}`}
+                                                        title="Drag to reorder"
                                                     >
-                                                        {getSizeLabel(size)} x
-                                                    </Button>
+                                                        <span>{getSizeLabel(size)}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onRemoveSize?.(size)}
+                                                            disabled={isSubmitting}
+                                                            className="text-[11px] leading-none opacity-70 transition-opacity hover:opacity-100"
+                                                            aria-label={`Remove ${getSizeLabel(size)}`}
+                                                        >
+                                                            x
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
@@ -752,7 +814,9 @@ export default function AddForm({
                                                         <th className="py-2 pr-2">Size</th>
                                                         <th className="py-2 pr-2">SKU</th>
                                                         <th className="py-2 pr-2">Stock</th>
+                                                        <th className="py-2 pr-2">Weight<br /><span>(in Lbs)</span></th>
                                                         <th className="py-2">Price</th>
+                                                        <th className="py-2 pl-2">Trending</th>
                                                         <th className="py-2 pl-2">Color Images</th>
                                                         <th className="py-2 pl-2">Color Videos</th>
                                                         <th className="py-2 pl-2">Size Charts</th>
@@ -779,6 +843,16 @@ export default function AddForm({
                                                                     disabled={isSubmitting}
                                                                 />
                                                             </td>
+                                                            <td className="py-2 pr-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={row.weight ?? ''}
+                                                                    onChange={(event) => onVariantRowChange?.(row.key, 'weight', event.target.value)}
+                                                                    disabled={isSubmitting}
+                                                                />
+                                                            </td>
                                                             <td className="py-2">
                                                                 <Input
                                                                     type="number"
@@ -788,6 +862,25 @@ export default function AddForm({
                                                                     onChange={(event) => onVariantRowChange?.(row.key, 'price', event.target.value)}
                                                                     disabled={isSubmitting}
                                                                 />
+                                                            </td>
+                                                            <td className="py-2 pl-2 align-top">
+                                                                {firstColorRowKeys[row.key] ? (
+                                                                    <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1">
+                                                                        <Input
+                                                                            id={`variant-trending-${row.key}`}
+                                                                            type="checkbox"
+                                                                            checked={Boolean(colorTrendingMap[row.color])}
+                                                                            onChange={(event) => onColorTrendingChange?.(row.color, event.target.checked)}
+                                                                            disabled={isSubmitting}
+                                                                            className="h-4 w-4"
+                                                                        />
+                                                                        <Label htmlFor={`variant-trending-${row.key}`} className="cursor-pointer text-xs text-muted-foreground">
+                                                                            Trending
+                                                                        </Label>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-muted-foreground">Uses {getColorLabel(row.color)} trend flag</p>
+                                                                )}
                                                             </td>
                                                             <td className="py-2 pl-2 align-top">
                                                                 {firstColorRowKeys[row.key] ? (

@@ -8,9 +8,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 
 class CollectionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'collection.index';
+
+    private function clearCollectionCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return $this->toResponse($this->ensureSection());
+        });
+    }
+
     private function hasProductIdsColumn(): bool
     {
         return Schema::hasTable('collection_items') && Schema::hasColumn('collection_items', 'product_ids');
@@ -95,25 +110,25 @@ class CollectionController extends Controller
                 [
                     'name' => 'New Arrivals',
                     'slug' => 'new-arrivals',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 0,
                 ],
                 [
                     'name' => 'Essentials',
                     'slug' => 'essentials',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 1,
                 ],
                 [
                     'name' => 'Tees',
                     'slug' => 'tees',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 2,
                 ],
                 [
                     'name' => 'Bottoms',
                     'slug' => 'bottoms',
-                    'image' => '/uploads/heroes/images/hero1.webp',
+                    'image' => '',
                     'sort_order' => 3,
                 ],
             ];
@@ -159,9 +174,9 @@ class CollectionController extends Controller
 
     public function index(): JsonResponse
     {
-        $section = $this->ensureSection();
-
-        return response()->json($this->toResponse($section));
+        $collectionSection = $this->ensureSection();
+       
+       return response()->json($this->toResponse($collectionSection));
     }
 
     public function publicIndex(): JsonResponse
@@ -244,6 +259,8 @@ class CollectionController extends Controller
         if (!empty($existingIds)) {
             $section->items()->whereNotIn('id', $usedIds)->delete();
         }
+
+        $this->clearCollectionCache();
 
         return response()->json($this->toResponse($section->fresh('items')));
     }

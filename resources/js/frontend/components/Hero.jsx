@@ -5,6 +5,7 @@ import {
   resolveHeroFontSize,
 } from '../../utils/heroTypography';
 import { sectionTypography } from '../utils/sectionTypography';
+import { buildOptimizedImageUrl } from '../utils/media';
 
 function splitHeroTitle(value, mode = 'double') {
   const title = String(value || '').trim();
@@ -225,8 +226,44 @@ export default function Hero() {
   }, [isLoading, fullDescription, typedDescription, isDescriptionDeleting]);
 
   const heroImage = displayHeroData?.image_url || '';
+  const optimizedHeroImage = useMemo(
+    () => buildOptimizedImageUrl(heroImage, { w: isMobileViewport ? 960 : 1920, q: 74 }),
+    [heroImage, isMobileViewport]
+  );
   const [isVideoFallback, setIsVideoFallback] = useState(false);
-  const heroVideo = displayHeroData?.video_url || null;
+  const heroVideo = useMemo(() => {
+    const raw = String(displayHeroData?.video_url || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) {
+      return raw;
+    }
+
+    return `/${raw.replace(/^\/+/, '')}`;
+  }, [displayHeroData?.video_url]);
+  const [canAutoPlayVideo, setCanAutoPlayVideo] = useState(false);
+
+  useEffect(() => {
+    if (!heroVideo) {
+      setCanAutoPlayVideo(false);
+      return;
+    }
+
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const connection = typeof navigator !== 'undefined' ? navigator.connection || navigator.mozConnection || navigator.webkitConnection : null;
+    const saveData = Boolean(connection?.saveData);
+    const effectiveType = String(connection?.effectiveType || '').toLowerCase();
+    const isSlowNetwork = effectiveType.includes('2g') || effectiveType.includes('3g') || effectiveType === 'slow-2g';
+
+    // Mobile browsers can autoplay muted inline video; only disable when user/system signals low-motion or low-data.
+    setCanAutoPlayVideo(!reducedMotion && !saveData && !isSlowNetwork);
+  }, [heroVideo]);
 
   const titleSize = resolveHeroFontSize(displayHeroData?.title_font_size, 86);
   const descriptionSize = resolveHeroFontSize(displayHeroData?.description_font_size, 24);
@@ -351,31 +388,53 @@ export default function Hero() {
     if (isLoading) {
       return <div className="absolute inset-0 -z-30 h-full w-full bg-neutral-900 animate-pulse" />;
     }
-    if (heroVideo && !isVideoFallback) {
+    const shouldUseVideo = Boolean(heroVideo) && !isVideoFallback;
+
+    if (shouldUseVideo) {
       return (
         <video
           key={heroVideo}
-          poster={heroImage}
+          src={heroVideo}
+          poster={optimizedHeroImage || heroImage}
           className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
-          autoPlay
+          autoPlay={canAutoPlayVideo}
+          defaultMuted
           muted
           loop
           playsInline
           preload="auto"
+          onLoadedMetadata={(event) => {
+            if (!canAutoPlayVideo) {
+              return;
+            }
+
+            const playPromise = event.currentTarget.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch(() => {
+                // Ignore autoplay promise rejections and keep poster fallback visible.
+              });
+            }
+          }}
           onError={() => setIsVideoFallback(true)}
-        >
-          <source src={heroVideo} type="video/mp4" />
-        </video>
+        />
       );
     }
+
+    if (!heroImage && !optimizedHeroImage) {
+      return <div className="absolute inset-0 -z-30 h-full w-full bg-neutral-100" />;
+    }
+
     return (
       <img
-        src={heroImage}
+        src={optimizedHeroImage || heroImage}
         alt="Timeless custom apparel hero"
         className="hero-media absolute inset-0 -z-30 h-full w-full object-cover object-center"
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
       />
     );
-  }, [heroVideo, isVideoFallback, heroImage, isLoading]);
+  }, [heroVideo, canAutoPlayVideo, isVideoFallback, heroImage, optimizedHeroImage, isLoading]);
 
   return (
     <section className={`${timelessFontClass} hero-section relative isolate min-h-[calc(100vh-90px)] overflow-hidden text-zinc-900`}>

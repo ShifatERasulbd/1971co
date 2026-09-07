@@ -8,12 +8,42 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 class CommunityPageSectionController extends Controller
 {
+    private const INDEX_CACHE_KEY = 'community_page_sections.index';
+
+    private function clearCommunityPageSectionsCache(): void
+    {
+        Cache::forget(self::INDEX_CACHE_KEY);
+    }
+
+    private function cachedResponse(): array
+    {
+        return Cache::rememberForever(self::INDEX_CACHE_KEY, function () {
+            return CommunityPageSection::orderBy('created_at', 'asc')
+                ->get()
+                ->map(fn (CommunityPageSection $section) => $this->transformSectionForResponse($section))
+                ->values()
+                ->all();
+        });
+    }
+
+    public function index(): JsonResponse
+    {
+        return response()->json($this->cachedResponse());
+    }
+
+
     private function featureUploadsDirectory(): string
     {
         return public_path('uploads/community/features');
+    }
+
+    private function canvasUploadsDirectory(): string
+    {
+        return public_path('uploads/community/canvas');
     }
 
     private function storeFeatureImage(UploadedFile $uploadedFile): string
@@ -25,7 +55,20 @@ class CommunityPageSectionController extends Controller
         $filename = time() . '_' . uniqid('community_feature_', true) . '.' . $extension;
         $uploadedFile->move($directory, $filename);
 
+
         return 'uploads/community/features/' . $filename;
+    }
+
+    private function storeCanvasImage(UploadedFile $uploadedFile): string
+    {
+        $directory = $this->canvasUploadsDirectory();
+        File::ensureDirectoryExists($directory);
+
+        $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'webp');
+        $filename = time() . '_' . uniqid('community_canvas_', true) . '.' . $extension;
+        $uploadedFile->move($directory, $filename);
+
+        return 'uploads/community/canvas/' . $filename;
     }
 
     private function resolvePublicPath(?string $path): ?string
@@ -60,6 +103,28 @@ class CommunityPageSectionController extends Controller
         $data['buttonUrl'] = $section->button_url;
         $data['featureImage'] = $this->resolvePublicPath($section->feature_image);
         $data['featureItems'] = is_array($section->feature_items) ? $section->feature_items : [];
+        $canvasImages = is_array($section->canvas_images) ? $section->canvas_images : [];
+        $data['canvasImages'] = array_values(array_map(function ($item, $index) {
+            if (is_string($item)) {
+                return [
+                    'id' => 'canvas-' . $index,
+                    'src' => $this->resolvePublicPath($item),
+                ];
+            }
+
+            if (!is_array($item)) {
+                return [
+                    'id' => 'canvas-' . $index,
+                    'src' => null,
+                ];
+            }
+
+            $item['src'] = $this->resolvePublicPath($item['src'] ?? null);
+            $item['id'] = $item['id'] ?? 'canvas-' . $index;
+
+            return $item;
+        }, $canvasImages, array_keys($canvasImages)));
+        $data['canvasImage'] = $data['canvasImages'][0]['src'] ?? $this->resolvePublicPath($section->canvas_image ?? null);
         $data['communityImage'] = $this->resolvePublicPath($section->community_image);
         $data['communityItems'] = is_array($section->community_items) ? $section->community_items : [];
         $data['galleryItems'] = is_array($section->gallery_items) ? $section->gallery_items : [];
@@ -74,20 +139,7 @@ class CommunityPageSectionController extends Controller
         return $data;
     }
 
-    /**
-     * Get all community page sections
-     */
-    public function index(): JsonResponse
-    {
-        $sections = CommunityPageSection::orderBy('created_at', 'asc')->get();
-
-        if ($sections->isEmpty()) {
-            // Return default sections if none exist in database
-            return response()->json($this->getDefaultSections());
-        }
-
-        return response()->json($sections->map(fn (CommunityPageSection $section) => $this->transformSectionForResponse($section)));
-    }
+    
 
     /**
      * Get all community page sections for public pages
@@ -117,6 +169,10 @@ class CommunityPageSectionController extends Controller
             'featureItems.*.icon' => 'nullable|string|max:100',
             'featureItems.*.title' => 'required_with:featureItems|string|max:255',
             'featureItems.*.description' => 'required_with:featureItems|string|max:1200',
+            'canvasImage' => 'nullable|string|max:65535',
+            'canvasImages' => 'nullable|array',
+            'canvasImages.*.id' => 'nullable|string|max:100',
+            'canvasImages.*.src' => 'required_with:canvasImages|string|max:65535',
             'communityImage' => 'nullable|string|max:65535',
             'communityItems' => 'nullable|array',
             'communityItems.*.id' => 'nullable|string|max:100',
@@ -174,6 +230,14 @@ class CommunityPageSectionController extends Controller
             $updates['feature_items'] = $validated['featureItems'] ?? [];
         }
 
+        if (in_array('canvas_image', $columns, true)) {
+            $updates['canvas_image'] = $validated['canvasImages'][0]['src'] ?? $validated['canvasImage'] ?? null;
+        }
+
+        if (in_array('canvas_images', $columns, true)) {
+            $updates['canvas_images'] = $validated['canvasImages'] ?? [];
+        }
+
         if (in_array('community_image', $columns, true)) {
             $updates['community_image'] = $validated['communityImage'] ?? null;
         }
@@ -190,7 +254,7 @@ class CommunityPageSectionController extends Controller
             ['key' => $request->input('key')],
             $updates
         );
-
+        $this->clearCommunityPageSectionsCache();
         return response()->json($this->transformSectionForResponse($section->fresh()), 200);
     }
 
@@ -204,6 +268,23 @@ class CommunityPageSectionController extends Controller
         ]);
 
         $path = $this->storeFeatureImage($validated['image']);
+
+        return response()->json([
+            'path' => $path,
+            'url' => '/' . ltrim($path, '/'),
+        ], 201);
+    }
+
+    /**
+     * Upload canvas section image from page builder
+     */
+    public function uploadCanvasImage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'image' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp', 'max:5120'],
+        ]);
+
+        $path = $this->storeCanvasImage($validated['image']);
 
         return response()->json([
             'path' => $path,
@@ -238,6 +319,7 @@ class CommunityPageSectionController extends Controller
 
         $section->delete();
 
+        $this->clearCommunityPageSectionsCache();
         return response()->json(['message' => 'Section deleted'], 200);
     }
 
@@ -262,7 +344,7 @@ class CommunityPageSectionController extends Controller
                 'key' => 'features',
                 'title' => 'Impact Features',
                 'description' => 'Education, care, and opportunity cards.',
-                'feature_image' => '/uploads/heroes/images/hero1.webp',
+                'feature_image' => '',
                 'feature_items' => [
                     [
                         'id' => 'education',
@@ -285,6 +367,14 @@ class CommunityPageSectionController extends Controller
                 ],
                 'button_text' => 'Learn More',
                 'button_url' => '/about',
+                'status' => 'active',
+            ],
+            [
+                'key' => 'canvas',
+                'title' => 'Community Canvas',
+                'description' => 'Editable canvas image showcased in the community page builder.',
+                'canvas_image' => null,
+                'canvas_images' => [],
                 'status' => 'active',
             ],
             [
