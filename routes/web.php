@@ -157,6 +157,10 @@ Route::get('/', function () use ($renderHome) {
     return $renderHome();
 });
 
+Route::get('/home', function () use ($renderHome) {
+    return $renderHome();
+});
+
 Route::get('/shop', function () use ($renderHome) {
     return $renderHome();
 });

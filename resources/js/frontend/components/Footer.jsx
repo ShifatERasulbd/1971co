@@ -136,7 +136,7 @@ export default function Footer() {
 
                     {/* Brand column */}
                     <div className="space-y-5">
-                        <Link to="/" className="inline-flex items-baseline gap-0.5">
+                        <Link to="/home" className="inline-flex items-baseline gap-0.5">
                             {footerLogo ? (
                                 <img
                                     src={footerLogo}

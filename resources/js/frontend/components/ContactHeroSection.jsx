@@ -17,7 +17,7 @@ export default function ContactHeroSection() {
             <div className="mx-auto flex min-h-[320px] w-full max-w-[1920px] items-center justify-center px-6 py-14 sm:min-h-[420px] sm:px-8 lg:min-h-[540px] lg:px-12">
                 <div className="text-center">
                     <p className="mb-6 text-[0.72rem] uppercase tracking-[0.24em] text-white/75 sm:text-[0.78rem]">
-                        <Link to="/" className="transition-colors hover:text-white">
+                        <Link to="/home" className="transition-colors hover:text-white">
                             Home
                         </Link>{' '}
                         / Contact Us

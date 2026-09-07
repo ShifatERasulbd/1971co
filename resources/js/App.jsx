@@ -16,6 +16,7 @@ import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPix
 preventInvalidBodyAriaHidden();
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
+const ComingSoonPage = lazy(() => import('./frontend/pages/Coming_soon.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
 const SingleProductPage = lazy(() => import('./frontend/pages/SingleProduct.jsx'));
 const AboutPage = lazy(() => import('./frontend/pages/About.jsx'));
@@ -49,7 +50,8 @@ function normalizeAssetPath(value) {
 function resolvePageLabel(pathname) {
     const path = String(pathname || '/').toLowerCase();
 
-    if (path === '/') return 'Home';
+    if (path === '/') return 'Coming Soon';
+    if (path === '/home') return 'Home';
     if (path === '/shop') return 'Shop';
     if (path.startsWith('/search/')) return 'Search';
     if (path.startsWith('/collection/')) return 'Collection';
@@ -192,8 +194,9 @@ function AppRouter() {
             <BrowserRouter>
                 <DocumentBrandingManager />
                 <Routes>
+                    <Route path="/" element={withPageFallback(ComingSoonPage)} />
                     <Route path="/" element={<FrontendLayout />}>
-                        <Route index element={withPageFallback(HomePage)} />
+                        <Route path="home" element={withPageFallback(HomePage)} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
                         <Route path="search/:productSlug" element={withPageFallback(ShopPage)} />
                         <Route path="collection/:slug" element={withPageFallback(ShopPage)} />

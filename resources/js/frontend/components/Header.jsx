@@ -219,12 +219,12 @@ export default function Header() {
         closeSearch();
 
         if (isBackendRoute) {
-            window.location.assign('/');
+            window.location.assign('/home');
             return;
         }
 
-        if (location.pathname !== '/') {
-            navigate('/');
+        if (location.pathname !== '/home') {
+            navigate('/home');
             window.setTimeout(() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }, 40);
@@ -791,7 +791,7 @@ export default function Header() {
 
                 {/* Logo Area */}
                 <Link
-                    to="/"
+                    to="/home"
                     onClick={handleLogoClick}
                     className="site-header-brand absolute left-1/2 -translate-x-1/2 flex min-w-0 items-center transition-opacity hover:opacity-80 xl:relative xl:left-auto xl:translate-x-0 xl:col-start-2 xl:justify-self-center"
                     aria-label="Home"

@@ -19,7 +19,7 @@ export default function ShopHeroSection() {
             <div className="mx-auto flex min-h-[360px] w-full max-w-[1920px] items-center justify-center px-5 py-16 sm:min-h-[440px] sm:px-8 lg:min-h-[520px] lg:px-12">
                 <div className="text-center">
                     <p className="mb-6 text-[0.72rem] uppercase tracking-[0.26em] text-white/70 sm:text-[0.78rem]">
-                        <Link to="/" className="transition-colors hover:text-white">
+                        <Link to="/home" className="transition-colors hover:text-white">
                             Home
                         </Link>{' '}
                         / Shop
