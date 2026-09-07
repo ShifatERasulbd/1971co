@@ -103,11 +103,16 @@ class HeroController extends Controller
     private function storeVideoInPublicDir(UploadedFile $uploadedFile, string $folder, string $prefix): string
     {
         $directory = public_path($folder);
-        File::ensureDirectoryExists($directory);
 
-        $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'bin');
-        $filename = time() . '_' . uniqid($prefix, true) . '.' . $extension;
-        $uploadedFile->move($directory, $filename);
+        try {
+            File::ensureDirectoryExists($directory);
+
+            $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'bin');
+            $filename = time() . '_' . uniqid($prefix, true) . '.' . $extension;
+            $uploadedFile->move($directory, $filename);
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException("Unable to save upload to \"{$folder}\": {$exception->getMessage()}", 0, $exception);
+        }
 
         return '/' . trim($folder, '/') . '/' . $filename;
     }
@@ -206,16 +211,24 @@ class HeroController extends Controller
     {
         $validated = $this->validatePayload($request);
 
-        if ($request->hasFile('image_file')) {
-            $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
-        } else {
-            $validated['image'] = trim((string) ($validated['image_url'] ?? '')) ?: null;
-        }
+        try {
+            if ($request->hasFile('image_file')) {
+                $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
+            } else {
+                $validated['image'] = trim((string) ($validated['image_url'] ?? '')) ?: null;
+            }
 
-        if ($request->hasFile('video_file')) {
-            $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
-        } else {
-            $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
+            if ($request->hasFile('video_file')) {
+                $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            } else {
+                $validated['video'] = trim((string) ($validated['video_url'] ?? '')) ?: null;
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
+            ], 500);
         }
 
         unset($validated['image_url'], $validated['video_url'], $validated['image_file'], $validated['video_file']);
@@ -230,18 +243,26 @@ class HeroController extends Controller
     {
         $validated = $this->validatePayload($request);
 
-        if ($request->hasFile('image_file')) {
-            $this->deleteAssetIfLocal($hero->image);
-            $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
-        } elseif (array_key_exists('image_url', $validated)) {
-            $validated['image'] = trim((string) $validated['image_url']) ?: null;
-        }
+        try {
+            if ($request->hasFile('image_file')) {
+                $this->deleteAssetIfLocal($hero->image);
+                $validated['image'] = $this->storeAssetInPublicDir($request->file('image_file'), 'uploads/heroes/images', 'hero_image_');
+            } elseif (array_key_exists('image_url', $validated)) {
+                $validated['image'] = trim((string) $validated['image_url']) ?: null;
+            }
 
-        if ($request->hasFile('video_file')) {
-            $this->deleteAssetIfLocal($hero->video);
-            $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
-        } elseif (array_key_exists('video_url', $validated)) {
-            $validated['video'] = trim((string) $validated['video_url']) ?: null;
+            if ($request->hasFile('video_file')) {
+                $this->deleteAssetIfLocal($hero->video);
+                $validated['video'] = $this->storeVideoInPublicDir($request->file('video_file'), 'uploads/heroes/videos', 'hero_video_');
+            } elseif (array_key_exists('video_url', $validated)) {
+                $validated['video'] = trim((string) $validated['video_url']) ?: null;
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Failed to save the uploaded file. ' . $exception->getMessage(),
+            ], 500);
         }
 
         unset($validated['image_url'], $validated['video_url'], $validated['image_file'], $validated['video_file']);
