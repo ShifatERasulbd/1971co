@@ -7,6 +7,7 @@ export default function ComingSoon() {
   const [heroData, setHeroData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVideoFallback, setIsVideoFallback] = useState(false);
+  const [isImageFallback, setIsImageFallback] = useState(false);
   const [canAutoPlayVideo, setCanAutoPlayVideo] = useState(false);
 
   // Target launch date: 15 Sep 2026
@@ -73,9 +74,11 @@ export default function ComingSoon() {
 
   // Video autoplay compatibility check
   const heroVideo = heroData?.video_url ? String(heroData.video_url).trim() : '';
-  const resolvedVideoUrl = heroVideo.startsWith('http') || heroVideo.startsWith('/') ? heroVideo : `/${heroVideo.replace(/^\/+/, '')}`;
+  const resolvedVideoUrl = heroVideo ? (heroVideo.startsWith('http') || heroVideo.startsWith('/') ? heroVideo : `/${heroVideo.replace(/^\/+/, '')}`) : '';
   const heroImage = heroData?.image_url || '';
   const optimizedHeroImage = buildOptimizedImageUrl(heroImage, { w: 1920, q: 74 });
+  const posterUrl = optimizedHeroImage || heroImage || undefined;
+  const showImage = Boolean((resolvedVideoUrl && isVideoFallback) || (!resolvedVideoUrl && (optimizedHeroImage || heroImage))) && !isImageFallback;
 
   useEffect(() => {
     if (!resolvedVideoUrl) {
@@ -93,12 +96,15 @@ export default function ComingSoon() {
 
   return (
     <section className={`${timelessFontClass} relative isolate min-h-screen w-full overflow-hidden text-zinc-900 flex items-center justify-center`}>
+      {/* Always-present base so a missing/broken video or image never leaves a blank box */}
+      <div className="absolute inset-0 -z-40 bg-gradient-to-br from-zinc-900 via-zinc-800 to-black" />
+
       {/* Background Video or Image */}
       {resolvedVideoUrl && !isVideoFallback ? (
         <video
           key={resolvedVideoUrl}
           src={resolvedVideoUrl}
-          poster={optimizedHeroImage || heroImage}
+          poster={posterUrl}
           className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
           autoPlay={canAutoPlayVideo}
           muted
@@ -107,13 +113,14 @@ export default function ComingSoon() {
           preload="auto"
           onError={() => setIsVideoFallback(true)}
         />
-      ) : (
+      ) : showImage ? (
         <img
-          src={optimizedHeroImage || heroImage || '/placeholder-hero.jpg'}
+          src={optimizedHeroImage || heroImage}
           alt="Coming Soon Background"
           className="absolute inset-0 -z-30 h-full w-full object-cover object-center"
+          onError={() => setIsImageFallback(true)}
         />
-      )}
+      ) : null}
 
       {/* Dark Overlay for readability */}
       <div className="absolute inset-0 -z-20 bg-black/40 backdrop-blur-[2px]" />
