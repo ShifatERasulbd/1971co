@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\CheckoutOrder;
 use App\Models\Product;
+use App\Mail\ThankYouEmail;
 use App\Services\FacebookConversionsApiService;
 use App\Services\ShippingRateService;
 use App\Services\VeeqoShippingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Stripe\StripeClient;
 
@@ -434,6 +436,15 @@ class CheckoutOrderController extends Controller
 
         $fbEventId = (string) ($validated['fb_event_id'] ?? '') ?: (string) Str::uuid();
         $this->sendPurchaseConversionEvent($order, $request, $fbEventId);
+
+        try {
+            Mail::to($order->email)->send(new ThankYouEmail($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send order thank-you email', [
+                'order_id' => $order->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Order created successfully',
