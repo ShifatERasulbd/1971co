@@ -11,7 +11,7 @@ export default defineConfig({
     plugins: [
         react(),
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.jsx', 'resources/js/backend/app.js'],
+            input: ['resources/css/app.css', 'resources/js/App.jsx', 'resources/js/backend/app.js'],
             refresh: true,
         }),
         tailwindcss(),

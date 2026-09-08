@@ -45,7 +45,7 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700,800,900" rel="stylesheet" />
 
-        @vite(['resources/css/app.css', 'resources/js/app.jsx'])
+        @vite(['resources/css/app.css', 'resources/js/App.jsx'])
     </head>
     <body class="bg-[#f4f2ed] text-zinc-950">
         <!-- Google Tag Manager (noscript) -->
