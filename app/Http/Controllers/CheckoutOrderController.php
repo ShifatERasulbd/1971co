@@ -381,6 +381,9 @@ class CheckoutOrderController extends Controller
             ], 422);
         }
 
+        $latestCharge = $paymentIntent->latest_charge ?? null;
+        $stripePaymentId = is_object($latestCharge) ? ($latestCharge->id ?? null) : $latestCharge;
+
         $paidAmount = (int) ($paymentIntent->amount ?? 0);
         if (abs($paidAmount - $expectedAmount) > 1) {
             return response()->json([
@@ -424,6 +427,7 @@ class CheckoutOrderController extends Controller
             'payment_provider' => 'stripe',
             'payment_status' => 'paid',
             'payment_intent_id' => $validated['payment_intent_id'],
+            'stripe_payment_id' => $stripePaymentId,
             'courier_service' => 'veeqo',
             'courier_sync_status' => 'pending',
         ]);
@@ -748,6 +752,8 @@ class CheckoutOrderController extends Controller
             'processingFee' => $processingFee,
             'processingfee' => $processingFee,
             'total' => (float) $order->total,
+            'payment_intent_id' => $order->payment_intent_id,
+            'stripe_payment_id' => $order->stripe_payment_id,
             'courier_service' => $order->courier_service,
             'courier_reference' => $order->courier_reference,
             'courier_sync_status' => $order->courier_sync_status,
@@ -896,6 +902,8 @@ class CheckoutOrderController extends Controller
             'processingFee' => $processingFee,
             'processingfee' => $processingFee,
             'total' => (float) $order->total,
+            'payment_intent_id' => $order->payment_intent_id,
+            'stripe_payment_id' => $order->stripe_payment_id,
             'courier_service' => $order->courier_service,
             'courier_reference' => $order->courier_reference,
             'courier_sync_status' => $order->courier_sync_status,

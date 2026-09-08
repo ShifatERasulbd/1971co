@@ -346,6 +346,7 @@ export default function Orders() {
                                 ) : null}
                             </th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Order #</th>
+                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Stripe Payment ID</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Customer</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Email</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Items</th>
@@ -382,6 +383,7 @@ export default function Orders() {
                                     ) : null}
                                 </td>
                                 <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.order_number}</td>
+                                <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.stripe_payment_id}</td>
                                 <td className="px-4 py-3 text-zinc-800">{order.first_name} {order.last_name}</td>
                                 <td className="px-4 py-3 text-zinc-500">{order.email}</td>
                                 <td className="px-4 py-3 text-center text-zinc-700">{order.items_count}</td>

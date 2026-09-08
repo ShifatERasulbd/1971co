@@ -32,6 +32,7 @@ class CheckoutOrder extends Model
         'state_tax',
         'stripe_charge',
         'processing_fee',
+        'stripe_payment_id',
         'total',
         'items',
         'payment_provider',
