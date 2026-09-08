@@ -1,6 +1,6 @@
 {{-- resources/views/thank-you.blade.php --}}
 <h2>Hi {{ $name }},</h2>
-<p>Thank you for your order! We appreciate your business.</p>
+<p>Thank you for your order on 1971co! We appreciate your interest.</p>
 @if($order)
 <p>Order #{{ $order->order_number }} — Total: ${{ number_format((float) $order->total, 2) }}</p>
 
