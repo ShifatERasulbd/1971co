@@ -46,6 +46,7 @@ class Product extends Model
         'weight',
         'position',
         'show_on_best_sellers',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -69,6 +70,7 @@ class Product extends Model
             'stock' => 'integer',
             'position' => 'integer',
             'show_on_best_sellers' => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
 }

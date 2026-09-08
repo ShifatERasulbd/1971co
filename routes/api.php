@@ -141,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/products/{product}', [ProductController::class, 'show']);
 	Route::post('/products', [ProductController::class, 'store']);
 	Route::put('/products/{product}', [ProductController::class, 'update']);
+	Route::patch('/products/{product}/toggle-status', [ProductController::class, 'toggleStatus']);
 	Route::delete('/products/{product}', [ProductController::class, 'destroy']);
 
 	// Order Management

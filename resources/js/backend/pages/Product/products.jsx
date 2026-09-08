@@ -17,7 +17,7 @@ import { useAppContext } from '@/context/AppContext';
 import { fetchColors } from '@/pages/Color/api';
 import { fetchSizes } from '@/pages/Size/api';
 
-import { deleteProduct, fetchProducts, reorderProducts, syncApiProducts } from './api';
+import { deleteProduct, fetchProducts, reorderProducts, syncApiProducts, toggleProductStatus } from './api';
 
 export default function Products() {
     const navigate = useNavigate();
@@ -31,6 +31,7 @@ export default function Products() {
     const [colorOptions, setColorOptions] = useState([]);
     const [sizeOptions, setSizeOptions] = useState([]);
     const [isReordering, setIsReordering] = useState(false);
+    const [togglingId, setTogglingId] = useState(null);
 
     const handleEdit = (productOrPayload) => {
         if (productOrPayload && typeof productOrPayload === 'object') {
@@ -164,6 +165,37 @@ export default function Products() {
         }
     };
 
+    const handleToggleStatus = async (product) => {
+        if (!product?.id) {
+            return;
+        }
+
+        const nextIsActive = !(product.is_active ?? true);
+        setTogglingId(product.id);
+
+        try {
+            await toggleProductStatus(product.id, nextIsActive);
+            setProducts((previous) =>
+                previous.map((item) =>
+                    Number(item.id) === Number(product.id) ? { ...item, is_active: nextIsActive } : item
+                )
+            );
+            toast.success(nextIsActive ? 'Product enabled successfully.' : 'Product disabled successfully.', {
+                style: {
+                    color: '#16a34a',
+                },
+            });
+        } catch (error) {
+            toast.error(error.message || 'Failed to update product status.', {
+                style: {
+                    color: '#dc2626',
+                },
+            });
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
     const handleReorderProducts = async (nextProducts = []) => {
         const normalizedNext = Array.isArray(nextProducts) ? nextProducts : [];
 
@@ -222,6 +254,8 @@ export default function Products() {
                         onSync={handleSyncProducts}
                         onReorder={handleReorderProducts}
                         isReordering={isReordering}
+                        onToggleStatus={handleToggleStatus}
+                        togglingId={togglingId}
                     />
                 </div>
 

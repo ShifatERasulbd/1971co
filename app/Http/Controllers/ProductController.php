@@ -85,6 +85,7 @@ class ProductController extends Controller
         }
 
         $products = Product::select($columns)
+            ->when(Schema::hasColumn('products', 'is_active'), fn ($query) => $query->where('is_active', true))
             ->orderByRaw('position IS NULL')
             ->orderBy('position')
             ->orderByDesc('created_at')
@@ -159,6 +160,7 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->select($columns)
+            ->when(Schema::hasColumn('products', 'is_active'), fn ($query) => $query->where('is_active', true))
             ->orderByRaw('position IS NULL')
             ->orderBy('position')
             ->orderByDesc('created_at')
@@ -592,6 +594,21 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product order updated successfully.',
+        ]);
+    }
+
+    public function toggleStatus(Request $request, Product $product): JsonResponse
+    {
+        $validated = $request->validate([
+            'is_active' => 'required|boolean',
+        ]);
+
+        $product->update(['is_active' => $validated['is_active']]);
+        $this->clearProductCache();
+
+        return response()->json([
+            'message' => $validated['is_active'] ? 'Product enabled successfully.' : 'Product disabled successfully.',
+            'product' => $product,
         ]);
     }
 

@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,6 +26,8 @@ export default function ProductTable({
     onSync,
     onReorder,
     isReordering,
+    onToggleStatus,
+    togglingId,
 }) {
     const [search, setSearch] = useState('');
     const [expandedGroups, setExpandedGroups] = useState({});
@@ -260,13 +263,14 @@ export default function ProductTable({
                                 <TableHead className="text-center">Size Chart</TableHead>
                                 <TableHead className="text-right">Stock</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
+                                <TableHead className="text-center">Status</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground">
                                         Loading products...
                                     </TableCell>
                                 </TableRow>
@@ -274,7 +278,7 @@ export default function ProductTable({
 
                             {!isLoading && products.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground">
                                         No products found.
                                     </TableCell>
                                 </TableRow>
@@ -282,7 +286,7 @@ export default function ProductTable({
 
                             {!isLoading && groupedProducts.length === 0 && products.length > 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground">
                                         No products match your search.
                                     </TableCell>
                                 </TableRow>
@@ -290,7 +294,7 @@ export default function ProductTable({
 
                             {!isLoading && hasActiveSearch && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="h-10 text-center text-xs text-muted-foreground">
+                                    <TableCell colSpan={13} className="h-10 text-center text-xs text-muted-foreground">
                                         Clear search to drag and reposition products.
                                     </TableCell>
                                 </TableRow>
@@ -361,6 +365,24 @@ export default function ProductTable({
                                                 <TableCell className="text-right">{primary.stock ?? 0}</TableCell>
                                                 <TableCell className="text-right">
                                                     {Number(primary.price || 0).toFixed(2)}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={togglingId === primary.id}
+                                                        onClick={() => onToggleStatus?.(primary)}
+                                                        onMouseDown={(event) => event.stopPropagation()}
+                                                        className={cn(
+                                                            'h-7 px-3 text-xs font-medium',
+                                                            (primary.is_active ?? true)
+                                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                                : 'border-muted-foreground/30 bg-muted text-muted-foreground hover:bg-muted/70',
+                                                        )}
+                                                    >
+                                                        {(primary.is_active ?? true) ? 'Enabled' : 'Disabled'}
+                                                    </Button>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
@@ -435,6 +457,23 @@ export default function ProductTable({
                                                         <TableCell className="text-right">{variant.stock ?? 0}</TableCell>
                                                         <TableCell className="text-right">
                                                             {Number(variant.price || 0).toFixed(2)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={togglingId === variant.id}
+                                                                onClick={() => onToggleStatus?.(variant)}
+                                                                className={cn(
+                                                                    'h-7 px-3 text-xs font-medium',
+                                                                    (variant.is_active ?? true)
+                                                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                                        : 'border-muted-foreground/30 bg-muted text-muted-foreground hover:bg-muted/70',
+                                                                )}
+                                                            >
+                                                                {(variant.is_active ?? true) ? 'Enabled' : 'Disabled'}
+                                                            </Button>
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             <div className="flex items-center justify-end gap-1">

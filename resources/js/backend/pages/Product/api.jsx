@@ -228,3 +228,14 @@ export async function reorderProducts(items = []) {
         }),
     });
 }
+
+export async function toggleProductStatus(id, isActive) {
+    return requestJson(`/api/products/${id}/toggle-status`, {
+        needsCsrf: true,
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_active: Boolean(isActive) }),
+    });
+}
