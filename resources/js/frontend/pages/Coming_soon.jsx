@@ -111,7 +111,7 @@
                 setErrorMessage('');
 
                 // Corrected 'arbellafashion.com' with an 'i'
-                if (emailInput.trim().toLowerCase() === 'it1@arbellafashion.com') {
+                if (emailInput.trim().toLowerCase() === 'zia@newatlantic.biz') {
                 localStorage.setItem('coming_soon_auth', 'true');
                 navigate('/home', { replace: true });
                 } else {
