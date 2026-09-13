@@ -16,7 +16,7 @@
                     <!-- Header -->
                     <tr>
                         <td align="center" style="background-color: #0f172a; padding: 32px 40px;">
-                            <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; letter-spacing: 0.5px;">1971co</h1>
+                            <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; letter-spacing: 0.5px;">1971Co</h1>
                         </td>
                     </tr>
 
@@ -124,7 +124,7 @@
                     <tr>
                         <td align="center" style="background-color: #f8fafc; padding: 24px; border-top: 1px solid #e2e8f0;">
                             <p style="font-size: 12px; color: #94a3b8; margin: 0;">
-                                &copy; {{ date('Y') }} 1971co. All rights reserved.
+                                &copy; {{ date('Y') }} 1971Co. All rights reserved.
                             </p>
                         </td>
                     </tr>

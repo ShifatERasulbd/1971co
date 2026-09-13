@@ -1023,7 +1023,7 @@ function CheckoutForm() {
                                 {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
                             </div>
                            
-                            <div>
+                            {/* <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
                                     City <span className="text-red-500">*</span>
                                 </label>
@@ -1060,6 +1060,35 @@ function CheckoutForm() {
                                         </option>
                                     ))}
                                 </select>
+                                {fieldErrors.city ? <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p> : null}
+                            </div> */}
+
+                            <div>
+                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                    City <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.city}
+                                    onChange={(event) => {
+                                        const nextCity = event.target.value;
+                                        setForm((previous) => ({
+                                            ...previous,
+                                            city: nextCity,
+                                            postal_code: '',
+                                        }));
+
+                                        setFieldErrors((previous) => {
+                                            const next = { ...previous };
+                                            delete next.city;
+                                            delete next.postal_code;
+                                            return next;
+                                        });
+                                    }}
+                                    placeholder={!form.state ? 'Select state first' : 'Enter city'}
+                                    className={inputClass('city')}
+                                    disabled={!form.state}
+                                />
                                 {fieldErrors.city ? <p className="mt-1 text-xs text-red-500">{fieldErrors.city}</p> : null}
                             </div>
                           
