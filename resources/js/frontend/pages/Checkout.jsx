@@ -536,6 +536,60 @@ function CheckoutForm() {
         };
     }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
 
+
+
+
+
+
+
+
+
+
+
+    // Place this inside your component (or extract as a reusable Combobox)
+const [stateQuery, setStateQuery] = useState('');
+const [isOpen, setIsOpen] = useState(false);
+const containerRef = useRef(null);
+
+// Sync display query if form.state changes programmatically
+useEffect(() => {
+    const matched = stateOptions.find(s => s.state_code === form.state || s.state_name === form.state);
+    setStateQuery(matched ? `${matched.state_name} (${matched.state_code})` : form.state || '');
+}, [form.state, stateOptions]);
+
+// Filter options based on input
+const filteredStates = stateOptions.filter((s) => {
+    const q = stateQuery.toLowerCase();
+    return s.state_name.toLowerCase().includes(q) || s.state_code.toLowerCase().includes(q);
+});
+
+// Close dropdown on outside click
+useEffect(() => {
+    const handleClickOutside = (e) => {
+        if (containerRef.current && !containerRef.current.contains(e.target)) {
+            setIsOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+}, []);
+
+const handleStateChange = (nextStateValue) => {
+    setForm((previous) => ({
+        ...previous,
+        state: nextStateValue,
+        city: '',
+        postal_code: '',
+    }));
+    setFieldErrors((previous) => {
+        const next = { ...previous };
+        delete next.state;
+        delete next.city;
+        delete next.postal_code;
+        return next;
+    });
+};
+
     useEffect(() => {
         if (!hasCompleteShippingAddress || normalizedItems.length === 0) {
             setShippingOptions([]);
@@ -987,41 +1041,46 @@ function CheckoutForm() {
                                 />
                                 {fieldErrors.address_line_2 ? <p className="mt-1 text-xs text-red-500">{fieldErrors.address_line_2}</p> : null}
                             </div>
-                             <div>
-                                <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
-                                    State <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={form.state}
-                                    onChange={(event) => {
-                                        const nextState = event.target.value;
-                                        setForm((previous) => ({
-                                            ...previous,
-                                            state: nextState,
-                                            city: '',
-                                            postal_code: '',
-                                        }));
+                            <div className="relative" ref={containerRef}>
+    <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+        State <span className="text-red-500">*</span>
+    </label>
+    <input
+        type="text"
+        value={isLoadingStates ? 'Loading states...' : stateQuery}
+        disabled={isLoadingStates}
+        placeholder="Type or select state"
+        onFocus={() => setIsOpen(true)}
+        onChange={(event) => {
+            const val = event.target.value;
+            setStateQuery(val);
+            setIsOpen(true);
+            // Allow manual text writing directly to form state
+            handleStateChange(val);
+        }}
+        className={inputClass('state')}
+    />
 
-                                        setFieldErrors((previous) => {
-                                            const next = { ...previous };
-                                            delete next.state;
-                                            delete next.city;
-                                            delete next.postal_code;
-                                            return next;
-                                        });
-                                    }}
-                                    className={inputClass('state')}
-                                    disabled={isLoadingStates}
-                                >
-                                    <option value="">{isLoadingStates ? 'Loading states...' : 'Select state'}</option>
-                                    {stateOptions.map((state) => (
-                                        <option key={state.state_code} value={state.state_code}>
-                                            {state.state_name} ({state.state_code})
-                                        </option>
-                                    ))}
-                                </select>
-                                {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
-                            </div>
+    {isOpen && !isLoadingStates && filteredStates.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white border border-zinc-200 shadow-lg text-sm">
+            {filteredStates.map((state) => (
+                <li
+                    key={state.state_code}
+                    onClick={() => {
+                        handleStateChange(state.state_code);
+                        setStateQuery(`${state.state_name} (${state.state_code})`);
+                        setIsOpen(false);
+                    }}
+                    className="cursor-pointer px-3 py-2 hover:bg-zinc-100 text-zinc-800"
+                >
+                    {state.state_name} <span className="text-zinc-500">({state.state_code})</span>
+                </li>
+            ))}
+        </ul>
+    )}
+
+    {fieldErrors.state ? <p className="mt-1 text-xs text-red-500">{fieldErrors.state}</p> : null}
+</div>
                            
                             {/* <div>
                                 <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
