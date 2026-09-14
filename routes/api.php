@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApiProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CanadaWarehouseStockController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ColorController;
@@ -88,6 +89,8 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::get('/customer/orders/{checkoutOrder}', [CheckoutOrderController::class, 'customerShow']);
 		Route::put('/customer/orders/{checkoutOrder}/cancel', [CheckoutOrderController::class, 'customerCancel']);
 		Route::put('/customer/profile', [AuthController::class, 'updateCustomerProfile']);
+		Route::get('/customer/cart', [CartController::class, 'show']);
+		Route::put('/customer/cart', [CartController::class, 'sync']);
 	});
 
 	Route::middleware('user-type:admin')->group(function () {

@@ -1,9 +1,109 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
+const CART_SYNC_DEBOUNCE_MS = 600;
 
 const CartContext = createContext(null);
+
+function readCookie(name) {
+    const escapedName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+async function fetchAuthenticatedUserId() {
+    try {
+        const response = await fetch('/api/user', {
+            credentials: 'include',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = await response.json().catch(() => null);
+        return payload?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+async function fetchServerCartItems() {
+    try {
+        const response = await fetch('/api/customer/cart', {
+            credentials: 'include',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = await response.json().catch(() => null);
+        return Array.isArray(payload?.items) ? payload.items : [];
+    } catch {
+        return null;
+    }
+}
+
+async function pushServerCartItems(items) {
+    try {
+        await fetch('/sanctum/csrf-cookie', {
+            credentials: 'include',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        const xsrfToken = readCookie('XSRF-TOKEN');
+
+        await fetch('/api/customer/cart', {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+            },
+            body: JSON.stringify({ items }),
+        });
+    } catch {
+        // Ignore sync failures; localStorage still holds the cart for this device.
+    }
+}
+
+// Combine the account's server cart with this device's local cart without
+// doubling quantities on reload (same lineId on both sides keeps the higher
+// quantity instead of summing), while still picking up items added elsewhere.
+function mergeCartItems(serverItems, localItems) {
+    const merged = new Map();
+
+    for (const item of serverItems) {
+        if (item?.lineId) {
+            merged.set(item.lineId, item);
+        }
+    }
+
+    for (const item of localItems) {
+        if (!item?.lineId) {
+            continue;
+        }
+
+        const existing = merged.get(item.lineId);
+        if (!existing) {
+            merged.set(item.lineId, item);
+            continue;
+        }
+
+        merged.set(item.lineId, {
+            ...existing,
+            quantity: Math.max(Number(existing.quantity) || 0, Number(item.quantity) || 0),
+        });
+    }
+
+    return Array.from(merged.values());
+}
 
 function toNumberPrice(value) {
     if (Number.isFinite(Number(value))) {
@@ -133,21 +233,56 @@ function normalizeCartItem(product, options = {}) {
 export function CartProvider({ children }) {
     const [items, setItems] = useState([]);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const isServerSyncEnabledRef = useRef(false);
+    const syncTimeoutRef = useRef(null);
 
+    // Load this device's local cart, then reconcile it against the logged-in
+    // account's server cart so every device the customer logs into shares one cart.
     useEffect(() => {
-        try {
-            const raw = window.localStorage.getItem(CART_STORAGE_KEY);
-            if (!raw) {
+        let isCancelled = false;
+
+        function readLocalItems() {
+            try {
+                const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+                if (!raw) {
+                    return [];
+                }
+
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        const localItems = readLocalItems();
+        if (localItems.length > 0) {
+            setItems(localItems);
+        }
+
+        async function reconcileWithServer() {
+            const userId = await fetchAuthenticatedUserId();
+            if (isCancelled || !userId) {
                 return;
             }
 
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-                setItems(parsed);
+            isServerSyncEnabledRef.current = true;
+
+            const serverItems = await fetchServerCartItems();
+            if (isCancelled || serverItems === null) {
+                return;
             }
-        } catch {
-            // Keep empty cart when storage is unavailable.
+
+            const mergedItems = mergeCartItems(serverItems, localItems);
+            setItems(mergedItems);
+            pushServerCartItems(mergedItems);
         }
+
+        reconcileWithServer();
+
+        return () => {
+            isCancelled = true;
+        };
     }, []);
 
     useEffect(() => {
@@ -156,6 +291,22 @@ export function CartProvider({ children }) {
         } catch {
             // Ignore persistence failures.
         }
+
+        if (syncTimeoutRef.current) {
+            window.clearTimeout(syncTimeoutRef.current);
+        }
+
+        syncTimeoutRef.current = window.setTimeout(() => {
+            if (isServerSyncEnabledRef.current) {
+                pushServerCartItems(items);
+            }
+        }, CART_SYNC_DEBOUNCE_MS);
+
+        return () => {
+            if (syncTimeoutRef.current) {
+                window.clearTimeout(syncTimeoutRef.current);
+            }
+        };
     }, [items]);
 
     function addToCart(product, options = {}) {
