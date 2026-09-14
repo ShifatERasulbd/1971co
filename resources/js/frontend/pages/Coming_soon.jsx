@@ -152,11 +152,9 @@
 
             {/* Content Container */}
             <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center px-6 py-16 text-center text-white">
-                <h1 className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-200 sm:text-base mb-3">
-                Launching Soon
-                </h1>
+                
                 <p className="text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl mb-8">
-                We Are Crafting Something Timeless
+                 Launching Soon
                 </p>
 
                 {/* Countdown Timer */}
