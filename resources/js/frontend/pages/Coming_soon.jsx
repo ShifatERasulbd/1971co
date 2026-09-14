@@ -16,7 +16,7 @@
         const [errorMessage, setErrorMessage] = useState('');
 
         // Target launch date: 15 Sep 2026
-        const launchDate = new Date('2026-09-15T00:00:00').getTime();
+        const launchDate = new Date('2026-09-21T00:00:00').getTime();
         const [timeLeft, setTimeLeft] = useState({
             days: 0,
             hours: 0,
