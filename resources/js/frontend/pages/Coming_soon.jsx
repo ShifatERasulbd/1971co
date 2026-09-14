@@ -200,7 +200,7 @@
                 )}
 
                 <div className="text-sm sm:text-base text-zinc-300 font-medium">
-                Official Launch Date: <span className="text-white font-semibold">15 September 2026</span>
+                Official Launch Date: <span className="text-white font-semibold">21 September 2026</span>
                 </div>
             </div>
             </section>
