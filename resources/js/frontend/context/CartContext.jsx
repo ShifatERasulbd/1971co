@@ -2,9 +2,26 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { trackPixelEvent } from '../../utils/facebookPixel';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
+const CART_SYNCED_USER_KEY = 'frontend-cart-synced-user-v1';
 const CART_SYNC_DEBOUNCE_MS = 600;
 
 const CartContext = createContext(null);
+
+function readSyncedUserId() {
+    try {
+        return window.localStorage.getItem(CART_SYNCED_USER_KEY) || '';
+    } catch {
+        return '';
+    }
+}
+
+function writeSyncedUserId(userId) {
+    try {
+        window.localStorage.setItem(CART_SYNCED_USER_KEY, String(userId));
+    } catch {
+        // Ignore persistence failures.
+    }
+}
 
 function readCookie(name) {
     const escapedName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
@@ -273,9 +290,20 @@ export function CartProvider({ children }) {
                 return;
             }
 
-            const mergedItems = mergeCartItems(serverItems, localItems);
-            setItems(mergedItems);
-            pushServerCartItems(mergedItems);
+            // Only migrate this device's local/guest cart into the account the first
+            // time it syncs; after that the server is authoritative so removals or
+            // edits made on other devices aren't resurrected by a stale local copy.
+            const isFirstSyncForThisUser = readSyncedUserId() !== String(userId);
+
+            if (isFirstSyncForThisUser) {
+                const mergedItems = mergeCartItems(serverItems, localItems);
+                setItems(mergedItems);
+                pushServerCartItems(mergedItems);
+            } else {
+                setItems(serverItems);
+            }
+
+            writeSyncedUserId(userId);
         }
 
         reconcileWithServer();
