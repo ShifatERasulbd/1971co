@@ -1,5 +1,5 @@
-import { ArrowLeft, Gauge, ShoppingBag, UserCircle2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { ArrowLeft, Gauge, LogOut, ShoppingBag, UserCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -11,12 +11,19 @@ import Footer from '../../frontend/components/Footer';
 import Header from '../../frontend/components/Header';
 import { CartProvider } from '../../frontend/context/CartContext';
 
+function readCookie(name) {
+    const escapedName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
 export default function AppLayout() {
     const { pageTitle, user, setUser } = useAppContext();
     const location = useLocation();
     const navigate = useNavigate();
-    const isCustomerRoute = location.pathname.startsWith('/user/');
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+    const isCustomerRoute = location.pathname.startsWith('/user/');
     const isCustomer = user?.user_type === 'customer';
     const dashboardPath = isCustomer ? '/user/dashboard' : '/admin/dashboard';
     const warehouseName = user?.warehouse?.name;
@@ -27,6 +34,31 @@ export default function AppLayout() {
         location.pathname === '/user/dashboard'
         || location.pathname === '/user/orders'
         || location.pathname === '/user/edit-profile';
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+
+        try {
+            const xsrfToken = readCookie('XSRF-TOKEN');
+            await fetch('/api/logout', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+                },
+            });
+        } catch (error) {
+            console.error('Logout request failed:', error);
+        } finally {
+            setUser(null);
+            setIsLoggingOut(false);
+            navigate('/login', { replace: true });
+        }
+    };
 
     useEffect(() => {
         let ignore = false;
@@ -217,6 +249,16 @@ export default function AppLayout() {
                                         <ShoppingBag className="size-4" />
                                         Orders
                                     </NavLink>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleLogout}
+                                        disabled={isLoggingOut}
+                                        className="mt-1 flex w-full items-center gap-2 rounded px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+                                    >
+                                        <LogOut className="size-4" />
+                                        {isLoggingOut ? 'Logging out...' : 'Logout'}
+                                    </button>
                                 </nav>
                             </aside>
 

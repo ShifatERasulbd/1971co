@@ -29,9 +29,14 @@ use App\Http\Controllers\UsLocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\AuthOtpController;
 use App\Http\Controllers\CompliancePageController;
 use App\Http\Controllers\FacebookPixelController;
 
+// OTP validation
+Route::post('/login/send-otp', [AuthOtpController::class, 'sendOtp']);
+Route::post('/login/verify-otp', [AuthOtpController::class, 'verifyOtp']);
+Route::middleware('auth:sanctum')->post('/logout', [AuthOtpController::class, 'logout']);
 
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'throttle:6,1']);
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
