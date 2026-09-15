@@ -26,7 +26,7 @@ export default function ShopHeroSection() {
                     </p>
 
                     <h1 className="font-serif text-[clamp(3rem,8vw,7.2rem)] uppercase leading-none tracking-[0.02em] text-white drop-shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
-                        Shop Left Sidebar
+                        Shop
                     </h1>
                 </div>
             </div>
