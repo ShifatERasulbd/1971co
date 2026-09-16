@@ -15,6 +15,7 @@ const initialForm = {
     location: '',
     currency: '',
     google_analytics_id: '',
+    microsoft_clarity_id: '',
     social_media: [],
     frontend_utils: {
         timeless_font_family: '',
@@ -84,6 +85,7 @@ export default function EditSettings() {
                     location: setting.payload?.location || '',
                     currency: setting.payload?.currency || '',
                     google_analytics_id: setting.payload?.google_analytics_id || '',
+                    microsoft_clarity_id: setting.payload?.microsoft_clarity_id || '',
                     social_media: Array.isArray(setting.payload?.social_media)
                         ? setting.payload.social_media.map((item) => ({
                               name: item?.name || '',

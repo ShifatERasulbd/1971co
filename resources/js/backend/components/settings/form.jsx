@@ -356,6 +356,21 @@ export default function SettingsForm({
                                 </p>
                                 {errors.google_analytics_id && <p className="text-xs text-destructive">{errors.google_analytics_id[0]}</p>}
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="microsoft-clarity-id">Microsoft Clarity Project ID</Label>
+                                <Input
+                                    id="microsoft-clarity-id"
+                                    name="microsoft_clarity_id"
+                                    value={form.microsoft_clarity_id || ''}
+                                    onChange={onChange}
+                                    placeholder="xxxxxxxxxx"
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Enter your Microsoft Clarity project ID to enable session recording/heatmaps.
+                                </p>
+                                {errors.microsoft_clarity_id && <p className="text-xs text-destructive">{errors.microsoft_clarity_id[0]}</p>}
+                            </div>
                         </div>
                     )}
 

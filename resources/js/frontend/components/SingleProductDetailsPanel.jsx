@@ -295,7 +295,7 @@ export default function SingleProductDetailsPanel({
                         onClick={onAddToCart}
                         className="inline-flex h-[52px] min-w-0 flex-1 cursor-pointer items-center justify-center bg-zinc-900 px-4 text-[0.95rem] font-semibold uppercase tracking-[0.05em] text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 sm:px-6 sm:text-[1.05rem]"
                     >
-                        Add To Cart
+                        Add to cart
                     </button>
 
                   

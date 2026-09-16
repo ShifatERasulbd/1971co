@@ -89,6 +89,8 @@ class SettingsController extends Controller
             'email' => 'nullable|email|max:255',
             'location' => 'nullable|string|max:4000',
             'currency' => 'nullable|string|max:50',
+            'google_analytics_id' => 'nullable|string|max:64',
+            'microsoft_clarity_id' => 'nullable|string|max:64',
             'frontend_utils' => 'nullable|array',
             'frontend_utils.timeless_font_family' => 'nullable|string|max:255',
             'frontend_utils.features_font_family' => 'nullable|string|max:255',
@@ -137,6 +139,8 @@ class SettingsController extends Controller
             'email' => 'nullable|email|max:255',
             'location' => 'nullable|string|max:4000',
             'currency' => 'nullable|string|max:50',
+            'google_analytics_id' => 'nullable|string|max:64',
+            'microsoft_clarity_id' => 'nullable|string|max:64',
             'frontend_utils' => 'nullable|array',
             'frontend_utils.timeless_font_family' => 'nullable|string|max:255',
             'frontend_utils.features_font_family' => 'nullable|string|max:255',
@@ -248,6 +252,8 @@ class SettingsController extends Controller
             'email' => (string) ($validated['email'] ?? ($existingPayload['email'] ?? '')),
             'location' => (string) ($validated['location'] ?? ($existingPayload['location'] ?? '')),
             'currency' => (string) ($validated['currency'] ?? ($existingPayload['currency'] ?? '')),
+            'google_analytics_id' => (string) ($validated['google_analytics_id'] ?? ($existingPayload['google_analytics_id'] ?? '')),
+            'microsoft_clarity_id' => (string) ($validated['microsoft_clarity_id'] ?? ($existingPayload['microsoft_clarity_id'] ?? '')),
             'social_media' => $normalizedSocial,
             'frontend_utils' => $this->normalizeFrontendUtils(
                 is_array($validated['frontend_utils'] ?? null)

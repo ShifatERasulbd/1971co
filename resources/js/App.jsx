@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigat
 import { Toaster } from 'sonner';
 
 import CartDrawer from './frontend/components/CartDrawer.jsx';
+import CookieConsentBanner from './frontend/components/CookieConsentBanner.jsx';
 import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
@@ -12,6 +13,8 @@ import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidd
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
 import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
 import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel.js';
+import { initializeMicrosoftClarity } from './utils/microsoftClarity.js';
+import { hasAnalyticsConsent } from './utils/consent.js';
 
 preventInvalidBodyAriaHidden();
 
@@ -93,6 +96,7 @@ function ensureFaviconLink() {
 function DocumentBrandingManager() {
     const { pathname } = useLocation();
     const [settings, setSettings] = React.useState(() => getSettingsPayload() || {});
+    const [consentVersion, setConsentVersion] = React.useState(0);
 
     useEffect(() => {
         const unsubscribe = onSettingsUpdated((payload) => {
@@ -123,14 +127,20 @@ function DocumentBrandingManager() {
 
     useEffect(() => {
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
-        if (gaId && !window.__gaInitialized) {
+        if (gaId && !window.__gaInitialized && hasAnalyticsConsent()) {
             initializeGoogleAnalytics(gaId);
             window.__gaInitialized = true;
         }
-    }, [settings]);
+
+        const clarityId = settings?.microsoft_clarity_id || '';
+        if (clarityId && !window.__clarityInitialized && hasAnalyticsConsent()) {
+            initializeMicrosoftClarity(clarityId);
+            window.__clarityInitialized = true;
+        }
+    }, [settings, consentVersion]);
 
     useEffect(() => {
-        if (window.__fbPixelInitialized) {
+        if (window.__fbPixelInitialized || !hasAnalyticsConsent()) {
             return;
         }
 
@@ -152,9 +162,17 @@ function DocumentBrandingManager() {
         return () => {
             isCancelled = true;
         };
-    }, []);
+    }, [consentVersion]);
 
-    return null;
+    function handleConsentDecision(value) {
+        if (value !== 'accepted') {
+            return;
+        }
+
+        setConsentVersion((previous) => previous + 1);
+    }
+
+    return <CookieConsentBanner onDecision={handleConsentDecision} />;
 }
 
 function withPageFallback(Component) {

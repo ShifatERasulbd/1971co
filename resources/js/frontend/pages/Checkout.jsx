@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
 import { trackPixelEvent } from '../../utils/facebookPixel';
+import { trackAddPaymentInfo, trackAddShippingInfo, trackBeginCheckout, trackPurchase } from '../../utils/dataLayer';
 
 const fallbackImage = '';
 
@@ -270,6 +271,9 @@ function CheckoutForm() {
         && String(form.country || '').trim(),
     ), [form.state, form.city, form.postal_code, form.country]);
 
+    const lastShippingInfoEventCodeRef = useRef('');
+    const hasFiredPaymentInfoEventRef = useRef(false);
+
     const shipping = useMemo(() => {
         const value = Number(quotedShipping);
         return Number.isFinite(value) && value > 0 ? value : 0;
@@ -314,6 +318,7 @@ function CheckoutForm() {
             value: subtotal,
             num_items: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
         });
+        trackBeginCheckout(normalizedItems, subtotal);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -674,6 +679,24 @@ const handleStateChange = (nextStateValue) => {
     }, [form.address_line_1, form.city, form.country, form.first_name, form.last_name, form.phone, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems]);
 
     useEffect(() => {
+        if (!selectedShippingOptionCode || lastShippingInfoEventCodeRef.current === selectedShippingOptionCode) {
+            return;
+        }
+
+        lastShippingInfoEventCodeRef.current = selectedShippingOptionCode;
+        const option = shippingOptions.find((rate) => rate.code === selectedShippingOptionCode);
+        trackAddShippingInfo(normalizedItems, total, option?.service_name || option?.name || selectedShippingOptionCode);
+    }, [selectedShippingOptionCode, shippingOptions, normalizedItems, total]);
+
+    function handleCardElementChange(event) {
+        if (event?.complete && !hasFiredPaymentInfoEventRef.current) {
+            hasFiredPaymentInfoEventRef.current = true;
+            trackAddPaymentInfo(normalizedItems, total, 'card');
+        }
+    }
+
+
+    useEffect(() => {
         const city = String(form.city || '').trim();
         const state = String(form.state || '').trim();
         const postalCode = String(form.postal_code || '').trim();
@@ -932,6 +955,14 @@ const handleStateChange = (nextStateValue) => {
                 num_items: normalizedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
                 order_id: String(payload?.order_number || ''),
             }, payload?.fb_event_id || fbEventId);
+
+            trackPurchase({
+                transactionId: String(payload?.order_number || ''),
+                value: total,
+                tax,
+                shipping,
+                items: normalizedItems,
+            });
 
             clearCart();
             toast.success('Payment successful and order placed');
@@ -1301,7 +1332,7 @@ const handleStateChange = (nextStateValue) => {
                                 Card Information <span className="text-red-500">*</span>
                             </label>
                             <div className="min-h-11 border border-zinc-200 bg-white px-3 py-3 transition-colors hover:border-zinc-400 focus-within:border-zinc-900">
-                                <CardElement options={cardElementOptions} />
+                                <CardElement options={cardElementOptions} onChange={handleCardElementChange} />
                             </div>
                         </div>
                     </div>
@@ -1325,7 +1356,7 @@ const handleStateChange = (nextStateValue) => {
                         disabled={isSubmitting || !stripe || !elements  || isFetchingTax || (subtotal > 0 && hasCompleteShippingAddress && shippingError !== '') || (subtotal > 0 && hasCompleteShippingAddress && taxError !== '')}
                         className="mt-6 inline-flex h-11 w-full items-center justify-center bg-zinc-900 text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay & Place Order'}
+                        {isSubmitting ? 'Processing Payment...' : !stripe || !elements ? 'Loading Secure Payment...' : 'Pay and place order'}
                     </button>
                 </aside>
             </div>

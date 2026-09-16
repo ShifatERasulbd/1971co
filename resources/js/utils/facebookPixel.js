@@ -36,6 +36,9 @@ export function initializeFacebookPixel(pixelId) {
 
     try {
         injectPixelScript();
+        // Disable Meta's automatic button-click detection so only our explicit
+        // trackPixelEvent() calls (AddToCart, Purchase, etc.) are sent.
+        window.fbq('set', 'autoConfig', false, pixelId);
         window.fbq('init', pixelId);
         isInitialized = true;
         return true;

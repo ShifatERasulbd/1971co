@@ -1,2 +1,8 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /user
+Disallow: /checkout
+Disallow: /order-confirmation
+Disallow: /api/
+
+Sitemap: https://1971co.com/sitemap.xml

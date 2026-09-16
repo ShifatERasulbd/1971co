@@ -15,6 +15,7 @@ const initialForm = {
     location: '',
     currency: '',
     google_analytics_id: '',
+    microsoft_clarity_id: '',
     social_media: [],
     frontend_utils: {
         timeless_font_family: '',

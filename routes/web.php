@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\SitemapController;
 use App\Models\Product;
 use App\Models\Settings;
 use Illuminate\Support\Facades\Route;
@@ -152,6 +153,7 @@ $renderHome = static function (?Product $product = null) use ($buildHomeMeta) {
 };
 
 Route::get('/media/optimize', [MediaController::class, 'optimize']);
+Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
 Route::get('/', function () use ($renderHome) {
     return $renderHome();

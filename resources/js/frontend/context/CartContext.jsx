@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { trackPixelEvent } from '../../utils/facebookPixel';
+import { trackAddToCart, trackViewCart } from '../../utils/dataLayer';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
 const CART_SYNCED_USER_KEY = 'frontend-cart-synced-user-v1';
@@ -361,6 +362,7 @@ export function CartProvider({ children }) {
             currency: 'USD',
             value: nextItem.priceValue * nextItem.quantity,
         });
+        trackAddToCart(nextItem);
 
         return nextItem;
     }
@@ -386,6 +388,7 @@ export function CartProvider({ children }) {
 
     function openCartDrawer() {
         setIsDrawerOpen(true);
+        trackViewCart(items, subtotal);
     }
 
     function closeCartDrawer() {
