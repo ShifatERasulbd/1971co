@@ -23,8 +23,7 @@ export default function CookieConsentBanner({ onDecision }) {
         <div className="fixed inset-x-0 bottom-0 z-[999] border-t border-zinc-200 bg-white/95 px-5 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur sm:px-8">
             <div className="mx-auto flex w-full max-w-[1500px] flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[0.85rem] text-zinc-700">
-                    We use cookies and similar technologies (analytics, advertising) to improve your experience. You can
-                    accept or decline non-essential cookies at any time.
+                   We use cookies to improve your experience. You can manage your cookie preferences at any time.
                 </p>
                 <div className="flex shrink-0 gap-2">
                     <button

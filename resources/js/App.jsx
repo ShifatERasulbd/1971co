@@ -14,7 +14,6 @@ import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from '
 import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
 import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel.js';
 import { initializeMicrosoftClarity } from './utils/microsoftClarity.js';
-import { hasAnalyticsConsent } from './utils/consent.js';
 
 preventInvalidBodyAriaHidden();
 
@@ -96,7 +95,6 @@ function ensureFaviconLink() {
 function DocumentBrandingManager() {
     const { pathname } = useLocation();
     const [settings, setSettings] = React.useState(() => getSettingsPayload() || {});
-    const [consentVersion, setConsentVersion] = React.useState(0);
 
     useEffect(() => {
         const unsubscribe = onSettingsUpdated((payload) => {
@@ -127,20 +125,20 @@ function DocumentBrandingManager() {
 
     useEffect(() => {
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
-        if (gaId && !window.__gaInitialized && hasAnalyticsConsent()) {
+        if (gaId && !window.__gaInitialized) {
             initializeGoogleAnalytics(gaId);
             window.__gaInitialized = true;
         }
 
         const clarityId = settings?.microsoft_clarity_id || '';
-        if (clarityId && !window.__clarityInitialized && hasAnalyticsConsent()) {
+        if (clarityId && !window.__clarityInitialized) {
             initializeMicrosoftClarity(clarityId);
             window.__clarityInitialized = true;
         }
-    }, [settings, consentVersion]);
+    }, [settings]);
 
     useEffect(() => {
-        if (window.__fbPixelInitialized || !hasAnalyticsConsent()) {
+        if (window.__fbPixelInitialized) {
             return;
         }
 
@@ -162,14 +160,10 @@ function DocumentBrandingManager() {
         return () => {
             isCancelled = true;
         };
-    }, [consentVersion]);
+    }, []);
 
-    function handleConsentDecision(value) {
-        if (value !== 'accepted') {
-            return;
-        }
-
-        setConsentVersion((previous) => previous + 1);
+    function handleConsentDecision() {
+        // Consent no longer gates tracking init; banner is informational only.
     }
 
     return <CookieConsentBanner onDecision={handleConsentDecision} />;
