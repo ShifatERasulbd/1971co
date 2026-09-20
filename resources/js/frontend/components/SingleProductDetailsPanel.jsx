@@ -104,7 +104,7 @@ export default function SingleProductDetailsPanel({
 
     const displaySizes = Array.isArray(product.sizes) && product.sizes.length > 0
         ? product.sizes
-        : ['One Size'];
+        : (product.sizesReady === false ? [] : ['One Size']);
     const selectedColorLabel = useMemo(() => {
         const match = displayColors.find(
             (color) => String(color.label || '').trim().toLowerCase() === String(selectedColor || '').trim().toLowerCase(),

@@ -131,6 +131,11 @@ function resolveSizeDisplayName(value, sizeNameLookup = {}) {
         return '';
     }
 
+    // Hide raw size ids until the lookup has loaded instead of flashing the id.
+    if (Object.keys(sizeNameLookup).length === 0) {
+        return '';
+    }
+
     return sizeNameLookup[token] || token;
 }
 
@@ -376,6 +381,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
     const [colorLookup, setColorLookup] = useState({});
     const [colorRecords, setColorRecords] = useState([]);
     const [sizeNameLookup, setSizeNameLookup] = useState({});
+    const [isSizeLookupReady, setIsSizeLookupReady] = useState(false);
     const [isColorLookupReady, setIsColorLookupReady] = useState(false);
     const hasRequestedColor = String(initialColor || '').trim() !== '';
 
@@ -518,6 +524,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                 if (!response.ok) {
                     if (!ignore) {
                         setSizeNameLookup({});
+                        setIsSizeLookupReady(true);
                     }
                     return;
                 }
@@ -541,10 +548,12 @@ export default function SingleProductMainSection({ product, initialColor = '' })
 
                 if (!ignore) {
                     setSizeNameLookup(nextLookup);
+                    setIsSizeLookupReady(true);
                 }
             } catch {
                 if (!ignore) {
                     setSizeNameLookup({});
+                    setIsSizeLookupReady(true);
                 }
             }
         }
@@ -704,6 +713,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                                         : {},
                                 colors: colors.map((color) => ({ label: color, value: color })),
                                 sizes,
+                                sizesReady: isSizeLookupReady,
                             }}
                             colorLookup={colorLookup}
                             colorRecords={colorRecords}
