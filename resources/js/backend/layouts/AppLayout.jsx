@@ -56,7 +56,7 @@ export default function AppLayout() {
         } finally {
             setUser(null);
             setIsLoggingOut(false);
-            navigate('/login', { replace: true });
+            window.location.href = '/login';
         }
     };
 
