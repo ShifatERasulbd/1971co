@@ -15,8 +15,8 @@
         const [emailInput, setEmailInput] = useState('');
         const [errorMessage, setErrorMessage] = useState('');
 
-        // Target launch date: 15 Sep 2026
-        const launchDate = new Date('2026-09-21T00:00:00').getTime();
+        // Target launch: 21 Sep 2026, 12:00 AM Eastern Time (Massachusetts, EDT = UTC-4)
+const launchDate = new Date('2026-09-21T00:00:00-04:00').getTime();
         const [timeLeft, setTimeLeft] = useState({
             days: 0,
             hours: 0,

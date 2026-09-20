@@ -34,7 +34,7 @@
                         <td style="padding: 0 40px 40px 40px;">
                             <h2 style="font-size: 28px; font-family: Georgia, serif; font-weight: normal; color: #0f172a; margin-top: 0; margin-bottom: 16px; line-height: 1.2;">Thank you for your purchase!</h2>
                             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-top: 0; margin-bottom: 32px;">
-                                Hi {{ $name }}, your order has shipped and is on its way via UPS. We’ll send a delivery update as soon as it arrives.
+                                Hi {{ $name }}, your order hasbeen confirmed. We'll send a delivery update as soon as it arrives.
                             </p>
 
                             @if($order)

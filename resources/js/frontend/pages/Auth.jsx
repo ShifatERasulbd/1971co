@@ -72,14 +72,14 @@ export default function AuthPage() {
 
     return (
         <GoogleOAuthProvider clientId={googleClientId}>
-        <section className="bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
+        <section className="font-monstrate bg-[#f5f5f3] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
             <div className="mx-auto grid w-full max-w-[1500px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
                 <div
                     className={`mx-auto w-full max-w-[560px] transition-all duration-500 ease-out lg:will-change-transform ${
                         swapSides ? 'lg:order-2 lg:translate-x-8' : 'lg:order-1 lg:translate-x-0'
                     }`}
                 >
-                    <h1 className="font-serif text-[2rem] uppercase tracking-[0.02em] text-zinc-900 sm:text-[2.4rem]">
+                    <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.02em] text-zinc-900 sm:text-[2.4rem]">
                         {isRegister ? 'Create Account' : 'Login'}
                     </h1>
 
