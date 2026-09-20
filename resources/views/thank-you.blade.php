@@ -146,7 +146,13 @@
                                 </tr>
                             </table>
                         </td>
-                        <td>Please do not reply to this email. To manage your orders please visit <a href="https://1971co.com/user/orders">Your Orders</td>
+                    </tr>
+
+                    <!-- Additional Notice Section -->
+                    <tr>
+                        <td align="center" style="background-color: #f9f8f6; padding: 0 40px 30px 40px; font-size: 13px; color: #64748b;">
+                            Please do not reply to this email. To manage your orders please visit <a href="https://1971co.com/user/orders" style="color: #0f172a; text-decoration: underline;">Your Orders</a>.
+                        </td>
                     </tr>
 
                     <!-- Footer -->
