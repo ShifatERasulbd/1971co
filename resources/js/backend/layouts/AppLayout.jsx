@@ -76,7 +76,12 @@ export default function AppLayout() {
                 if (!response.ok || ignore) {
                     if (!ignore && response.status === 401) {
                         setUser(null);
-                        navigate(isCustomerRoute ? '/login' : '/admin');
+                        // '/login' lives in the frontend bundle, so it needs a full navigation, not a client-side route change.
+                        if (isCustomerRoute) {
+                            window.location.href = '/login';
+                        } else {
+                            navigate('/admin');
+                        }
                     }
                     return;
                 }
