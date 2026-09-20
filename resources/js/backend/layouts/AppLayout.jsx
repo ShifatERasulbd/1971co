@@ -76,7 +76,7 @@ export default function AppLayout() {
                 if (!response.ok || ignore) {
                     if (!ignore && response.status === 401) {
                         setUser(null);
-                        navigate('/admin');
+                        navigate(isCustomerRoute ? '/login' : '/admin');
                     }
                     return;
                 }
@@ -97,7 +97,7 @@ export default function AppLayout() {
         return () => {
             ignore = true;
         };
-    }, [navigate, setUser, user]);
+    }, [isCustomerRoute, navigate, setUser, user]);
 
     useEffect(() => {
         if (!user) {
