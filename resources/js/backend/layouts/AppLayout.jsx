@@ -166,35 +166,11 @@ export default function AppLayout() {
     );
 
     if (!user) {
-        if (isCustomerRoute) {
-            return (
-                <CartProvider>
-                    <div className="flex min-h-screen flex-col bg-white text-zinc-950">
-                        <Header />
-                        <main className="mx-auto flex w-full max-w-[1700px] flex-1 px-6 py-6 sm:px-10 lg:px-16">
-                            <div className="grid w-full gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-                                <aside className="h-fit rounded border border-zinc-200 bg-white p-3">
-                                    <div className="space-y-2">
-                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
-                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
-                                        <div className="h-9 animate-pulse rounded bg-zinc-100" />
-                                    </div>
-                                </aside>
-                                <div className="rounded border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
-                                    Loading dashboard...
-                                </div>
-                            </div>
-                        </main>
-                        <Footer />
-                        <CartDrawer />
-                    </div>
-                </CartProvider>
-            );
-        }
-
+        // Show a neutral loading state (no header/sidebar/page chrome) until the auth check resolves,
+        // so unauthenticated visitors never see a flash of the protected page before being redirected.
         return (
-            <div className="min-h-screen bg-background px-6 py-10 text-sm text-muted-foreground">
-                Loading dashboard...
+            <div className="flex min-h-screen items-center justify-center bg-white text-sm text-zinc-500">
+                Loading...
             </div>
         );
     }
