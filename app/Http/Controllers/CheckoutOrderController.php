@@ -923,4 +923,58 @@ class CheckoutOrderController extends Controller
             'updated_at' => $order->updated_at,
         ];
     }
+
+    public function storeReorder(Request $request): JsonResponse
+        {
+            $validated = $request->validate([
+                'orderId' => 'required|exists:checkout_orders,id',
+                'itemSizeReplacements' => 'required|array',
+            ]);
+
+            $originalOrder = CheckoutOrder::findOrFail($validated['orderId']);
+
+            // Ensure the order belongs to the authenticated user
+            if ($originalOrder->user_id !== $request->user()->id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // 1. Replicate copies all column values into a new instance (new row)
+            $newOrder = $originalOrder->replicate();
+            
+            // 2. Give the new row a unique order number and reset fields
+            $newOrder->order_number = 'REORDER-' . strtoupper(Str::random(8));
+            $newOrder->status = 'pending';
+            $newOrder->created_at = now();
+            $newOrder->updated_at = now();
+
+            // 3. Copy the items array and update the size inside the JSON format
+            $items = $originalOrder->items ?? [];
+            $updatedItems = [];
+
+            foreach ($items as $item) {
+                $itemId = $item['lineId'] ?? $item['id'] ?? null;
+                $newItem = $item; // Copy item values
+
+                // If a new size was selected, update it
+                if ($itemId && isset($validated['itemSizeReplacements'][$itemId])) {
+                    $newSize = $validated['itemSizeReplacements'][$itemId];
+                    $newItem['size'] = $newSize;
+                    $newItem['selectedSize'] = $newSize;
+                    $newItem['selected_size'] = $newSize;
+                }
+
+                $updatedItems[] = $newItem;
+            }
+
+            // 4. Assign the updated items array to the new row's JSON column
+            $newOrder->items = $updatedItems;
+            
+            // 5. Save inserts a brand new row into the checkout_orders table
+            $newOrder->save();
+
+            return response()->json([
+                'message' => 'Reorder created successfully as a new row',
+                'order' => $newOrder,
+            ], 201);
+        }
 }

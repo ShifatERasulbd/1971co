@@ -71,6 +71,7 @@ const EditProduct = lazyWithRetry(() => import('@/pages/Product/editProduct'), '
 
 // Order Management
 const Orders = lazyWithRetry(() => import('@/pages/Order/orders'), 'orders');
+const CustomerOrders = lazyWithRetry(() => import('@/pages/Order/customerOrders'), 'customer-orders');
 const EditOrder = lazyWithRetry(() => import('@/pages/Order/editOrder'), 'edit-order');
 
 // Settings Management
@@ -163,7 +164,7 @@ export default function App() {
                         <Route path="/user" element={<AppLayout />}>
                             <Route path="dashboard" element={<Dashboard />} />
                             <Route path="edit-profile" element={<EditProfile />} />
-                            <Route path="orders" element={<Orders />} />
+                            <Route path="orders" element={<CustomerOrders />} />
                         </Route>
                         <Route path="*" element={<Navigate to="/admin" replace />} />
 

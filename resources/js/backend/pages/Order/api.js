@@ -48,3 +48,10 @@ export async function cancelCustomerOrder(id) {
         method: 'PUT',
     });
 }
+
+export async function createReorder(data) {
+    return requestJson('/api/customer/orders/reorder', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}

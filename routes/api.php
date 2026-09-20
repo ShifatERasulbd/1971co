@@ -98,6 +98,11 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::put('/customer/cart', [CartController::class, 'sync']);
 	});
 
+	// reorder routes for customer
+	Route::middleware('user-type:customer')->group(function () {
+    Route::post('/customer/orders/reorder', [CheckoutOrderController::class, 'storeReorder']);
+});
+
 	Route::middleware('user-type:admin')->group(function () {
 
 	Route::apiResource('/sizes', SizeController::class);
