@@ -19,7 +19,7 @@
                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
                                     <td>
-                                        <img src="{{ $header_logo ?? '/uploads/settings/logos/20260622115243-88d4f3422a.webp' }}" alt="1971Co" height="28" style="display: block; max-height: 28px; object-fit: contain;">
+                                        <img src="https://1971co.com/mail_logo.png" alt="1971Co" height="28" style="display: block; max-height: 28px; object-fit: contain;">
                                     </td>
                                     <td align="right">
                                         <span style="font-size: 13px; color: #64748b; font-weight: 500;">Order Confirmation</span>
@@ -154,7 +154,7 @@
                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
                                     <td>
-                                        <img src="{{ $header_logo ?? '/uploads/settings/logos/20260622115243-88d4f3422a.webp' }}" alt="1971Co" height="20" style="display: block; max-height: 20px; object-fit: contain;">
+                                        <img src="https://1971co.com/mail_logo.png" alt="1971Co" height="20" style="display: block; max-height: 20px; object-fit: contain;">
                                     </td>
                                     <td align="right">
                                         <p style="font-size: 12px; color: #94a3b8; margin: 0;">
