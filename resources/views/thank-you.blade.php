@@ -146,6 +146,7 @@
                                 </tr>
                             </table>
                         </td>
+                        <td>Please do not reply to this email. To manage your orders please visit <a href="https://1971co.com/user/orders">Your Orders</td>
                     </tr>
 
                     <!-- Footer -->
