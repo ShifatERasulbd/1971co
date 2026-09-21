@@ -27,16 +27,9 @@ export default function AuthLoginForm() {
     const [errorMessage, setErrorMessage] = useState('');
     const [infoMessage, setInfoMessage] = useState('');
     const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-    const [showForgotForm, setShowForgotForm] = useState(false);
     
     // Resend countdown state (60 seconds)
     const [resendCountdown, setResendCountdown] = useState(0);
-
-    // Forgot password state
-    const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
-    const [forgotEmail, setForgotEmail] = useState('');
-    const [forgotMessage, setForgotMessage] = useState('');
-    const [forgotResetUrl, setForgotResetUrl] = useState('');
 
     // Handle countdown interval
     useEffect(() => {
@@ -174,93 +167,6 @@ export default function AuthLoginForm() {
         setErrorMessage('Google login was cancelled or failed. Please try again.');
     }
 
-    // Handler to switch view when user clicks forgot password
-    function handleForgotClick(event) {
-        event.preventDefault();
-        setErrorMessage('');
-        setForgotEmail(form.email); // Pre-fill with entered email if any
-        setShowForgotForm(true);
-    }
-
-    async function handleForgotPassword(event) {
-        event.preventDefault();
-        setErrorMessage('');
-        setForgotMessage('');
-        setForgotResetUrl('');
-        setIsForgotSubmitting(true);
-
-        try {
-            const headers = await getCsrfAndHeaders();
-            const response = await fetch('/api/forgot-password', {
-                method: 'POST',
-                credentials: 'include',
-                headers,
-                body: JSON.stringify({ email: forgotEmail.trim() }),
-            });
-
-            const payload = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                setErrorMessage(payload?.message || 'Unable to send reset link.');
-                return;
-            }
-
-            setForgotMessage(payload?.message || 'Password reset link sent to your email.');
-            setForgotResetUrl(payload?.reset_url || '');
-        } catch {
-            setErrorMessage('Unable to send reset link right now. Please try again.');
-        } finally {
-            setIsForgotSubmitting(false);
-        }
-    }
-
-    if (showForgotForm) {
-        return (
-            <form className="mt-5 space-y-3" onSubmit={handleForgotPassword}>
-                <label className="block text-[0.9rem] font-semibold text-zinc-900">Send reset link to email</label>
-                <input
-                    type="email"
-                    value={forgotEmail}
-                    onChange={(event) => setForgotEmail(event.target.value)}
-                    placeholder="you@example.com"
-                    className="h-11 w-full border border-zinc-200 bg-[#ebeff4] px-3.5 text-[0.95rem] text-zinc-900 outline-none transition-colors placeholder:text-slate-400 focus:border-zinc-900"
-                    required
-                />
-
-                {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
-                {forgotMessage ? <p className="text-sm text-emerald-700">{forgotMessage}</p> : null}
-                {forgotResetUrl ? (
-                    <p className="text-sm text-zinc-700">
-                        Local reset link:{' '}
-                        <a href={forgotResetUrl} className="underline underline-offset-2" target="_self" rel="noreferrer">
-                            Open reset page
-                        </a>
-                    </p>
-                ) : null}
-
-                <button
-                    type="submit"
-                    disabled={isForgotSubmitting}
-                    className="inline-flex h-11 w-full items-center justify-center bg-black px-5 text-[0.82rem] font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {isForgotSubmitting ? 'Sending...' : 'Send Reset Link'}
-                </button>
-
-                <button
-                    type="button"
-                    onClick={() => {
-                        setShowForgotForm(false);
-                        setErrorMessage('');
-                        setForgotMessage('');
-                    }}
-                    className="text-[0.88rem] text-slate-500 underline underline-offset-2 transition-colors hover:text-zinc-800"
-                >
-                    Back to login
-                </button>
-            </form>
-        );
-    }
-
     // Step 2 UI: OTP verification input view
     if (step === 'otp') {
         return (
@@ -320,16 +226,7 @@ export default function AuthLoginForm() {
     return (
         <form className="mt-5 space-y-3" onSubmit={handleRequestOtp}>
             <div>
-                <div className="flex items-center justify-between">
-                    <label className="text-[0.9rem] font-semibold text-zinc-900">Email</label>
-                    <button
-                        type="button"
-                        onClick={handleForgotClick}
-                        className="text-[0.82rem] text-slate-500 underline underline-offset-2 transition-colors hover:text-zinc-900"
-                    >
-                        Forgot password?
-                    </button>
-                </div>
+                <label className="text-[0.9rem] font-semibold text-zinc-900">Email</label>
                 <input
                     type="email"
                     value={form.email}
@@ -378,8 +275,6 @@ export default function AuthLoginForm() {
                     size="large"
                 />
             </div>
-
-            
         </form>
     );
 }
