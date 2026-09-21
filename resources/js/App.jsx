@@ -31,6 +31,30 @@ const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.js
 const CompliancePolicyPage = lazy(() => import('./frontend/pages/CompliancePolicyPage.jsx'));
 
 const BRAND_NAME = '1971Co';
+const AUTH_USER_STORAGE_KEY = 'backend-auth-user-v1';
+const COMING_SOON_AUTH_KEY = 'coming_soon_auth';
+
+function readStoredBackendUser() {
+    try {
+        const raw = sessionStorage.getItem(AUTH_USER_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function isAccessAuthorized() {
+    const storedUser = readStoredBackendUser();
+    const hasBackendUserEmail = Boolean(storedUser && (storedUser.email || storedUser.user_email || storedUser.email_address));
+    const hasComingSoonAccess = localStorage.getItem(COMING_SOON_AUTH_KEY) === 'true';
+
+    return hasBackendUserEmail || hasComingSoonAccess;
+}
 
 function normalizeAssetPath(value) {
     if (typeof value !== 'string') {
@@ -179,10 +203,12 @@ function withPageFallback(Component) {
 
 // Protected Route Component to prevent bypasses
 function ProtectedRoute() {
-    const isAuthenticated = localStorage.getItem('coming_soon_auth') === 'true';
-    if (!isAuthenticated) {
-        return <Navigate to="/" replace />;
+    const location = useLocation();
+
+    if (!isAccessAuthorized()) {
+        return <Navigate to="/" replace state={{ from: location.pathname }} />;
     }
+
     return <FrontendLayout />;
 }
 
@@ -210,8 +236,11 @@ function AppRouter() {
             <BrowserRouter>
                 <DocumentBrandingManager />
                 <Routes>
-                    <Route path="/" element={withPageFallback(ComingSoonPage)} />
-                    
+                    <Route
+                        path="/"
+                        element={isAccessAuthorized() ? <Navigate to="/home" replace /> : withPageFallback(ComingSoonPage)}
+                    />
+
                     {/* Protected Routes Wrapper */}
                     <Route element={<ProtectedRoute />}>
                         <Route path="home" element={withPageFallback(HomePage)} />
@@ -237,7 +266,7 @@ function AppRouter() {
                         <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />
                     </Route>
 
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<Navigate to={isAccessAuthorized() ? '/home' : '/'} replace />} />
                 </Routes>
             </BrowserRouter>
         </CartProvider>

@@ -4,6 +4,23 @@
         import { sectionTypography } from '../utils/sectionTypography';
         import { buildOptimizedImageUrl } from '../utils/media';
 
+        function hasAuthorizedAccess() {
+            const hasComingSoonAccess = localStorage.getItem('coming_soon_auth') === 'true';
+            const storedUserRaw = sessionStorage.getItem('backend-auth-user-v1');
+
+            if (!storedUserRaw) {
+                return hasComingSoonAccess;
+            }
+
+            try {
+                const storedUser = JSON.parse(storedUserRaw);
+                const hasStoredEmail = Boolean(storedUser && typeof storedUser === 'object' && (storedUser.email || storedUser.user_email || storedUser.email_address));
+                return hasComingSoonAccess || hasStoredEmail;
+            } catch {
+                return hasComingSoonAccess;
+            }
+        }
+
         export default function ComingSoon() {
         const navigate = useNavigate();
         const [heroData, setHeroData] = useState(null);
@@ -26,7 +43,7 @@ const launchDate = new Date('2026-09-25T00:00:00-04:00').getTime();
 
         // Check if already authorized on mount
         useEffect(() => {
-            if (localStorage.getItem('coming_soon_auth') === 'true') {
+            if (hasAuthorizedAccess()) {
             navigate('/home', { replace: true });
             }
         }, [navigate]);
