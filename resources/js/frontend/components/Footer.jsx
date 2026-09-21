@@ -17,7 +17,6 @@ const shopLinks = [
 
 const supportLinks = [
     { label: 'Shipping', href: '/shipping' },
-  
     { label: 'Contact', href: '/contact' },
 ];
 
@@ -206,13 +205,7 @@ export default function Footer() {
                                     Join
                                 </button>
                             </form>
-                            <div className="mb-5 overflow-hidden">
-                               <img
-                                    src="/cardImage.png"
-                                    alt="Accepted payment cards"
-                                    className="h-10 w-full object-contain object-center px-2"
-                                />
-                            </div>
+                            
                         </div>
                         
                     </div>
@@ -223,8 +216,15 @@ export default function Footer() {
             <div className="border-t border-zinc-700">
                 <div className={`mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 ${sectionTypography.footerLegal} text-zinc-500 sm:flex-row sm:px-10 lg:px-16`}>
                     <span>© 2026 1971Co. All rights reserved.</span>
+                    <div className="overflow-hidden">
+                        <img
+                            src={optimizedCardImage}
+                            alt="Accepted payment cards"
+                            className="h-8 w-auto max-w-[240px] object-contain object-right"
+                        />
+                    </div>
                 </div>
-                </div>
+            </div>
         </footer>
     );
 }
