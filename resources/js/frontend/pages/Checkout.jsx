@@ -834,6 +834,7 @@ const handleStateChange = (nextStateValue) => {
                 body: JSON.stringify({
                     amount: total,
                     currency: 'usd',
+                    items: normalizedItems,
                 }),
             });
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Http\Controllers\Controller;
+use App\Services\StripeProductSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Stripe\Exception\ApiErrorException;
@@ -11,6 +12,12 @@ use Stripe\Stripe;
 
 class StripeController extends Controller
 {
+    public function __construct(
+        private readonly StripeProductSyncService $stripeProductSyncService,
+    )
+    {
+    }
+
     public function publicConfig(): JsonResponse
     {
         $publishableKey = (string) config('services.stripe.key');
@@ -26,6 +33,10 @@ class StripeController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.5',
             'currency' => 'nullable|string|size:3',
+            'items' => 'nullable|array',
+            'items.*.productId' => 'nullable|string|max:255',
+            'items.*.name' => 'nullable|string|max:255',
+            'items.*.quantity' => 'nullable|integer|min:1|max:999',
         ]);
 
         $secretKey = (string) config('services.stripe.secret');
@@ -47,6 +58,7 @@ class StripeController extends Controller
                 'automatic_payment_methods' => [
                     'enabled' => true,
                 ],
+                'metadata' => $this->buildLineItemMetadata($validated['items'] ?? []),
             ]);
 
             return response()->json([
@@ -58,4 +70,36 @@ class StripeController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Syncs each purchased product into Stripe's Product catalog and summarizes them as
+     * PaymentIntent metadata (Stripe metadata has no native line-item concept).
+     */
+    private function buildLineItemMetadata(array $items): array
+    {
+        $metadata = [];
+
+        foreach (array_slice($items, 0, 10) as $index => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $priceId = $this->stripeProductSyncService->syncProductFromItem($item);
+
+            $summary = sprintf(
+                '%s x%d',
+                (string) ($item['name'] ?? 'Item'),
+                (int) ($item['quantity'] ?? 1),
+            );
+
+            if ($priceId) {
+                $summary .= " ({$priceId})";
+            }
+
+            $metadata['item_' . ($index + 1)] = substr($summary, 0, 500);
+        }
+
+        return $metadata;
+    }
 }
+

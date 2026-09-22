@@ -13,6 +13,8 @@ class Product extends Model
         'name',
         'slug',
         'sku',
+        'stripe_product_id',
+        'stripe_price_id',
         'available_products',
         'barcode',
         'color',

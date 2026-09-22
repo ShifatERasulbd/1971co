@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Mail\ThankYouEmail;
 use App\Services\FacebookConversionsApiService;
 use App\Services\ShippingRateService;
+use App\Services\StripeProductSyncService;
 use App\Services\VeeqoShippingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class CheckoutOrderController extends Controller
         private readonly ShippingRateService $shippingRateService,
         private readonly FacebookConversionsApiService $facebookConversionsApiService,
         private readonly VeeqoShippingService $veeqoShippingService,
+        private readonly StripeProductSyncService $stripeProductSyncService,
     )
     {
     }
@@ -88,6 +90,7 @@ class CheckoutOrderController extends Controller
             'postal_code' => 'required|string|max:40',
             'address_line_1' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
+            'items.*.productId' => 'nullable|string|max:255',
             'items.*.priceValue' => 'required|numeric|min:0',
             'items.*.quantity' => 'required|integer|min:1|max:999',
             'subtotal' => 'required|numeric|min:0',
@@ -401,6 +404,11 @@ class CheckoutOrderController extends Controller
         // Enrich items with product weight/length/width/height so the stored order snapshot has full package dimensions
         $enrichedItems = $this->resolveShippingQuoteItems($validated['items']);
 
+        // Make sure every purchased product exists in Stripe's Product catalog
+        foreach ($validated['items'] as $item) {
+            $this->stripeProductSyncService->syncProductFromItem($item);
+        }
+
         $order = CheckoutOrder::create([
             'user_id' => $request->user()?->id,
             'order_number' => $orderNumber,
@@ -534,8 +542,9 @@ class CheckoutOrderController extends Controller
             $lineItems[] = [
                 'amount' => $amount,
                 'quantity' => $quantity,
-                'reference' => 'line-' . ($index + 1),
-                'tax_code' => 'txcd_99999999',
+                'reference' => $this->stripeProductSyncService->syncProductFromItem($item) ?? ('line-' . ($index + 1)),
+                // Clothing tax code - see https://docs.stripe.com/tax/products-prices-tax-codes-tax-behavior
+                'tax_code' => 'txcd_30011000',
             ];
         }
 
@@ -604,18 +613,7 @@ class CheckoutOrderController extends Controller
             }
 
             $resolvedItem = $item;
-            $productId = $item['productId'] ?? $item['product_id'] ?? null;
-            $product = null;
-
-            if ($productId !== null && $productId !== '') {
-                $product = Product::query()->find($productId);
-
-                if (! $product) {
-                    $product = Product::query()
-                        ->where('slug', (string) $productId)
-                        ->first();
-                }
-            }
+            $product = $this->stripeProductSyncService->resolveProductFromItem($item);
 
             // Prioritize incoming frontend weight if valid, otherwise fallback to database variant weight
             $incomingWeight = $this->normalizeWeightToFloat($item['weight'] ?? null);
