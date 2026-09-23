@@ -20,7 +20,7 @@ class ReturnRequestController extends Controller
             'orderId' => 'required',
             'reason' => 'required|string',
             'comments' => 'nullable|string',
-            'unpackingVideo' => 'nullable|file|mimes:mp4,mov,avi,webm|max:20480', // max 20MB
+            'unpackingVideo' => 'nullable|file|mimes:mp4,mov,avi,webm,mkv,3gp,quicktime|max:102400', // max 100MB
             'wantsSizeReplacement' => 'nullable|string|in:yes,no',
             'itemSizeReplacements' => 'nullable|json',
         ]);
@@ -127,6 +127,44 @@ class ReturnRequestController extends Controller
         ]);
     }
 
+    /**
+     * Lets Inventory reflect its locally-managed return workflow status (approved_return,
+     * product_received, rejected, refund_initiated, ...) back onto the originating store record.
+     */
+    public function publicExternalUpdateStatus(Request $request, ReturnRequest $returnRequest): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,approved_return,product_received,rejected,refund_initiated',
+        ]);
+
+        $returnRequest->update(['status' => $validated['status']]);
+
+        $orderStatus = $this->mapReturnStatusToOrderStatus($validated['status']);
+        if ($orderStatus !== null) {
+            CheckoutOrder::where('order_number', $returnRequest->order_number)->update(['status' => $orderStatus]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'return_request' => $this->formatExternalReturnRequest($returnRequest->fresh()),
+        ]);
+    }
+
+    /**
+     * Mirrors the return workflow onto the order's own status, using the same free-form
+     * vocabulary `store()` already uses for this order ('Return Requested' / 'Replacement Requested').
+     */
+    private function mapReturnStatusToOrderStatus(string $returnStatus): ?string
+    {
+        return match ($returnStatus) {
+            'approved_return' => 'Return Approved',
+            'product_received' => 'Return Received',
+            'rejected' => 'Return Rejected',
+            'refund_initiated' => 'refunded',
+            default => null,
+        };
+    }
+
     protected function formatExternalReturnRequest(ReturnRequest $returnRequest): array
     {
         $order = CheckoutOrder::where('order_number', $returnRequest->order_number)->first();
@@ -135,6 +173,7 @@ class ReturnRequestController extends Controller
             'id' => (int) $returnRequest->id,
             'order_number' => (string) $returnRequest->order_number,
             'request_reason' => (string) $returnRequest->request_reason,
+            'status' => (string) $returnRequest->status,
             'additional_text' => $returnRequest->additional_text,
             'uploaded_document' => $returnRequest->uploaded_document
                 ? Storage::disk('public')->url($returnRequest->uploaded_document)

@@ -50,9 +50,16 @@ export default function ReturnModal({ isOpen, onClose, order, fetchAvailableSize
     }
 
     // Handle file selection
+    const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // must match backend max:102400
     function handleVideoUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
+        if (file.size > MAX_VIDEO_SIZE_BYTES) {
+            toast.error('Video is too large. Please upload a video under 100MB.');
+            e.target.value = '';
+            setUnpackingVideo(null);
+            return;
+        }
         setUnpackingVideo(file);
         toast.success('Video selected successfully');
     }
@@ -117,7 +124,9 @@ export default function ReturnModal({ isOpen, onClose, order, fetchAvailableSize
             toast.success(response.data.message || 'Return request submitted successfully');
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || error.message || 'Failed to submit return request');
+            const validationErrors = error.response?.data?.errors;
+            const firstValidationError = validationErrors && Object.values(validationErrors)[0]?.[0];
+            toast.error(firstValidationError || error.response?.data?.message || error.message || 'Failed to submit return request');
         } finally {
             setIsSubmitting(false);
         }
@@ -249,7 +258,7 @@ export default function ReturnModal({ isOpen, onClose, order, fetchAvailableSize
                                 Unpacking Video Proof Required <span className="text-red-600">*</span>
                             </label>
                             <p className="text-[11px] text-red-700/80 font-['Montserrat',sans-serif]">
-                                Please upload a clear continuous video of you unpacking the package to verify the damage.
+                                Please upload a clear continuous video of you unpacking the package to verify the damage. (Max 100MB)
                             </p>
                             
                             <input

@@ -85,6 +85,7 @@ Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(functi
 Route::middleware('public-api-key')->prefix('/public/return-requests-feed')->group(function () {
 	Route::get('/', [ReturnRequestController::class, 'publicExternalIndex']);
 	Route::get('/{returnRequest}', [ReturnRequestController::class, 'publicExternalShow']);
+	Route::put('/{returnRequest}/status', [ReturnRequestController::class, 'publicExternalUpdateStatus']);
 });
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);

@@ -10,6 +10,7 @@ class ReturnRequest extends Model
     protected $fillable = [
         'order_number',
         'request_reason',
+        'status',
         'additional_text',
         'uploaded_document',
         'wants_size_replacement',
