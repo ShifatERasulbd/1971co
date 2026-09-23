@@ -32,7 +32,10 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\AuthOtpController;
 use App\Http\Controllers\CompliancePageController;
 use App\Http\Controllers\FacebookPixelController;
+use App\Http\Controllers\ReturnRequestController;
 
+
+Route::post('/return-requests', [ReturnRequestController::class, 'store']);
 // OTP validation
 Route::post('/login/send-otp', [AuthOtpController::class, 'sendOtp']);
 Route::post('/login/verify-otp', [AuthOtpController::class, 'verifyOtp']);
@@ -78,6 +81,11 @@ Route::middleware('public-api-key')->prefix('/public/orders-feed')->group(functi
 	Route::get('/{checkoutOrder}', [CheckoutOrderController::class, 'publicExternalShow']);
 	Route::put('/{checkoutOrder}/status', [CheckoutOrderController::class, 'publicExternalUpdateStatus']);
 });
+
+Route::middleware('public-api-key')->prefix('/public/return-requests-feed')->group(function () {
+	Route::get('/', [ReturnRequestController::class, 'publicExternalIndex']);
+	Route::get('/{returnRequest}', [ReturnRequestController::class, 'publicExternalShow']);
+});
 Route::post('/create-payment-intent', [StripeController::class, 'createPaymentIntent']);
 Route::post('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 Route::post('/shipping/orders', [ShipStationController::class, 'storeOrder']);
@@ -102,7 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::middleware('user-type:customer')->group(function () {
     Route::post('/customer/orders/reorder', [CheckoutOrderController::class, 'storeReorder']);
 });
-
+	
 	Route::middleware('user-type:admin')->group(function () {
 
 	Route::apiResource('/sizes', SizeController::class);

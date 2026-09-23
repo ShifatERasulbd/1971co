@@ -280,7 +280,7 @@ export default function CustomerOrders() {
                     <thead className="bg-zinc-50">
                         <tr>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Order #</th>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Stripe Payment ID</th>
+                          
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Items</th>
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Total</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Status</th>
@@ -311,7 +311,7 @@ export default function CustomerOrders() {
                                 return (
                                     <tr key={order.id} className="hover:bg-zinc-50">
                                         <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.order_number}</td>
-                                        <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.stripe_payment_id}</td>
+                                       
                                         <td className="px-4 py-3 text-center text-zinc-700">{order.items_count}</td>
                                         <td className="px-4 py-3 text-right font-medium text-zinc-800">
                                             ${Number(order.total).toFixed(2)}

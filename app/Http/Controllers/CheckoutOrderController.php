@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CheckoutOrder;
 use App\Models\Product;
+use App\Mail\OrderCancelledEmail;
 use App\Mail\ThankYouEmail;
 use App\Services\FacebookConversionsApiService;
 use App\Services\ShippingRateService;
@@ -18,7 +19,7 @@ use Stripe\StripeClient;
 
 class CheckoutOrderController extends Controller
 {
-    private const PROCESSING_FEE = 0.50;
+    private const PROCESSING_FEE = 0.00;
 
     private const STRIPE_PERCENT_RATE = 0.029;
 
@@ -29,8 +30,7 @@ class CheckoutOrderController extends Controller
         private readonly FacebookConversionsApiService $facebookConversionsApiService,
         private readonly VeeqoShippingService $veeqoShippingService,
         private readonly StripeProductSyncService $stripeProductSyncService,
-    )
-    {
+    ) {
     }
 
     public function quoteShipping(Request $request): JsonResponse
@@ -79,7 +79,7 @@ class CheckoutOrderController extends Controller
             'debug' => config('app.debug') ? $this->veeqoShippingService->getDebugInfo() : null,
         ]);
     }
-
+   
 
     public function quoteTax(Request $request): JsonResponse
     {
@@ -212,7 +212,7 @@ class CheckoutOrderController extends Controller
         return response()->json($checkoutOrder);
     }
 
-    public function customerCancel(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
+  public function customerCancel(Request $request, CheckoutOrder $checkoutOrder): JsonResponse
     {
         $ownedOrder = $this->customerScopedOrders($request)
             ->whereKey($checkoutOrder->id)
@@ -229,6 +229,15 @@ class CheckoutOrderController extends Controller
         }
 
         $ownedOrder->update(['status' => 'cancelled']);
+
+        try {
+            Mail::to($ownedOrder->email)->send(new OrderCancelledEmail($ownedOrder->fresh()));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send order cancellation email', [
+                'order_id' => $ownedOrder->id,
+                'message'  => $exception->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Order cancelled successfully',
