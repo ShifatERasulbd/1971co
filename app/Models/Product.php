@@ -31,7 +31,8 @@ class Product extends Model
         'length',
         'width',
         'height',
-
+        'average_rating',
+        'rating_count',
         'cover_image',
         'size_chart_image',
         'size_chart_images',
@@ -74,5 +75,9 @@ class Product extends Model
             'show_on_best_sellers' => 'boolean',
             'is_active' => 'boolean',
         ];
+    }
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
     }
 }

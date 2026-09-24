@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useAppContext } from '@/context/AppContext';
 import { cancelCustomerOrder, fetchCustomerOrders, createReorder } from './api';
 import ReturnModal from './ReturnModal';
+import ReviewModal from './ReviewModal';
 
 const STATUS_COLORS = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -34,24 +35,6 @@ function StatusBadge({ status }) {
         </span>
     );
 }
-
-
-// reorder 
-
-// Inside your CustomerOrders component:
-async function handleReturnSubmit({ orderId, itemSizeReplacements }) {
-    try {
-        await createReorder({
-            orderId,
-            itemSizeReplacements,
-        });
-        toast.success('Reorder created successfully!');
-        reload(); // Refreshes the table to show the new reorder row
-    } catch (error) {
-        toast.error(error.message || 'Failed to create reorder');
-    }
-}
-
 
 function getTrackingNumber(order) {
     return String(
@@ -118,13 +101,16 @@ export default function CustomerOrders() {
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
 
+    // Modal state for reviews
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [selectedOrderForReview, setSelectedOrderForReview] = useState(null);
+
     const searchTimer = useRef(null);
 
     useEffect(() => {
         setPageTitle('My Orders');
     }, [setPageTitle]);
 
-    // Update time every second to enforce the 30-minute customer cancellation window
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(Date.now());
@@ -207,6 +193,10 @@ export default function CustomerOrders() {
         return String(order?.status || '').trim().toLowerCase() === 'delivered';
     }
 
+    function canCustomerReview(order) {
+        return String(order?.status || '').trim().toLowerCase() === 'delivered';
+    }
+
     async function handleCustomerCancel(orderId) {
         try {
             await cancelCustomerOrder(orderId);
@@ -222,7 +212,17 @@ export default function CustomerOrders() {
         setReturnModalOpen(true);
     }
 
-    // Function to fetch available sizes from your Laravel sizes API endpoint
+    function openReviewModal(order) {
+        setSelectedOrderForReview(order);
+        setReviewModalOpen(true);
+    }
+
+    async function handleReviewSubmit({ orderId, rating, comment }) {
+        // Replace with your actual API endpoint call, e.g.:
+        // await createOrderReview({ orderId, rating, comment });
+        console.log('Submitting Review:', { orderId, rating, comment });
+    }
+
     async function fetchSizesFromDatabase() {
         const response = await fetch('/api/public/sizes');
         if (!response.ok) throw new Error('Failed to fetch sizes');
@@ -231,8 +231,6 @@ export default function CustomerOrders() {
     }
 
     async function handleReturnSubmit({ orderId, reason, comments, itemSizeReplacements }) {
-        // Implement your submit API integration here, e.g.:
-        // await submitCustomerReturn({ orderId, reason, comments, itemSizeReplacements });
         console.log('Submitting Return:', { orderId, reason, comments, itemSizeReplacements });
         reload();
     }
@@ -280,7 +278,6 @@ export default function CustomerOrders() {
                     <thead className="bg-zinc-50">
                         <tr>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Order #</th>
-                          
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Items</th>
                             <th className="px-4 py-3 text-right font-semibold text-zinc-700">Total</th>
                             <th className="px-4 py-3 text-left font-semibold text-zinc-700">Status</th>
@@ -307,11 +304,11 @@ export default function CustomerOrders() {
                                 const tracking = renderTrackingContent(order);
                                 const customerCanCancel = canCustomerCancel(order);
                                 const customerCanReturn = canCustomerReturn(order);
+                                const customerCanReview = canCustomerReview(order);
 
                                 return (
                                     <tr key={order.id} className="hover:bg-zinc-50">
                                         <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.order_number}</td>
-                                       
                                         <td className="px-4 py-3 text-center text-zinc-700">{order.items_count}</td>
                                         <td className="px-4 py-3 text-right font-medium text-zinc-800">
                                             ${Number(order.total).toFixed(2)}
@@ -364,6 +361,15 @@ export default function CustomerOrders() {
                                                     Cancel
                                                 </button>
 
+                                                {customerCanReview && (
+                                                    <button
+                                                        onClick={() => openReviewModal(order)}
+                                                        className="rounded border border-purple-300 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-100"
+                                                    >
+                                                        Review
+                                                    </button>
+                                                )}
+
                                                 {customerCanReturn && (
                                                     <button
                                                         onClick={() => openReturnModal(order)}
@@ -414,6 +420,14 @@ export default function CustomerOrders() {
                 order={selectedOrderForReturn}
                 fetchAvailableSizes={fetchSizesFromDatabase}
                 onSubmit={handleReturnSubmit}
+            />
+
+            {/* Review Modal Component */}
+            <ReviewModal
+                isOpen={reviewModalOpen}
+                onClose={() => setReviewModalOpen(false)}
+                order={selectedOrderForReview}
+                onSubmit={handleReviewSubmit}
             />
         </div>
     );

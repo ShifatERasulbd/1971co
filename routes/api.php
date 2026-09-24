@@ -33,9 +33,9 @@ use App\Http\Controllers\AuthOtpController;
 use App\Http\Controllers\CompliancePageController;
 use App\Http\Controllers\FacebookPixelController;
 use App\Http\Controllers\ReturnRequestController;
+use App\Http\Controllers\ProductReviewController;
 
 
-Route::post('/return-requests', [ReturnRequestController::class, 'store']);
 // OTP validation
 Route::post('/login/send-otp', [AuthOtpController::class, 'sendOtp']);
 Route::post('/login/verify-otp', [AuthOtpController::class, 'verifyOtp']);
@@ -105,6 +105,8 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::put('/customer/profile', [AuthController::class, 'updateCustomerProfile']);
 		Route::get('/customer/cart', [CartController::class, 'show']);
 		Route::put('/customer/cart', [CartController::class, 'sync']);
+		Route::post('/product-reviews', [ProductReviewController::class, 'store']);
+		Route::post('/return-requests', [ReturnRequestController::class, 'store']);
 	});
 
 	// reorder routes for customer
