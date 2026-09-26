@@ -56,6 +56,13 @@ class VeeqoShippingService
 
         $package = $this->buildPackageFromItems($items);
 
+        Log::info('Veeqo shipping rate: package computed from items', [
+            'weight' => $package['weight'],
+            'length' => $package['length'],
+            'width' => $package['width'],
+            'height' => $package['height'],
+        ]);
+
         $toName = trim(((string) ($toAddress['first_name'] ?? '')) . ' ' . ((string) ($toAddress['last_name'] ?? '')));
 
         $payload = [
@@ -87,6 +94,10 @@ class VeeqoShippingService
         $this->lastResponseStatus = null;
         $this->lastResponseBody = null;
 
+        Log::info('Veeqo shipping rate: sending request', [
+            'payload' => $payload,
+        ]);
+
         $verifySsl = filter_var(config('services.veeqo.verify_ssl', true), FILTER_VALIDATE_BOOL);
         $caBundlePath = trim((string) config('services.veeqo.ca_bundle', ''));
 
@@ -116,6 +127,11 @@ class VeeqoShippingService
 
         $this->lastResponseStatus = $response->status();
         $this->lastResponseBody = $response->json() ?? $response->body();
+
+        Log::info('Veeqo shipping rate: response received', [
+            'status' => $this->lastResponseStatus,
+            'body' => $this->lastResponseBody,
+        ]);
 
         if (! $response->successful()) {
             Log::warning('Veeqo shipping rate request failed', [
@@ -154,6 +170,8 @@ class VeeqoShippingService
     /**
      * Collapse cart items into a single package's weight and dimensions.
      * Weight is summed across quantities; dimensions use the largest item.
+     * Values come straight from the product module (Product.weight/length/width/height)
+     * as carried on each cart item — no synthetic fallback numbers are substituted.
      */
     protected function buildPackageFromItems(array $items): array
     {
@@ -161,6 +179,7 @@ class VeeqoShippingService
         $length = 0.0;
         $width = 0.0;
         $height = 0.0;
+        $missingDims = false;
 
         foreach ($items as $item) {
             if (! is_array($item)) {
@@ -169,18 +188,31 @@ class VeeqoShippingService
 
             $quantity = max(1, (int) ($item['quantity'] ?? 1));
             $weight = (float) ($item['weight'] ?? 0);
-            $totalWeight += $weight * $quantity;
+            $itemLength = (float) ($item['length'] ?? 0);
+            $itemWidth = (float) ($item['width'] ?? 0);
+            $itemHeight = (float) ($item['height'] ?? 0);
 
-            $length = max($length, (float) ($item['length'] ?? 0));
-            $width = max($width, (float) ($item['width'] ?? 0));
-            $height = max($height, (float) ($item['height'] ?? 0));
+            if ($weight <= 0 || $itemLength <= 0 || $itemWidth <= 0 || $itemHeight <= 0) {
+                $missingDims = true;
+            }
+
+            $totalWeight += $weight * $quantity;
+            $length = max($length, $itemLength);
+            $width = max($width, $itemWidth);
+            $height = max($height, $itemHeight);
+        }
+
+        if ($missingDims) {
+            Log::warning('Veeqo package built from items with missing weight/dimensions', [
+                'items' => $items,
+            ]);
         }
 
         return [
-            'weight' => $totalWeight > 0 ? round($totalWeight, 2) : 1.0,
-            'length' => $length > 0 ? round($length, 2) : 10.0,
-            'width' => $width > 0 ? round($width, 2) : 8.0,
-            'height' => $height > 0 ? round($height, 2) : 4.0,
+            'weight' => round($totalWeight, 2),
+            'length' => round($length, 2),
+            'width' => round($width, 2),
+            'height' => round($height, 2),
         ];
     }
 
@@ -226,13 +258,13 @@ class VeeqoShippingService
 
         usort($normalized, static fn ($a, $b) => $a['price'] <=> $b['price']);
 
-        // UPS Ground is our default "Standard Delivery" option; surface it first when available.
+        // UPS Ground Saver is our default "Standard Delivery" option; surface it first when available.
         foreach ($normalized as $index => $rate) {
-            $isUpsGround = strcasecmp($rate['carrier'], 'UPS') === 0
+            $isUpsGroundSaver = strcasecmp($rate['carrier'], 'UPS') === 0
                 && stripos($rate['service'], 'ground') !== false
-                && stripos($rate['service'], 'saver') === false;
+                && stripos($rate['service'], 'saver') !== false;
 
-            if ($isUpsGround) {
+            if ($isUpsGroundSaver) {
                 $normalized[$index]['label'] = 'Standard Delivery';
                 $standard = $normalized[$index];
                 unset($normalized[$index]);
