@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-
+import { trackAddToCart } from '../../utils/dataLayer';
 import { featuresFontClass } from '../utils/typography';
 import { useCart } from '../context/CartContext';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
@@ -580,7 +580,7 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                 { label: String(product?.name || 'Product'), to: detailUrl },
             ];
         },
-        [product?.name, product?.slug]
+        [product?.name, product?.slug, initialColor]
     );
 
     function decreaseQuantity() {
