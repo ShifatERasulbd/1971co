@@ -1,7 +1,6 @@
         import { useEffect, useState } from 'react';
         import { useNavigate } from 'react-router-dom';
         import { timelessFontClass } from '../utils/typography';
-        import { sectionTypography } from '../utils/sectionTypography';
         import { buildOptimizedImageUrl } from '../utils/media';
 
         function hasAuthorizedAccess() {
@@ -32,8 +31,8 @@
         const [emailInput, setEmailInput] = useState('');
         const [errorMessage, setErrorMessage] = useState('');
 
-        // Target launch: 25 Sep 2026, 12:00 AM Eastern Time (Massachusetts, EDT = UTC-4)
-const launchDate = new Date('2026-09-25T00:00:00-04:00').getTime(); 
+        // Target launch: 1 oct 2026, 12:00 AM Eastern Time (Massachusetts, EDT = UTC-4)
+const launchDate = new Date('2026-10-01T00:00:00-04:00').getTime(); 
         const [timeLeft, setTimeLeft] = useState({
             days: 0,
             hours: 0,
