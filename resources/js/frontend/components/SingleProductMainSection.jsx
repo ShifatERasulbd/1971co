@@ -604,6 +604,18 @@ export default function SingleProductMainSection({ product, initialColor = '' })
             sku: activeVariantSku,
             weight: activeVariantWeight,
         });
+
+        trackAddToCart({
+            id: product?.id,
+            sku: activeVariantSku || product?.sku,
+            name: product?.name,
+            priceValue: Number(product?.priceValue ?? product?.price ?? 0),
+            quantity,
+            selectedColor,
+            selectedSize,
+            category: product?.category,
+        });
+
         openCartDrawer();
     }
 
