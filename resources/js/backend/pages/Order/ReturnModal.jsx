@@ -6,7 +6,7 @@ const RETURN_REASONS = [
     'Change Of Mind',
     'Size Issue',
     'Color Mismatch',
-    'Damage Product',
+    'Damaged Product',
 ];
 
 export default function ReturnModal({ isOpen, onClose, order, fetchAvailableSizes }) {

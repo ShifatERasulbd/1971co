@@ -130,13 +130,13 @@ export default function ReviewModal({ isOpen, onClose, order }) {
                                     {/* Interactive Star Rating */}
                                     <div className="flex flex-col gap-1.5">
                                         <label className="text-xs font-medium text-zinc-700">Rating</label>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
                                                     type="button"
                                                     key={star}
                                                     onClick={() => handleRatingChange(productId, star)}
-                                                    className={`text-xl transition-colors focus:outline-none ${
+                                                    className={`text-3xl transition-colors focus:outline-none ${
                                                         star <= currentReview.rating
                                                             ? 'text-amber-400'
                                                             : 'text-zinc-300 hover:text-amber-200'
@@ -153,12 +153,12 @@ export default function ReviewModal({ isOpen, onClose, order }) {
 
                                     {/* Comment Textarea */}
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-medium text-zinc-700">Review Comments</label>
+                                        <label className="text-xs font-medium text-zinc-700">Your insights help us improve</label>
                                         <textarea
                                             rows="2"
                                             value={currentReview.comment}
                                             onChange={(e) => handleCommentChange(productId, e.target.value)}
-                                            placeholder="Write your thoughts about this item..."
+                                            placeholder="Write your feedback here..."
                                             className="w-full rounded border border-zinc-300 bg-white p-2.5 text-xs text-zinc-900 outline-none focus:border-zinc-600"
                                         />
                                     </div>
@@ -172,14 +172,14 @@ export default function ReviewModal({ isOpen, onClose, order }) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                            className="rounded border border-red-300 bg-white px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || items.length === 0}
-                            className="rounded bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                            className="rounded bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
                             {isSubmitting ? 'Submitting...' : 'Submit Reviews'}
                         </button>

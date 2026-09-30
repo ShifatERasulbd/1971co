@@ -25,3 +25,4 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *.zip
+/resources/js/apps_coming_soon.jsx

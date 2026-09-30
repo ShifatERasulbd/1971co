@@ -218,8 +218,6 @@ export default function CustomerOrders() {
     }
 
     async function handleReviewSubmit({ orderId, rating, comment }) {
-        // Replace with your actual API endpoint call, e.g.:
-        // await createOrderReview({ orderId, rating, comment });
         console.log('Submitting Review:', { orderId, rating, comment });
     }
 
@@ -274,16 +272,16 @@ export default function CustomerOrders() {
 
             {/* Table */}
             <div className="overflow-x-auto rounded border border-zinc-200 bg-white">
-                <table className="min-w-full divide-y divide-zinc-200 text-sm">
+                <table className="w-full table-fixed divide-y divide-zinc-200 text-sm">
                     <thead className="bg-zinc-50">
                         <tr>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Order #</th>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Items</th>
-                            <th className="px-4 py-3 text-right font-semibold text-zinc-700">Total</th>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Status</th>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Tracking #</th>
-                            <th className="px-4 py-3 text-left font-semibold text-zinc-700">Date</th>
-                            <th className="px-4 py-3 text-right font-semibold text-zinc-700">Actions</th>
+                            <th className="w-[18%] px-3 py-3 text-center font-semibold text-zinc-700">Order #</th>
+                            <th className="w-[8%] px-3 py-3 text-center font-semibold text-zinc-700">Items</th>
+                            <th className="w-[13%] px-3 py-3 text-center font-semibold text-zinc-700">Total</th>
+                            <th className="w-[16%] px-3 py-3 text-center font-semibold text-zinc-700">Status</th>
+                            <th className="w-[14%] px-3 py-3 text-center font-semibold text-zinc-700">Tracking #</th>
+                            <th className="w-[12%] px-3 py-3 text-center font-semibold text-zinc-700">Date</th>
+                            <th className="w-[19%] px-3 py-3 text-center font-semibold text-zinc-700">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
@@ -307,16 +305,16 @@ export default function CustomerOrders() {
                                 const customerCanReview = canCustomerReview(order);
 
                                 return (
-                                    <tr key={order.id} className="hover:bg-zinc-50">
-                                        <td className="px-4 py-3 font-mono text-xs text-zinc-700">{order.order_number}</td>
-                                        <td className="px-4 py-3 text-center text-zinc-700">{order.items_count}</td>
-                                        <td className="px-4 py-3 text-right font-medium text-zinc-800">
+                                  <tr key={order.id} className="hover:bg-zinc-50">
+                                        <td className="px-3 py-3 text-center font-mono text-xs text-zinc-700 break-all">{order.order_number}</td>
+                                        <td className="px-3 py-3 text-center text-zinc-700">{order.items_count}</td>
+                                        <td className="px-3 py-3 text-center font-medium text-zinc-800">
                                             ${Number(order.total).toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-3 py-3 text-center">
                                             <StatusBadge status={order.status} />
                                         </td>
-                                        <td className="px-4 py-3 text-xs">
+                                        <td className="px-3 py-3 text-center text-xs break-all">
                                             {tracking.kind === 'tracking' ? (
                                                 <a
                                                     href={tracking.trackingUrl}
@@ -327,44 +325,32 @@ export default function CustomerOrders() {
                                                     {tracking.trackingNumber}
                                                 </a>
                                             ) : tracking.kind === 'failed' ? (
-                                                <div className="space-y-0.5">
+                                                <div className="flex flex-col items-center space-y-0.5">
                                                     <span className="inline-flex items-center rounded bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
                                                         {tracking.label}
                                                     </span>
-                                                    <p className="max-w-[190px] text-[10px] leading-4 text-zinc-500">
-                                                        {tracking.message}
-                                                    </p>
+                                                    <p className="text-[10px] leading-4 text-zinc-500">{tracking.message}</p>
                                                 </div>
                                             ) : tracking.kind === 'pending' ? (
-                                                <div className="space-y-0.5">
+                                                <div className="flex flex-col items-center space-y-0.5">
                                                     <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
                                                         {tracking.label}
                                                     </span>
-                                                    <p className="text-[10px] leading-4 text-zinc-500">
-                                                        {tracking.message}
-                                                    </p>
+                                                    <p className="text-[10px] leading-4 text-zinc-500">{tracking.message}</p>
                                                 </div>
                                             ) : (
                                                 <span className="text-zinc-400">{tracking.label}</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-xs text-zinc-500">
+                                        <td className="px-3 py-3 text-center text-xs text-zinc-500">
                                             {new Date(order.created_at).toLocaleDateString()}
                                         </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex flex-col items-end gap-1">
-                                                <button
-                                                    onClick={() => handleCustomerCancel(order.id)}
-                                                    disabled={!customerCanCancel}
-                                                    className="rounded border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    Cancel
-                                                </button>
-
+                                        <td className="px-3 py-3">
+                                            <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5">
                                                 {customerCanReview && (
                                                     <button
                                                         onClick={() => openReviewModal(order)}
-                                                        className="rounded border border-purple-300 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-100"
+                                                        className="whitespace-nowrap rounded border border-green-300 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
                                                     >
                                                         Review
                                                     </button>
@@ -373,11 +359,19 @@ export default function CustomerOrders() {
                                                 {customerCanReturn && (
                                                     <button
                                                         onClick={() => openReturnModal(order)}
-                                                        className="rounded border border-blue-300 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                                        className="whitespace-nowrap rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
                                                     >
                                                         Return
                                                     </button>
                                                 )}
+
+                                                <button
+                                                    onClick={() => handleCustomerCancel(order.id)}
+                                                    disabled={!customerCanCancel}
+                                                    className="whitespace-nowrap rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    Cancel
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
