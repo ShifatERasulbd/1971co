@@ -9,7 +9,7 @@
 
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 40px 20px; color: #18181b; margin: 0;">
 
-```
+
 <!-- Outer wrapper table to prevent Gmail client clipping (collapsing into ellipsis/3 dots) -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff;">
     <tr>
@@ -56,7 +56,7 @@
         </td>
     </tr>
 </table>
-```
+
 
 </body>
 

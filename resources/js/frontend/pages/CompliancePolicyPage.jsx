@@ -9,6 +9,11 @@ const POLICY_CONFIG = {
         field: 'shipping_and_return',
         fallback: 'Shipping and return information is currently unavailable.',
     },
+    '/returnandrefund': {
+        title: 'Return & Refund Policy',
+        field: 'return_and_refund_policy',
+        fallback: 'Return and refund policy is currently unavailable.',
+    },
     '/privacy': {
         title: 'Privacy Policy',
         field: 'privacy_policy',
@@ -26,13 +31,10 @@ function normalizePath(pathname) {
         return '/shipping';
     }
 
-    const lower = pathname.toLowerCase();
-    if (lower === '/privacy') {
-        return '/privacy';
-    }
+    const lower = pathname.toLowerCase().replace(/\/+$/, '');
 
-    if (lower === '/terms') {
-        return '/terms';
+    if (POLICY_CONFIG[lower]) {
+        return lower;
     }
 
     return '/shipping';

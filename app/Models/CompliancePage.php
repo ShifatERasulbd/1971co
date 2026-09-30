@@ -14,6 +14,7 @@ class CompliancePage extends Model
         'terms_and_conditions',
         'privacy_policy',
         'shipping_and_return',
+        'return_and_refund_policy',
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class CompliancePage extends Model
             'terms_and_conditions' => 'string',
             'privacy_policy' => 'string',
             'shipping_and_return' => 'string',
+            'return_and_refund_policy' => 'string',
         ];
     }
 }

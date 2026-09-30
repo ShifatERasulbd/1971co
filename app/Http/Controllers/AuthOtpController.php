@@ -38,7 +38,7 @@ class AuthOtpController extends Controller
 
         $message = $isResend 
             ? 'New verification code sent to your email.' 
-            : 'Verification code sent to your email.';
+            : 'Verification code sent to your email.(Can’t find it? Check Spam or Junk.)';
 
         return response()->json([
             'message' => $message

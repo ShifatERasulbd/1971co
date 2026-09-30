@@ -12,6 +12,7 @@ const initialForm = {
     terms_and_conditions: '',
     privacy_policy: '',
     shipping_and_return: '',
+    return_and_refund_policy: '',
 };
 
 function validateForm(form) {
@@ -54,6 +55,7 @@ export default function EditCompliance() {
                         terms_and_conditions: page.terms_and_conditions || '',
                         privacy_policy: page.privacy_policy || '',
                         shipping_and_return: page.shipping_and_return || '',
+                        return_and_refund_policy: page.return_and_refund_policy || '',
                     });
                 }
             } catch (error) {
@@ -118,6 +120,7 @@ export default function EditCompliance() {
                 terms_and_conditions: form.terms_and_conditions,
                 privacy_policy: form.privacy_policy,
                 shipping_and_return: form.shipping_and_return,
+                return_and_refund_policy: form.return_and_refund_policy,
             });
 
             toast.success('Compliance page updated successfully.', {

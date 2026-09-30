@@ -27,6 +27,7 @@ class CompliancePageController extends Controller
             'terms_and_conditions' => 'nullable|string',
             'privacy_policy' => 'nullable|string',
             'shipping_and_return' => 'nullable|string',
+            'return_and_refund_policy' => 'nullable|string',
         ]);
 
         $page = CompliancePage::create([
@@ -34,6 +35,7 @@ class CompliancePageController extends Controller
             'terms_and_conditions' => $validated['terms_and_conditions'] ?? '',
             'privacy_policy' => $validated['privacy_policy'] ?? '',
             'shipping_and_return' => $validated['shipping_and_return'] ?? '',
+            'return_and_refund_policy' => $validated['return_and_refund_policy'] ?? '',
         ]);
 
         return response()->json($page, 201);
@@ -51,6 +53,7 @@ class CompliancePageController extends Controller
             'terms_and_conditions' => 'nullable|string',
             'privacy_policy' => 'nullable|string',
             'shipping_and_return' => 'nullable|string',
+            'return_and_refund_policy' => 'nullable|string',
         ]);
 
         $compliance->update([
@@ -58,6 +61,7 @@ class CompliancePageController extends Controller
             'terms_and_conditions' => $validated['terms_and_conditions'] ?? $compliance->terms_and_conditions,
             'privacy_policy' => $validated['privacy_policy'] ?? $compliance->privacy_policy,
             'shipping_and_return' => $validated['shipping_and_return'] ?? $compliance->shipping_and_return,
+            'return_and_refund_policy' => $validated['return_and_refund_policy'] ?? $compliance->return_and_refund_policy,
         ]);
 
         return response()->json($compliance->fresh());

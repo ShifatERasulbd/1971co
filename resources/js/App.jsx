@@ -74,11 +74,23 @@ function normalizeAssetPath(value) {
 }
 
 function resolvePageLabel(pathname) {
-    const path = String(pathname || '/').toLowerCase();
+    const path = String(pathname || '/').toLowerCase().replace(/(.)\/+$/, '$1');
 
     if (path === '/') return 'Coming Soon';
     if (path === '/home') return 'Home';
     if (path === '/shop') return 'Shop';
+    if (path === '/about') return 'About';
+    if (path === '/contact') return 'Contact';
+    if (path === '/together-we-grow') return 'Together We Grow';
+    if (path === '/checkout') return 'Checkout';
+    if (path === '/order-confirmation') return 'Order Confirmation';
+    if (path === '/shipping') return 'Shipping';
+    if (path === '/returnandrefund') return 'Return & Refund Policy';
+    if (path === '/privacy') return 'Privacy Policy';
+    if (path === '/terms') return 'Terms & Conditions';
+    if (path === '/login') return 'Login';
+    if (path === '/register') return 'Register';
+    if (path.startsWith('/reset-password')) return 'Reset Password';
     if (path.startsWith('/search/')) return 'Search';
     if (path.startsWith('/collection/')) return 'Collection';
     if (path === '/new-arrivals') return 'Collection';
@@ -87,17 +99,6 @@ function resolvePageLabel(pathname) {
     if (path.startsWith('/product-details/')) return 'Product Details';
     if (path === '/singleproduct') return 'Product Details';
     if (path.split('/').filter(Boolean).length <= 2) return 'Shop';
-    if (path === '/about') return 'About';
-    if (path === '/contact') return 'Contact';
-    if (path === '/together-we-grow') return 'Together We Grow';
-    if (path === '/checkout') return 'Checkout';
-    if (path === '/order-confirmation') return 'Order Confirmation';
-    if (path === '/shipping') return 'Shipping';
-    if (path === '/privacy') return 'Privacy Policy';
-    if (path === '/terms') return 'Terms & Conditions';
-    if (path === '/login') return 'Login';
-    if (path === '/register') return 'Register';
-    if (path.startsWith('/reset-password')) return 'Reset Password';
 
     return 'Home';
 }
@@ -259,6 +260,7 @@ function AppRouter() {
                         <Route path="checkout" element={withPageFallback(CheckoutPage)} />
                         <Route path="order-confirmation" element={withPageFallback(OrderConfirmationPage)} />
                         <Route path="shipping" element={withPageFallback(CompliancePolicyPage)} />
+                        <Route path="returnandrefund" element={withPageFallback(CompliancePolicyPage)} />
                         <Route path="privacy" element={withPageFallback(CompliancePolicyPage)} />
                         <Route path="terms" element={withPageFallback(CompliancePolicyPage)} />
                         <Route path="login" element={withPageFallback(AuthPage)} />

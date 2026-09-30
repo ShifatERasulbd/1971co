@@ -18,6 +18,7 @@ const shopLinks = [
 const supportLinks = [
     { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
+    { label: 'Return and Refund', href:'/returnandrefund'}
 ];
 
 const companyLinks = [

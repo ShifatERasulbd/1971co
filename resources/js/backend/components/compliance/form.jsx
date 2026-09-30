@@ -20,7 +20,9 @@ export default function ComplianceForm({
         <Card>
             <CardHeader>
                 <CardTitle>{submitLabel}</CardTitle>
-                <CardDescription>Manage terms and conditions, privacy policy, and shipping & return information.</CardDescription>
+                <CardDescription>
+                    Manage terms and conditions, privacy policy, shipping & return, and return & refund information.
+                </CardDescription>
             </CardHeader>
 
             <Separator />
@@ -66,6 +68,14 @@ export default function ComplianceForm({
                             onChange={(html) => onRichTextChange('shipping_and_return', html)}
                             placeholder="Enter shipping and return policy here..."
                             error={errors.shipping_and_return}
+                        />
+
+                        <RichTextEditor
+                            label="Return and Refund Policy"
+                            value={form.return_and_refund_policy || ''}
+                            onChange={(html) => onRichTextChange('return_and_refund_policy', html)}
+                            placeholder="Enter return and refund policy here..."
+                            error={errors.return_and_refund_policy}
                         />
                     </div>
                 </CardContent>
