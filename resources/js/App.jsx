@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import CartDrawer from './frontend/components/CartDrawer.jsx';
@@ -18,7 +18,6 @@ import { initializeMicrosoftClarity } from './utils/microsoftClarity.js';
 preventInvalidBodyAriaHidden();
 
 const HomePage = lazy(() => import('./frontend/pages/HomePage.jsx'));
-const ComingSoonPage = lazy(() => import('./frontend/pages/Coming_soon.jsx'));
 const ShopPage = lazy(() => import('./frontend/pages/ShopPage.jsx'));
 const SingleProductPage = lazy(() => import('./frontend/pages/SingleProduct.jsx'));
 const AboutPage = lazy(() => import('./frontend/pages/About.jsx'));
@@ -31,30 +30,6 @@ const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.js
 const CompliancePolicyPage = lazy(() => import('./frontend/pages/CompliancePolicyPage.jsx'));
 
 const BRAND_NAME = '1971Co';
-const AUTH_USER_STORAGE_KEY = 'backend-auth-user-v1';
-const COMING_SOON_AUTH_KEY = 'coming_soon_auth';
-
-function readStoredBackendUser() {
-    try {
-        const raw = sessionStorage.getItem(AUTH_USER_STORAGE_KEY);
-        if (!raw) {
-            return null;
-        }
-
-        const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch {
-        return null;
-    }
-}
-
-function isAccessAuthorized() {
-    const storedUser = readStoredBackendUser();
-    const hasBackendUserEmail = Boolean(storedUser && (storedUser.email || storedUser.user_email || storedUser.email_address));
-    const hasComingSoonAccess = localStorage.getItem(COMING_SOON_AUTH_KEY) === 'true';
-
-    return hasBackendUserEmail || hasComingSoonAccess;
-}
 
 function normalizeAssetPath(value) {
     if (typeof value !== 'string') {
@@ -76,7 +51,7 @@ function normalizeAssetPath(value) {
 function resolvePageLabel(pathname) {
     const path = String(pathname || '/').toLowerCase().replace(/(.)\/+$/, '$1');
 
-    if (path === '/') return 'Coming Soon';
+    if (path === '/') return 'Home';
     if (path === '/home') return 'Home';
     if (path === '/shop') return 'Shop';
     if (path === '/about') return 'About';
@@ -202,17 +177,6 @@ function withPageFallback(Component) {
     );
 }
 
-// Protected Route Component to prevent bypasses
-function ProtectedRoute() {
-    const location = useLocation();
-
-    if (!isAccessAuthorized()) {
-        return <Navigate to="/" replace state={{ from: location.pathname }} />;
-    }
-
-    return <FrontendLayout />;
-}
-
 function FrontendLayout() {
     return (
         <div className="flex min-h-screen flex-col bg-white text-zinc-950">
@@ -237,14 +201,9 @@ function AppRouter() {
             <BrowserRouter>
                 <DocumentBrandingManager />
                 <Routes>
-                    <Route
-                        path="/"
-                        element={isAccessAuthorized() ? <Navigate to="/home" replace /> : withPageFallback(ComingSoonPage)}
-                    />
-
-                    {/* Protected Routes Wrapper */}
-                    <Route element={<ProtectedRoute />}>
-                        <Route path="home" element={withPageFallback(HomePage)} />
+                    <Route element={<FrontendLayout />}>
+                        <Route index element={withPageFallback(HomePage)} />
+                        <Route path="home" element={<Navigate to="/" replace />} />
                         <Route path="shop" element={withPageFallback(ShopPage)} />
                         <Route path="search/:productSlug" element={withPageFallback(ShopPage)} />
                         <Route path="collection/:slug" element={withPageFallback(ShopPage)} />
@@ -268,7 +227,7 @@ function AppRouter() {
                         <Route path="reset-password/:token" element={withPageFallback(ResetPasswordPage)} />
                     </Route>
 
-                    <Route path="*" element={<Navigate to={isAccessAuthorized() ? '/home' : '/'} replace />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </BrowserRouter>
         </CartProvider>
