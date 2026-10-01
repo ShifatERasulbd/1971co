@@ -232,7 +232,7 @@ export default function OurStorySection() {
                                     }
                                 }}
                             >
-                                About 1971Co
+                                About 1971Co.
                             </Link>
                         </div>
                     </motion.div>
