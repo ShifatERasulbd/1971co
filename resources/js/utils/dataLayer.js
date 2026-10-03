@@ -1,5 +1,5 @@
 // GTM/GA4-compatible ecommerce dataLayer helpers.
-// Every product/cart object here is dynamic (id, name, price, sku, qty) - no
+// Every product/cart object here is dynamic (slug, id, name, price, sku, qty) - no
 // per-product/manual wiring is needed for new products/variants/orders.
 
 function ensureDataLayer() {
@@ -27,7 +27,7 @@ function toGaItem(item = {}) {
     const variant = [item.selectedColor, item.selectedSize].filter(Boolean).join(' / ');
 
     return {
-        item_id: String(item.sku || item.productId || item.id || ''),
+        item_id: String(item.slug || item.sku || item.productId || item.id || ''),
         item_name: String(item.name || ''),
         price: Number(item.priceValue ?? item.price ?? 0) || 0,
         quantity: Number(item.quantity) || 1,
