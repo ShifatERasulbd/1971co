@@ -1,3 +1,5 @@
+import { getProductSlug } from './dataLayer';
+
 let isInitialized = false;
 
 export function initializeMicrosoftClarity(projectId) {
@@ -31,4 +33,41 @@ export function initializeMicrosoftClarity(projectId) {
 
 export function isMicrosoftClarityInitialized() {
     return isInitialized;
+}
+
+// --- Product tracking: product_slug is the identifier (same as GA4/GTM/Pixel) ---
+
+function clarity(...args) {
+    if (!isInitialized || typeof window === 'undefined' || typeof window.clarity !== 'function') {
+        return;
+    }
+
+    try {
+        window.clarity(...args);
+    } catch (error) {
+        console.error('Microsoft Clarity: call failed', error);
+    }
+}
+
+export function trackClarityProductEvent(eventName, item) {
+    const slug = getProductSlug(item);
+    if (!slug) {
+        return;
+    }
+
+    clarity('set', 'product_slug', slug);
+    clarity('event', eventName);
+}
+
+export const trackClarityViewItem = (product) => trackClarityProductEvent('view_item', product);
+export const trackClarityAddToCart = (item) => trackClarityProductEvent('add_to_cart', item);
+
+export function trackClarityPurchase(items = []) {
+    const slugs = items.map(getProductSlug).filter(Boolean);
+    if (!slugs.length) {
+        return;
+    }
+
+    clarity('set', 'product_slug', slugs.join(','));
+    clarity('event', 'purchase');
 }

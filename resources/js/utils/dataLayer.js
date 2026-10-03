@@ -1,6 +1,5 @@
 // GTM/GA4-compatible ecommerce dataLayer helpers.
-// Every product/cart object here is dynamic (slug, id, name, price, sku, qty) - no
-// per-product/manual wiring is needed for new products/variants/orders.
+// Product identifier is ALWAYS the product slug across GTM, GA4, Meta Pixel and Clarity.
 
 function ensureDataLayer() {
     if (typeof window === 'undefined') {
@@ -17,27 +16,34 @@ function pushEcommerceEvent(eventName, ecommerce) {
         return;
     }
 
-    // Clear the previous ecommerce object first so GTM/GA4 doesn't merge stale
-    // items from the last event (recommended by Google's GA4 dataLayer docs).
     dataLayer.push({ ecommerce: null });
     dataLayer.push({ event: eventName, ecommerce });
 }
 
-function toGaItem(item = {}) {
+// Single source of truth for the product identifier (slug first).
+export function getProductSlug(item = {}) {
+    return String(item.product_slug || item.slug || item.sku || item.productId || item.id || '');
+}
+
+export function getItemPrice(item = {}) {
+    return Number(item.priceValue ?? item.price ?? 0) || 0;
+}
+
+export function toGaItem(item = {}) {
     const variant = [item.selectedColor, item.selectedSize].filter(Boolean).join(' / ');
 
     return {
-        item_id: String(item.slug || item.sku || item.productId || item.id || ''),
+        item_id: getProductSlug(item),
         item_name: String(item.name || ''),
-        price: Number(item.priceValue ?? item.price ?? 0) || 0,
+        price: getItemPrice(item),
         quantity: Number(item.quantity) || 1,
         ...(variant ? { item_variant: variant } : {}),
         ...(item.category ? { item_category: String(item.category) } : {}),
     };
 }
 
-function sumValue(items = []) {
-    return items.reduce((sum, item) => sum + (Number(item.priceValue ?? item.price ?? 0) || 0) * (Number(item.quantity) || 1), 0);
+export function sumValue(items = []) {
+    return items.reduce((sum, item) => sum + getItemPrice(item) * (Number(item.quantity) || 1), 0);
 }
 
 export function trackViewItem(product) {
@@ -47,7 +53,7 @@ export function trackViewItem(product) {
 
     pushEcommerceEvent('view_item', {
         currency: 'USD',
-        value: Number(product?.priceValue ?? product?.price ?? 0) || 0,
+        value: getItemPrice(product),
         items: [toGaItem({ ...product, quantity: 1 })],
     });
 }
@@ -59,7 +65,7 @@ export function trackAddToCart(item) {
 
     pushEcommerceEvent('add_to_cart', {
         currency: 'USD',
-        value: (Number(item.priceValue) || 0) * (Number(item.quantity) || 1),
+        value: getItemPrice(item) * (Number(item.quantity) || 1),
         items: [toGaItem(item)],
     });
 }
@@ -98,8 +104,6 @@ export function trackAddPaymentInfo(items = [], value, paymentType) {
     });
 }
 
-// In-memory guard so a duplicate call within the same page life never re-fires
-// purchase for the same order (transaction_id is the permanent Order ID).
 const firedPurchaseTransactionIds = new Set();
 
 export function trackPurchase({ transactionId, value, tax = 0, shipping = 0, items = [] } = {}) {

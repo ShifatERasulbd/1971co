@@ -1,4 +1,5 @@
 import ReactGA from 'react-ga4';
+import { toGaItem, getItemPrice, sumValue } from './dataLayer';
 
 let isInitialized = false;
 
@@ -60,29 +61,7 @@ export function isGoogleAnalyticsInitialized() {
     return isInitialized;
 }
 
-// --- Google Analytics (react-ga4) Ecommerce Helpers (Using product_slug as item_id) ---
-
-function getProductSlug(item = {}) {
-    return String(item.product_slug || item.slug || item.sku || item.productId || item.id || '');
-}
-
-function toGaItem(item = {}) {
-    const variant = [item.selectedColor, item.selectedSize].filter(Boolean).join(' / ');
-    const productSlug = getProductSlug(item);
-
-    return {
-        item_id: productSlug, // Strictly using product_slug as the identifier
-        item_name: String(item.name || ''),
-        price: Number(item.priceValue ?? item.price ?? 0) || 0,
-        quantity: Number(item.quantity) || 1,
-        ...(variant ? { item_variant: variant } : {}),
-        ...(item.category ? { item_category: String(item.category) } : {}),
-    };
-}
-
-function sumValue(items = []) {
-    return items.reduce((sum, item) => sum + (Number(item.priceValue ?? item.price ?? 0) || 0) * (Number(item.quantity) || 1), 0);
-}
+// --- GA4 ecommerce: item_id is ALWAYS the product slug (via shared toGaItem) ---
 
 export function trackGaViewItem(product) {
     if (!isInitialized || !product) {
@@ -92,7 +71,7 @@ export function trackGaViewItem(product) {
     try {
         ReactGA.event('view_item', {
             currency: 'USD',
-            value: Number(product?.priceValue ?? product?.price ?? 0) || 0,
+            value: getItemPrice(product),
             items: [toGaItem({ ...product, quantity: 1 })],
         });
     } catch (error) {
@@ -108,11 +87,27 @@ export function trackGaAddToCart(item) {
     try {
         ReactGA.event('add_to_cart', {
             currency: 'USD',
-            value: (Number(item.priceValue ?? item.price) || 0) * (Number(item.quantity) || 1),
+            value: getItemPrice(item) * (Number(item.quantity) || 1),
             items: [toGaItem(item)],
         });
     } catch (error) {
         console.error('Google Analytics: Failed to track add_to_cart', error);
+    }
+}
+
+export function trackGaBeginCheckout(items = [], value) {
+    if (!isInitialized) {
+        return;
+    }
+
+    try {
+        ReactGA.event('begin_checkout', {
+            currency: 'USD',
+            value: Number.isFinite(Number(value)) ? Number(value) : sumValue(items),
+            items: items.map(toGaItem),
+        });
+    } catch (error) {
+        console.error('Google Analytics: Failed to track begin_checkout', error);
     }
 }
 

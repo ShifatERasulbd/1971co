@@ -1,3 +1,5 @@
+import { getProductSlug, getItemPrice, sumValue } from './dataLayer';
+
 let isInitialized = false;
 
 function injectPixelScript() {
@@ -36,8 +38,6 @@ export function initializeFacebookPixel(pixelId) {
 
     try {
         injectPixelScript();
-        // Disable Meta's automatic button-click detection so only our explicit
-        // trackPixelEvent() calls (AddToCart, Purchase, etc.) are sent.
         window.fbq('set', 'autoConfig', false, pixelId);
         window.fbq('init', pixelId);
         isInitialized = true;
@@ -63,6 +63,84 @@ export function trackPixelEvent(eventName, params = {}, eventId) {
 
 export function trackPixelPageView() {
     trackPixelEvent('PageView');
+}
+
+// --- Ecommerce helpers: content_ids / contents[].id are ALWAYS the product slug ---
+
+function toPixelContent(item = {}) {
+    return {
+        id: getProductSlug(item),
+        quantity: Number(item.quantity) || 1,
+        item_price: getItemPrice(item),
+    };
+}
+
+export function trackPixelViewContent(product, eventId) {
+    if (!product) {
+        return;
+    }
+
+    trackPixelEvent(
+        'ViewContent',
+        {
+            content_type: 'product',
+            content_ids: [getProductSlug(product)],
+            content_name: String(product.name || ''),
+            contents: [toPixelContent({ ...product, quantity: 1 })],
+            value: getItemPrice(product),
+            currency: 'USD',
+        },
+        eventId
+    );
+}
+
+export function trackPixelAddToCart(item, eventId) {
+    if (!item) {
+        return;
+    }
+
+    trackPixelEvent(
+        'AddToCart',
+        {
+            content_type: 'product',
+            content_ids: [getProductSlug(item)],
+            content_name: String(item.name || ''),
+            contents: [toPixelContent(item)],
+            value: getItemPrice(item) * (Number(item.quantity) || 1),
+            currency: 'USD',
+        },
+        eventId
+    );
+}
+
+export function trackPixelInitiateCheckout(items = [], value, eventId) {
+    trackPixelEvent(
+        'InitiateCheckout',
+        {
+            content_type: 'product',
+            content_ids: items.map(getProductSlug),
+            contents: items.map(toPixelContent),
+            num_items: items.reduce((n, i) => n + (Number(i.quantity) || 1), 0),
+            value: Number.isFinite(Number(value)) ? Number(value) : sumValue(items),
+            currency: 'USD',
+        },
+        eventId
+    );
+}
+
+export function trackPixelPurchase({ value, items = [] } = {}, eventId) {
+    trackPixelEvent(
+        'Purchase',
+        {
+            content_type: 'product',
+            content_ids: items.map(getProductSlug),
+            contents: items.map(toPixelContent),
+            num_items: items.reduce((n, i) => n + (Number(i.quantity) || 1), 0),
+            value: Number(value) || 0,
+            currency: 'USD',
+        },
+        eventId
+    );
 }
 
 export function isFacebookPixelInitialized() {
