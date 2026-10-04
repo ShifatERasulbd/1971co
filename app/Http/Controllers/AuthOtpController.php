@@ -11,6 +11,8 @@ use App\Mail\OtpMail;
 
 class AuthOtpController extends Controller
 {
+    private const OTP_VALID_MINUTES = 5;
+
     public function sendOtp(Request $request)
     {
         $validated = $request->validate([
@@ -19,10 +21,10 @@ class AuthOtpController extends Controller
         ]);
 
         $email = strtolower(trim($validated['email']));
-        
+
         $user = User::firstOrNew(['email' => $email]);
-        
-        // Check if an OTP was already generated recently (e.g., within the last 60 seconds)
+
+        // Check if an OTP was already generated recently (within the last 60 seconds)
         $isResend = $user->exists && $user->otp && $user->updated_at && $user->updated_at->diffInSeconds(now()) < 60;
 
         if (!$user->exists) {
@@ -32,16 +34,15 @@ class AuthOtpController extends Controller
 
         $otp = random_int(100000, 999999);
         $user->otp = (string) $otp;
-        $user->save();
+        $user->save(); // refreshes updated_at, which is used for the 5 minute expiry
 
         Mail::to($email)->send(new OtpMail((string) $otp));
 
-        $message = $isResend 
-            ? 'New verification code sent to your email.' 
-            : 'Verification code sent to your email.(Can’t find it? Check Spam or Junk.)';
-
         return response()->json([
-            'message' => $message
+            'message' => $isResend
+                ? 'New verification code sent to your email.'
+                : 'Verification code sent to your email.',
+            'hint' => 'Can’t find it? Check Spam or Junk.',
         ]);
     }
 
@@ -56,8 +57,14 @@ class AuthOtpController extends Controller
         $email = strtolower(trim($validated['email']));
         $user = User::where('email', $email)->first();
 
-        // Validate OTP from the user database record
-        if (!$user || empty($user->otp) || (int) $user->otp !== (int) $validated['otp']) {
+        // Validate OTP from the user database record, including the 5 minute expiry
+        if (
+            !$user
+            || empty($user->otp)
+            || !$user->updated_at
+            || $user->updated_at->lt(now()->subMinutes(self::OTP_VALID_MINUTES))
+            || !hash_equals((string) $user->otp, (string) $validated['otp'])
+        ) {
             return response()->json([
                 'message' => 'Invalid or expired verification code.'
             ], 422);

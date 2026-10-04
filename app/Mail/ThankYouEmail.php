@@ -22,7 +22,7 @@ class ThankYouEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('orders-no-reply@1971co.com', '1971Co'),
+            from: new Address('orders-no-reply@1971co.com', '1971Co.'),
             subject: 'Thank You for Your Order — ' . $this->order->order_number
         );
     }

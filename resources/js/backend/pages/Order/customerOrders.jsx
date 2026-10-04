@@ -234,10 +234,10 @@ export default function CustomerOrders() {
     }
 
     const lastPage = meta?.last_page ?? 1;
-    const tableColSpan = 8;
+    const tableColSpan = 7;
 
     return (
-        <div className="px-4 py-6 sm:px-6">
+        <div className="px-4 pt-6 pb-20 sm:px-6">
             {/* Header */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -287,13 +287,13 @@ export default function CustomerOrders() {
                     <tbody className="divide-y divide-zinc-100">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={tableColSpan} className="px-4 py-10 text-center text-zinc-400">
+                                <td colSpan={tableColSpan} className="px-4 py-40 text-center text-zinc-400">
                                     Loading…
                                 </td>
                             </tr>
                         ) : orders.length === 0 ? (
                             <tr>
-                                <td colSpan={tableColSpan} className="px-4 py-10 text-center text-zinc-400">
+                                <td colSpan={tableColSpan} className="px-4 py-40 text-center text-zinc-400">
                                     No orders found
                                 </td>
                             </tr>
@@ -305,7 +305,7 @@ export default function CustomerOrders() {
                                 const customerCanReview = canCustomerReview(order);
 
                                 return (
-                                  <tr key={order.id} className="hover:bg-zinc-50">
+                                    <tr key={order.id} className="hover:bg-zinc-50">
                                         <td className="px-3 py-3 text-center font-mono text-xs text-zinc-700 break-all">{order.order_number}</td>
                                         <td className="px-3 py-3 text-center text-zinc-700">{order.items_count}</td>
                                         <td className="px-3 py-3 text-center font-medium text-zinc-800">

@@ -23,7 +23,7 @@ class ReturnRequestEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('return-request@1971co.com', '1971Co'),
+            from: new Address('return-request@1971co.com', '1971Co.'),
             subject: 'Return Request Received — Order #' . $this->order->order_number
         );
     }

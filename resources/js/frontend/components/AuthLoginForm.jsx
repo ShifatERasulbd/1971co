@@ -3,6 +3,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 
 const AUTH_USER_STORAGE_KEY = 'backend-auth-user-v1';
+const OTP_VALID_SECONDS = 5 * 60;
 
 function cacheBackendUser(user) {
     try {
@@ -20,18 +21,46 @@ function readCookie(name) {
     return match ? decodeURIComponent(match[1]) : '';
 }
 
+function useCountdown(expiresAt) {
+    const [remaining, setRemaining] = useState(0);
+
+    useEffect(() => {
+        if (!expiresAt) {
+            setRemaining(0);
+            return;
+        }
+
+        const tick = () =>
+            setRemaining(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [expiresAt]);
+
+    return remaining;
+}
+
+const formatTime = (s) =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
 export default function AuthLoginForm() {
     const [step, setStep] = useState('email'); // 'email' | 'otp'
     const [form, setForm] = useState({ email: '', otp: '', remember: false });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [infoMessage, setInfoMessage] = useState('');
+    const [hintMessage, setHintMessage] = useState('');
     const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-    
+
     // Resend countdown state (60 seconds)
     const [resendCountdown, setResendCountdown] = useState(0);
 
-    // Handle countdown interval
+    // OTP validity countdown (5 minutes, browser only)
+    const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+    const otpRemaining = useCountdown(otpExpiresAt);
+
+    // Handle resend countdown interval
     useEffect(() => {
         let timer;
         if (resendCountdown > 0) {
@@ -60,11 +89,12 @@ export default function AuthLoginForm() {
         };
     }
 
-    // Step 1: Request OTP code to be sent to email
+    // Step 1: Request OTP code to be sent to email (also used by Resend)
     async function handleRequestOtp(event) {
         if (event) event.preventDefault();
         setErrorMessage('');
         setInfoMessage('');
+        setHintMessage('');
         setIsSubmitting(true);
 
         try {
@@ -88,8 +118,11 @@ export default function AuthLoginForm() {
             }
 
             setInfoMessage(payload?.message || `Verification code sent to ${form.email}`);
+            setHintMessage(payload?.hint || '');
+            updateField('otp', ''); // Clear the old code input
             setStep('otp');
-            setResendCountdown(60); // Start 60 seconds countdown
+            setResendCountdown(60); // Restart 60 seconds resend cooldown
+            setOtpExpiresAt(Date.now() + OTP_VALID_SECONDS * 1000); // Restart 5:00 validity countdown
         } catch {
             setErrorMessage('Unable to reach the server. Please try again.');
         } finally {
@@ -169,6 +202,8 @@ export default function AuthLoginForm() {
 
     // Step 2 UI: OTP verification input view
     if (step === 'otp') {
+        const isOtpExpired = otpExpiresAt !== null && otpRemaining === 0;
+
         return (
             <form className="mt-5 space-y-3" onSubmit={handleVerifyOtp}>
                 <div>
@@ -186,12 +221,22 @@ export default function AuthLoginForm() {
                     />
                 </div>
 
-                {infoMessage ? <p className="text-sm text-emerald-700">{infoMessage}</p> : null}
-                {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+                <div className="space-y-0.5 text-sm">
+                    {infoMessage ? <p className="text-emerald-700">{infoMessage}</p> : null}
+                    {hintMessage ? <p className="text-emerald-700">{hintMessage}</p> : null}
+                    {otpExpiresAt ? (
+                        <p className={isOtpExpired ? 'text-red-600' : 'text-slate-500'}>
+                            {isOtpExpired
+                                ? 'OTP expired. Please request a new code.'
+                                : `OTP is valid for ${formatTime(otpRemaining)}`}
+                        </p>
+                    ) : null}
+                    {errorMessage ? <p className="text-red-600">{errorMessage}</p> : null}
+                </div>
 
                 <button
                     type="submit"
-                    disabled={isSubmitting || form.otp.length < 4}
+                    disabled={isSubmitting || form.otp.length < 4 || isOtpExpired}
                     className="inline-flex h-11 w-full items-center justify-center bg-black px-5 text-[0.86rem] font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isSubmitting ? 'Verifying...' : 'Verify & Log In'}
@@ -204,6 +249,10 @@ export default function AuthLoginForm() {
                             setStep('email');
                             setErrorMessage('');
                             setInfoMessage('');
+                            setHintMessage('');
+                            setOtpExpiresAt(null);
+                            setResendCountdown(0);
+                            updateField('otp', '');
                         }}
                         className="text-slate-500 underline underline-offset-2 transition-colors hover:text-zinc-800"
                     >

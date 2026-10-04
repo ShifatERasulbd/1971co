@@ -21,7 +21,7 @@ class OrderCancelledEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('orders-no-reply@1971co.com', '1971Co'),
+            from: new Address('orders-no-reply@1971co.com', '1971Co.'),
             subject: 'Order Cancelled — Order #' . $this->order->order_number
         );
     }

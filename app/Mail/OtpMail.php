@@ -23,7 +23,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('no-reply@1971co.com', config('mail.from.name')),
+            from: new Address('no-reply@1971co.com', '1971Co.'),
             subject: 'Your 1971Co Login Verification Code'
         );
     }
