@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\OrderNotification;
 use Illuminate\Support\Str;
 use Stripe\StripeClient;
 
@@ -458,6 +459,19 @@ class CheckoutOrderController extends Controller
             Mail::to($order->email)->send(new ThankYouEmail($order));
         } catch (\Throwable $exception) {
             Log::warning('Failed to send order thank-you email', [
+                'order_id' => $order->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+
+        try {
+            Mail::to([
+                'anik@arbellafashion.com',
+                'shifaterasulbd@gmail.com',
+                'aziz_hoque@yahoo.com'
+            ])->send(new OrderNotification($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send order notification email', [
                 'order_id' => $order->id,
                 'message' => $exception->getMessage(),
             ]);
