@@ -26,6 +26,9 @@ class CheckoutOrderController extends Controller
 
     private const STRIPE_FIXED_FEE = 0.30;
 
+    // Orders are exposed to the ERP feed only after this many minutes.order delay to inventory
+    private const ERP_FEED_DELAY_MINUTES = 30;
+
     public function __construct(
         private readonly ShippingRateService $shippingRateService,
         private readonly FacebookConversionsApiService $facebookConversionsApiService,
@@ -467,8 +470,7 @@ class CheckoutOrderController extends Controller
         try {
             Mail::to([
                 'anik@arbellafashion.com',
-                'shifaterasulbd@gmail.com',
-                'aziz_hoque@yahoo.com'
+                'shifaterasulbd@gmail.com'
             ])->send(new OrderNotification($order));
         } catch (\Throwable $exception) {
             Log::warning('Failed to send order notification email', [
@@ -853,7 +855,9 @@ class CheckoutOrderController extends Controller
             'status' => 'nullable|string',
         ]);
 
-        $query = CheckoutOrder::query()->orderBy('id');
+        $query = CheckoutOrder::query()
+            ->where('created_at', '<=', now()->subMinutes(self::ERP_FEED_DELAY_MINUTES))
+            ->orderBy('id');
 
         if (! empty($validated['since_id'])) {
             $query->where('id', '>', (int) $validated['since_id']);
@@ -876,6 +880,13 @@ class CheckoutOrderController extends Controller
 
     public function publicExternalShow(CheckoutOrder $checkoutOrder): JsonResponse
     {
+        if ($checkoutOrder->created_at && $checkoutOrder->created_at->gt(now()->subMinutes(self::ERP_FEED_DELAY_MINUTES))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order is not available yet.',
+            ], 404);
+        }
+
         return response()->json([
             'success' => true,
             'order' => $this->formatExternalOrder($checkoutOrder),
@@ -994,7 +1005,7 @@ class CheckoutOrderController extends Controller
             $newOrder->save();
 
             return response()->json([
-                'message' => 'Reorder created successfully as a new row',
+                'message' => 'Order reorder created successfully as a new row',
                 'order' => $newOrder,
             ], 201);
         }
