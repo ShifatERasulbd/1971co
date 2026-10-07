@@ -370,7 +370,7 @@ export default function CustomerOrders() {
                                                     disabled={!customerCanCancel}
                                                     className="whitespace-nowrap rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
-                                                    Cancel
+                                                    Cancel Order
                                                 </button>
                                             </div>
                                         </td>
