@@ -109,74 +109,89 @@ const OTHER_BRANDS = [
 
 function CardBrandBadges({ brand }) {
     const isKnown = KNOWN_BRANDS.includes(brand);
+    const activeOtherBrand = OTHER_BRANDS.find((item) => item.id === brand);
     const isOther = brand !== 'unknown' && !isKnown;
 
-    // Only Visa / Mastercard collapse to a single badge
-    const isSingleBrand = brand === 'visa' || brand === 'mastercard';
+    // Treat Amex, Visa, and Mastercard as single brands when they are active
+    const isSingleBrand = brand === 'visa' || brand === 'mastercard' || brand === 'amex' || (!isKnown && brand !== 'unknown');
 
     const fade = (id) =>
         brand !== 'unknown' && brand !== id ? 'opacity-30 grayscale' : 'opacity-100';
 
     const showVisa = !isSingleBrand || brand === 'visa';
     const showMastercard = !isSingleBrand || brand === 'mastercard';
-    const showAmex = !isSingleBrand;
-    const showOthers = !isSingleBrand;
+    const showAmex = !isSingleBrand || brand === 'amex';
 
     return (
         <span className="flex items-center gap-1.5">
-            {showVisa && (
-                <span className={`rounded bg-[#1434cb] px-2 py-1 text-[0.65rem] font-bold italic text-white transition ${fade('visa')}`}>
-                    VISA
-                </span>
-            )}
-
-            {showMastercard && (
-                <span className={`flex h-6 w-9 items-center justify-center rounded border border-zinc-200 bg-white transition ${fade('mastercard')}`}>
-                    <span className="h-3.5 w-3.5 rounded-full bg-[#eb001b]" />
-                    <span className="-ml-1.5 h-3.5 w-3.5 rounded-full bg-[#f79e1b] opacity-90" />
-                </span>
-            )}
-
-            {showAmex && (
-                <span className={`rounded bg-[#1f72cd] px-1.5 py-1 text-[0.6rem] font-bold text-white transition ${fade('amex')}`}>
-                    AMEX
-                </span>
-            )}
-
-            {/* +5 with hover / focus tooltip */}
-            {showOthers && (
-                <span className="group relative">
-                    <button
-                        type="button"
-                        aria-label="Show other accepted cards"
-                        onClick={(event) => event.preventDefault()}
-                        className={`rounded border px-1.5 py-1 text-[0.65rem] transition ${
-                            isOther ? 'border-zinc-900 text-zinc-900' : 'border-zinc-200 text-zinc-600'
-                        } ${brand !== 'unknown' && !isOther ? 'opacity-30' : ''} hover:border-zinc-900 hover:text-zinc-900`}
+            {activeOtherBrand ? (
+                <span className="flex items-center gap-1.5">
+                    <span 
+                        title={activeOtherBrand.name} 
+                        className="flex h-6 w-9 items-center justify-center overflow-hidden rounded border border-zinc-300 bg-white shadow-sm"
                     >
-                        +5
-                    </button>
-
-                    <span
-                        role="tooltip"
-                        className="pointer-events-none invisible absolute bottom-full right-[-6px] z-30 mb-2 w-[168px] rounded-md bg-[#1a1a1a] p-2 opacity-0 shadow-lg transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
-                    >
-                        <span className="flex flex-wrap gap-1.5">
-                            {OTHER_BRANDS.map((item) => (
-                                <span
-                                    key={item.id}
-                                    title={item.name}
-                                    className={`flex h-5 w-8 items-center justify-center overflow-hidden rounded-[3px] bg-white transition ${
-                                        brand !== 'unknown' && brand !== item.id ? 'opacity-40' : 'opacity-100'
-                                    }`}
-                                >
-                                    {item.logo}
-                                </span>
-                            ))}
-                        </span>
-                        <span className="absolute -bottom-1 right-[15px] h-2 w-2 rotate-45 bg-[#1a1a1a]" />
+                        {activeOtherBrand.logo}
+                    </span>
+                    <span className="text-[0.7rem] font-bold uppercase text-zinc-800">
+                        {activeOtherBrand.name}
                     </span>
                 </span>
+            ) : (
+                <>
+                    {showVisa && (
+                        <span className={`rounded bg-[#1434cb] px-2 py-1 text-[0.65rem] font-bold italic text-white transition ${fade('visa')}`}>
+                            VISA
+                        </span>
+                    )}
+
+                    {showMastercard && (
+                        <span className={`flex h-6 w-9 items-center justify-center rounded border border-zinc-200 bg-white transition ${fade('mastercard')}`}>
+                            <span className="h-3.5 w-3.5 rounded-full bg-[#eb001b]" />
+                            <span className="-ml-1.5 h-3.5 w-3.5 rounded-full bg-[#f79e1b] opacity-90" />
+                        </span>
+                    )}
+
+                    {showAmex && (
+                        <span className={`rounded bg-[#1f72cd] px-1.5 py-1 text-[0.6rem] font-bold text-white transition ${fade('amex')}`}>
+                            AMEX
+                        </span>
+                    )}
+
+                    {!isSingleBrand && (
+                        <span className="group relative">
+                            <button
+                                type="button"
+                                aria-label="Show other accepted cards"
+                                onClick={(event) => event.preventDefault()}
+                                className={`rounded border px-1.5 py-1 text-[0.65rem] transition ${
+                                    isOther ? 'border-zinc-900 text-zinc-900' : 'border-zinc-200 text-zinc-600'
+                                } ${brand !== 'unknown' && !isOther ? 'opacity-30' : ''} hover:border-zinc-900 hover:text-zinc-900`}
+                            >
+                                +5
+                            </button>
+
+                            <span
+                                role="tooltip"
+                                className="pointer-events-none invisible absolute bottom-full right-[-6px] z-30 mb-2 w-[168px] rounded-md bg-[#1a1a1a] p-2 opacity-0 shadow-lg transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+                            >
+                                <span className="flex flex-wrap gap-1.5">
+                                    {OTHER_BRANDS.map((item) => (
+                                        <span
+                                            key={item.id}
+                                            title={item.name}
+                                            className={`flex h-5 w-8 items-center justify-center overflow-hidden rounded-[3px] bg-white transition ${
+                                                brand !== 'unknown' && brand !== item.id ? 'opacity-40' : 'opacity-100'
+                                            }`}
+                                        >
+                                            {item.logo}
+                                        </span>
+                                    ))}
+                                </span>
+                                <span className="absolute -bottom-1 right-[15px] h-2 w-2 rotate-45 bg-[#1a1a1a]" />
+                            </span>
+                        </span>
+                    )}
+                </>
             )}
         </span>
     );
@@ -296,10 +311,25 @@ function CheckoutForm() {
         notes: '',
     });
 
+    // Billing Form State & Checkbox
+    const [useShippingAsBilling, setUseShippingAsBilling] = useState(true);
+    const [billingForm, setBillingForm] = useState({
+        first_name: '',
+        last_name: '',
+        address_line_1: '',
+        address_line_2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: 'United States',
+    });
+    const [billingStateQuery, setBillingStateQuery] = useState('');
+    const [isBillingStateOpen, setIsBillingStateOpen] = useState(false);
+    const billingContainerRef = useRef(null);
+
     // Payment UI state
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [nameOnCard, setNameOnCard] = useState('');
-    const [useShippingAsBilling, setUseShippingAsBilling] = useState(true);
     const [showCardErrors, setShowCardErrors] = useState(false);
     const [cardBrand, setCardBrand] = useState('unknown');
     const [cardStatus, setCardStatus] = useState({
@@ -307,7 +337,6 @@ function CheckoutForm() {
         expiry: { complete: false, error: '' },
         cvc: { complete: false, error: '' },
     });
-    // Track blur/touched state for stripe elements & card inputs specifically
     const [touchedCardFields, setTouchedCardFields] = useState({
         number: false,
         expiry: false,
@@ -454,10 +483,8 @@ function CheckoutForm() {
             num_items: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
         });
         trackBeginCheckout(normalizedItems, subtotal);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Fire AddPaymentInfo once when all card fields are complete
     useEffect(() => {
         if (allCardFieldsComplete && !hasFiredPaymentInfoEventRef.current) {
             hasFiredPaymentInfoEventRef.current = true;
@@ -533,7 +560,6 @@ function CheckoutForm() {
             errors.email = 'Enter a valid email address';
         }
 
-        // Validate state against stateOptions records
         const stateValue = String(values.state || '').trim();
         if (stateValue && stateOptions.length > 0) {
             const isValidState = stateOptions.some(
@@ -599,6 +625,10 @@ function CheckoutForm() {
             }
             return next;
         });
+    }
+
+    function updateBillingField(field, value) {
+        setBillingForm((previous) => ({ ...previous, [field]: value }));
     }
 
     useEffect(() => {
@@ -758,22 +788,33 @@ function CheckoutForm() {
         };
     }, [form.address_line_1, form.city, form.country, form.postal_code, form.state, hasCompleteShippingAddress, normalizedItems, shipping, subtotal]);
 
-    // Sync display query if form.state changes programmatically
     useEffect(() => {
         const matched = stateOptions.find((s) => s.state_code === form.state || s.state_name === form.state);
         setStateQuery(matched ? `${matched.state_name} (${matched.state_code})` : form.state || '');
     }, [form.state, stateOptions]);
+
+    useEffect(() => {
+        const matched = stateOptions.find((s) => s.state_code === billingForm.state || s.state_name === billingForm.state);
+        setBillingStateQuery(matched ? `${matched.state_name} (${matched.state_code})` : billingForm.state || '');
+    }, [billingForm.state, stateOptions]);
 
     const filteredStates = stateOptions.filter((s) => {
         const q = stateQuery.toLowerCase();
         return s.state_name.toLowerCase().includes(q) || s.state_code.toLowerCase().includes(q);
     });
 
-    // Close dropdown on outside click
+    const filteredBillingStates = stateOptions.filter((s) => {
+        const q = billingStateQuery.toLowerCase();
+        return s.state_name.toLowerCase().includes(q) || s.state_code.toLowerCase().includes(q);
+    });
+
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
                 setIsOpen(false);
+            }
+            if (billingContainerRef.current && !billingContainerRef.current.contains(e.target)) {
+                setIsBillingStateOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -800,6 +841,15 @@ function CheckoutForm() {
             delete next.postal_code;
             return next;
         });
+    };
+
+    const handleBillingStateChange = (nextStateValue) => {
+        setBillingForm((previous) => ({
+            ...previous,
+            state: nextStateValue,
+            city: '',
+            postal_code: '',
+        }));
     };
 
     useEffect(() => {
@@ -886,67 +936,6 @@ function CheckoutForm() {
         trackAddShippingInfo(normalizedItems, total, option?.service_name || option?.name || selectedShippingOptionCode);
     }, [selectedShippingOptionCode, shippingOptions, normalizedItems, total]);
 
-    useEffect(() => {
-        const city = String(form.city || '').trim();
-        const state = String(form.state || '').trim();
-        const postalCode = String(form.postal_code || '').trim();
-        const country = String(form.country || '').trim().toLowerCase();
-
-        if (!city || !state) {
-            return;
-        }
-
-        if (postalCode) {
-            return;
-        }
-
-        if (country && country !== 'us' && country !== 'usa' && country !== 'united states') {
-            return;
-        }
-
-        const controller = new AbortController();
-        const timer = setTimeout(async () => {
-            try {
-                const params = new URLSearchParams({ city, state });
-                const response = await fetch(`/api/public/locations/postal-code?${params.toString()}`, {
-                    headers: { Accept: 'application/json' },
-                    signal: controller.signal,
-                });
-
-                if (!response.ok) {
-                    return;
-                }
-
-                const payload = await response.json().catch(() => ({}));
-                const nextPostalCode = String(payload?.postal_code || '').trim();
-
-                if (!nextPostalCode) {
-                    return;
-                }
-
-                setForm((previous) => {
-                    if (String(previous.postal_code || '').trim()) {
-                        return previous;
-                    }
-
-                    return {
-                        ...previous,
-                        postal_code: nextPostalCode,
-                    };
-                });
-            } catch (error) {
-                if (error?.name === 'AbortError') {
-                    return;
-                }
-            }
-        }, 300);
-
-        return () => {
-            controller.abort();
-            clearTimeout(timer);
-        };
-    }, [form.city, form.country, form.postal_code, form.state]);
-
     if (isCartEmpty) {
         return (
             <section className={`${featuresFontClass} font-monstrate bg-[#f7f7f5] px-5 py-16 sm:px-8 lg:px-12`}>
@@ -981,7 +970,6 @@ function CheckoutForm() {
             return;
         }
 
-        // Mark all fields as touched so any untouched empty fields reveal errors on click
         const allFields = ['first_name', 'last_name', 'email', 'phone', 'address_line_1', 'city', 'state', 'postal_code', 'country'];
         const allTouched = {};
         allFields.forEach((f) => { allTouched[f] = true; });
@@ -1060,18 +1048,14 @@ function CheckoutForm() {
                         name: nameOnCard.trim(),
                         email: form.email,
                         phone: form.phone,
-                        ...(useShippingAsBilling
-                            ? {
-                                  address: {
-                                      line1: form.address_line_1,
-                                      line2: form.address_line_2 || undefined,
-                                      city: form.city,
-                                      state: form.state,
-                                      postal_code: form.postal_code,
-                                      country: normalizeCountryCode(form.country),
-                                  },
-                              }
-                            : {}),
+                        address: {
+                            line1: useShippingAsBilling ? form.address_line_1 : billingForm.address_line_1,
+                            line2: useShippingAsBilling ? (form.address_line_2 || undefined) : (billingForm.address_line_2 || undefined),
+                            city: useShippingAsBilling ? form.city : billingForm.city,
+                            state: useShippingAsBilling ? form.state : billingForm.state,
+                            postal_code: useShippingAsBilling ? form.postal_code : billingForm.postal_code,
+                            country: normalizeCountryCode(useShippingAsBilling ? form.country : billingForm.country),
+                        },
                     },
                 },
             });
@@ -1157,7 +1141,7 @@ function CheckoutForm() {
                 sessionStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
                 localStorage.setItem('lastOrderInvoice', JSON.stringify(cachedInvoice));
             } catch {
-                // Ignore storage failures and continue normal flow.
+                // Ignore storage failures
             }
 
             trackPixelEvent('Purchase', {
@@ -1406,6 +1390,148 @@ function CheckoutForm() {
                                 />
                                 {touchedFields.country && fieldErrors.country ? <p className="mt-1 text-xs text-red-500">{fieldErrors.country}</p> : null}
                             </div>
+
+                            {/* Checkbox moved right under Zip Code and Country */}
+                            <div className="sm:col-span-2 mt-2">
+                                <label className="flex cursor-pointer items-center gap-2.5 text-[0.88rem] text-zinc-800">
+                                    <input
+                                        type="checkbox"
+                                        checked={useShippingAsBilling}
+                                        onChange={(event) => setUseShippingAsBilling(event.target.checked)}
+                                        className="h-4 w-4 accent-zinc-900"
+                                    />
+                                    Use shipping address as billing address
+                                </label>
+                            </div>
+
+                            {/* Conditional Billing Address Form */}
+                            {!useShippingAsBilling && (
+                                <div className="sm:col-span-2 mt-4 border-t border-zinc-200 pt-5">
+                                    <h3 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 mb-4">Billing Address</h3>
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                First Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.first_name}
+                                                onChange={(event) => updateBillingField('first_name', event.target.value)}
+                                                placeholder="John"
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                Last Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.last_name}
+                                                onChange={(event) => updateBillingField('last_name', event.target.value)}
+                                                placeholder="Doe"
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                Address Line 1 <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.address_line_1}
+                                                onChange={(event) => updateBillingField('address_line_1', event.target.value)}
+                                                placeholder="123 Main Street"
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                Address Line 2 <span className="text-zinc-300">(optional)</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.address_line_2}
+                                                onChange={(event) => updateBillingField('address_line_2', event.target.value)}
+                                                placeholder="Apt, suite, unit, etc."
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                        </div>
+
+                                        {/* Billing State Combobox */}
+                                        <div ref={billingContainerRef} className="relative">
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                State <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={isLoadingStates ? 'Loading states...' : billingStateQuery}
+                                                disabled={isLoadingStates}
+                                                placeholder="Type or select state"
+                                                onFocus={() => setIsBillingStateOpen(true)}
+                                                onChange={(event) => {
+                                                    const val = event.target.value;
+                                                    setBillingStateQuery(val);
+                                                    setIsBillingStateOpen(true);
+                                                    handleBillingStateChange(val);
+                                                }}
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                            {isBillingStateOpen && !isLoadingStates && filteredBillingStates.length > 0 && (
+                                                <ul className="font-monstrate absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-zinc-200 bg-white text-sm shadow-lg">
+                                                    {filteredBillingStates.map((state) => (
+                                                        <li
+                                                            key={state.state_code}
+                                                            onClick={() => {
+                                                                handleBillingStateChange(state.state_code);
+                                                                setBillingStateQuery(`${state.state_name} (${state.state_code})`);
+                                                                setIsBillingStateOpen(false);
+                                                            }}
+                                                            className="cursor-pointer px-3 py-2 text-zinc-800 hover:bg-zinc-100"
+                                                        >
+                                                            {state.state_name} <span className="text-zinc-500">({state.state_code})</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                City <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={billingForm.city}
+                                                onChange={(event) => updateBillingField('city', event.target.value)}
+                                                placeholder={!billingForm.state ? 'Select state first' : 'Enter city'}
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                                disabled={!billingForm.state}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                Zip Code <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.postal_code}
+                                                onChange={(event) => updateBillingField('postal_code', event.target.value)}
+                                                placeholder="10001"
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1.5 block text-[0.75rem] font-medium uppercase tracking-[0.1em] text-zinc-600">
+                                                Country <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={billingForm.country}
+                                                onChange={(event) => updateBillingField('country', event.target.value)}
+                                                placeholder="United States"
+                                                className="font-monstrate h-11 w-full border border-zinc-200 bg-white px-3 text-[0.9rem] normal-case text-zinc-900 outline-none focus:border-zinc-900"
+                                                readOnly
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1522,7 +1648,6 @@ function CheckoutForm() {
                         <p className="mt-1 text-[0.85rem] text-zinc-500">All transactions are secure and encrypted.</p>
 
                         <div className="mt-4 space-y-3">
-                            {/* Credit card */}
                             <div
                                 className={`rounded-lg border ${
                                     paymentMethod === 'card' ? 'border-zinc-900' : 'border-zinc-300'
@@ -1542,7 +1667,6 @@ function CheckoutForm() {
                                     <CardBrandBadges brand={cardBrand} />
                                 </label>
 
-                                {/* Keep Stripe elements mounted so entered data is never lost */}
                                 <div
                                     className={`space-y-3 rounded-b-lg border-t border-zinc-200 bg-zinc-100 px-4 pb-4 pt-4 ${
                                         paymentMethod === 'card' ? '' : 'hidden'
@@ -1623,30 +1747,24 @@ function CheckoutForm() {
 
                                     {/* Name on card */}
                                     <div ref={(el) => (fieldRefs.current['nameOnCard'] = el)}>
-                                        <input
-                                            type="text"
-                                            value={nameOnCard}
-                                            onChange={(event) => setNameOnCard(event.target.value)}
-                                            onBlur={() => setTouchedCardFields((prev) => ({ ...prev, nameOnCard: true }))}
-                                            placeholder="Name on Card"
-                                            autoComplete="cc-name"
-                                            style={{ textTransform: 'none' }}
-                                            className={`${cardBoxClass(nameError, blinkingField === 'nameOnCard')} text-[0.95rem] text-zinc-900 outline-none placeholder:text-zinc-500 placeholder:normal-case`}
-                                        />
+                                        <div className={cardBoxClass(nameError, blinkingField === 'nameOnCard')}>
+                                            <div className="min-w-0 flex-1">
+                                                <input
+                                                    type="text"
+                                                    value={nameOnCard}
+                                                    onChange={(event) => setNameOnCard(event.target.value)}
+                                                    onBlur={() => setTouchedCardFields((prev) => ({ ...prev, nameOnCard: true }))}
+                                                    placeholder="Name on Card"
+                                                    autoComplete="cc-name"
+                                                    style={{ textTransform: 'none' }}
+                                                    className="w-full bg-transparent text-[0.95rem] text-zinc-900 outline-none placeholder:text-zinc-500 placeholder:normal-case border-none p-0 focus:ring-0"
+                                                />
+                                            </div>
+                                        </div>
                                         {nameError ? (
                                             <p className="mt-1.5 text-[0.85rem] text-red-600">Enter the name on your card</p>
                                         ) : null}
                                     </div>
-
-                                    <label className="flex cursor-pointer items-center gap-2.5 text-[0.88rem] text-zinc-800">
-                                        <input
-                                            type="checkbox"
-                                            checked={useShippingAsBilling}
-                                            onChange={(event) => setUseShippingAsBilling(event.target.checked)}
-                                            className="h-4 w-4 accent-zinc-900"
-                                        />
-                                        Use shipping address as billing address
-                                    </label>
                                 </div>
                             </div>
                         </div>
