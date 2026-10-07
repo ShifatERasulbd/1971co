@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { trackPixelEvent } from '../../utils/facebookPixel';
-import { trackAddToCart, trackViewCart } from '../../utils/dataLayer';
+import { trackPixelAddToCart, trackPixelInitiateCheckout, trackPixelViewContent } from '../../utils/facebookPixel';
+import { trackAddToCart, trackViewCart, trackBeginCheckout } from '../../utils/dataLayer';
 
 const CART_STORAGE_KEY = 'frontend-cart-items-v1';
 const CART_SYNCED_USER_KEY = 'frontend-cart-synced-user-v1';
@@ -91,9 +91,6 @@ async function pushServerCartItems(items) {
     }
 }
 
-// Combine the account's server cart with this device's local cart without
-// doubling quantities on reload (same lineId on both sides keeps the higher
-// quantity instead of summing), while still picking up items added elsewhere.
 function mergeCartItems(serverItems, localItems) {
     const merged = new Map();
 
@@ -194,6 +191,7 @@ function findVariantRowValue(product, selectedColor, selectedSize, selectedSku =
 
 function normalizeCartItem(product, options = {}) {
     const productId = String(product?.id || product?.slug || product?.name || Date.now());
+    const slug = String(product?.slug || product?.product_slug || '').trim();
     const selectedColor = String(options.selectedColor || '').trim();
     const selectedSize = String(options.selectedSize || '').trim();
     const quantity = Math.max(1, Number(options.quantity) || 1);
@@ -232,6 +230,7 @@ function normalizeCartItem(product, options = {}) {
     return {
         lineId,
         productId,
+        slug,
         name: String(product?.name || 'Product').trim() || 'Product',
         priceValue,
         priceLabel: `$${priceValue.toFixed(2)}`,
@@ -244,7 +243,6 @@ function normalizeCartItem(product, options = {}) {
         length,
         width,
         height,
-        slug: String(product?.slug || '').trim(),
     };
 }
 
@@ -254,8 +252,6 @@ export function CartProvider({ children }) {
     const isServerSyncEnabledRef = useRef(false);
     const syncTimeoutRef = useRef(null);
 
-    // Load this device's local cart, then reconcile it against the logged-in
-    // account's server cart so every device the customer logs into shares one cart.
     useEffect(() => {
         let isCancelled = false;
 
@@ -291,9 +287,6 @@ export function CartProvider({ children }) {
                 return;
             }
 
-            // Only migrate this device's local/guest cart into the account the first
-            // time it syncs; after that the server is authoritative so removals or
-            // edits made on other devices aren't resurrected by a stale local copy.
             const isFirstSyncForThisUser = readSyncedUserId() !== String(userId);
 
             if (isFirstSyncForThisUser) {
@@ -338,6 +331,33 @@ export function CartProvider({ children }) {
         };
     }, [items]);
 
+    async function logCartEvent(productId) {
+        try {
+            await fetch('/sanctum/csrf-cookie', {
+                credentials: 'include',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const xsrfToken = readCookie('XSRF-TOKEN');
+
+            const response = await fetch('/api/cart/log-event', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+                },
+                body: JSON.stringify({ product_id: productId }),
+            });
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to log backend cart analytics event:', error);
+        }
+    }
+
     function addToCart(product, options = {}) {
         const nextItem = normalizeCartItem(product, options);
 
@@ -355,20 +375,27 @@ export function CartProvider({ children }) {
             return updated;
         });
 
-        trackPixelEvent('AddToCart', {
-            content_ids: [nextItem.productId],
-            content_type: 'product',
-            content_name: nextItem.name,
-            currency: 'USD',
-            value: nextItem.priceValue * nextItem.quantity,
-        });
+        // 1. Facebook Pixel Tracking
+        trackPixelAddToCart(nextItem);
+
+        // 2. GTM DataLayer Tracking
         trackAddToCart(nextItem);
+
+        // 3. Backend Analytics Event Logging to Database
+        if (nextItem.productId) {
+            logCartEvent(nextItem.productId);
+        }
 
         return nextItem;
     }
 
     function removeFromCart(lineId) {
         setItems((previous) => previous.filter((item) => item.lineId !== lineId));
+    }
+
+    function handleProceedToCheckout() {
+        trackPixelInitiateCheckout(items, subtotal);
+        trackBeginCheckout(items, subtotal);
     }
 
     function updateQuantity(lineId, quantity) {
@@ -415,6 +442,7 @@ export function CartProvider({ children }) {
             clearCart,
             openCartDrawer,
             closeCartDrawer,
+            handleProceedToCheckout,
             itemCount,
             subtotal,
         }),

@@ -1626,149 +1626,139 @@ function CheckoutForm() {
                                 <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
                             )}
                         </div>
-                        {String(form.state || '').trim().toUpperCase() === 'MA' ? (
-                            <div className="flex items-center justify-between">
-                                <span>Tax</span>
-                                <span>{tax === 0 ? '$0.00' : `$${tax.toFixed(2)}`}</span>
-                            </div>
-                        ) : null}
-
-                        {!isFetchingTax && taxError ? (
-                            <p className="text-xs text-red-600">{taxError}</p>
-                        ) : null}
-                        <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
-                            <span>Total</span>
-                            <span>${total.toFixed(2)}</span>
-                        </div>
+                       
                     </div>
 
                    {/* Payment */}
-                    <div className="mt-8">
-                        <h2 className="text-[1.15rem] font-semibold text-zinc-900">Payment</h2>
-                        <p className="mt-1 text-[0.85rem] text-zinc-500">All transactions are secure and encrypted.</p>
+{/* Payment */}
+<div className="mt-8">
+    <h2 className="text-[1.15rem] font-semibold text-zinc-900">Payment</h2>
+    <p className="mt-1 text-[0.85rem] text-zinc-500">All transactions are secure and encrypted.</p>
 
-                        <div className="mt-4 space-y-3">
-                            <div
-                                className={`rounded-lg border ${
-                                    paymentMethod === 'card' ? 'border-zinc-900' : 'border-zinc-300'
-                                }`}
-                            >
-                                <label className="flex cursor-pointer items-center justify-between rounded-t-lg bg-white px-4 py-4">
-                                    <span className="flex items-center gap-3 text-[0.9rem] font-medium text-zinc-900">
-                                        <input
-                                            type="radio"
-                                            name="payment_method"
-                                            checked={paymentMethod === 'card'}
-                                            onChange={() => setPaymentMethod('card')}
-                                            className="h-4 w-4 accent-zinc-900"
-                                        />
-                                        Credit card
-                                    </span>
-                                    <CardBrandBadges brand={cardBrand} />
-                                </label>
+    <div className="mt-4 space-y-3">
+        <div
+            className={`rounded-lg border ${
+                paymentMethod === 'card' ? 'border-zinc-900' : 'border-zinc-300'
+            }`}
+        >
+            <label className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 rounded-t-lg bg-white px-4 py-4">
+                <span className="flex items-center gap-3 text-[0.9rem] font-medium text-zinc-900">
+                    <input
+                        type="radio"
+                        name="payment_method"
+                        checked={paymentMethod === 'card'}
+                        onChange={() => setPaymentMethod('card')}
+                        className="h-4 w-4 accent-zinc-900"
+                    />
+                    Credit / Debit Card
+                </span>
+                <div className="pl-7 sm:pl-0 scale-[0.85] origin-left sm:origin-right">
+                    <CardBrandBadges brand={cardBrand} />
+                </div>
+            </label>
 
-                                <div
-                                    className={`space-y-3 rounded-b-lg border-t border-zinc-200 bg-zinc-100 px-4 pb-4 pt-4 ${
-                                        paymentMethod === 'card' ? '' : 'hidden'
-                                    }`}
-                                >
-                                    {/* Card number */}
-                                    <div ref={(el) => (fieldRefs.current['number'] = el)}>
-                                        <div className={cardBoxClass(Boolean(numberError), blinkingField === 'number')}>
-                                            <div className="min-w-0 flex-1">
-                                                <CardNumberElement
-                                                    options={{
-                                                        ...cardNumberOptions,
-                                                        placeholder: 'Card number',
-                                                    }}
-                                                    onChange={handleCardFieldChange('number')}
-                                                    onBlur={handleCardFieldBlur('number')}
-                                                />
-                                            </div>
-                                            <svg
-                                                className="h-4 w-4 shrink-0 text-zinc-500"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <rect x="4" y="11" width="16" height="10" rx="2" />
-                                                <path d="M8 11V7a4 4 0 018 0v4" />
-                                            </svg>
-                                        </div>
-                                        {numberError ? (
-                                            <p className="mt-1.5 text-[0.85rem] text-red-600">{numberError}</p>
-                                        ) : null}
-                                    </div>
+            <div
+                className={`space-y-3 rounded-b-lg border-t border-zinc-200 bg-zinc-100 px-4 pb-4 pt-4 ${
+                    paymentMethod === 'card' ? '' : 'hidden'
+                }`}
+            >
+                {/* Card number */}
+                <div ref={(el) => (fieldRefs.current['number'] = el)}>
+                    <div className={cardBoxClass(Boolean(numberError), blinkingField === 'number')}>
+                        <div className="min-w-0 flex-1">
+                            <CardNumberElement
+                                options={{
+                                    ...cardNumberOptions,
+                                    placeholder: 'Card number',
+                                }}
+                                onChange={handleCardFieldChange('number')}
+                                onBlur={handleCardFieldBlur('number')}
+                            />
+                        </div>
+                        <svg
+                            className="h-4 w-4 shrink-0 text-zinc-500"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <rect x="4" y="11" width="16" height="10" rx="2" />
+                            <path d="M8 11V7a4 4 0 018 0v4" />
+                        </svg>
+                    </div>
+                    {numberError ? (
+                        <p className="mt-1.5 text-[0.85rem] text-red-600">{numberError}</p>
+                    ) : null}
+                </div>
 
-                                    {/* Expiry + CVC */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div ref={(el) => (fieldRefs.current['expiry'] = el)}>
-                                            <div className={cardBoxClass(Boolean(expiryError), blinkingField === 'expiry')}>
-                                                <div className="min-w-0 flex-1">
-                                                    <CardExpiryElement
-                                                        options={{
-                                                            ...cardExpiryOptions,
-                                                            placeholder: 'MM / YY',
-                                                        }}
-                                                        onChange={handleCardFieldChange('expiry')}
-                                                        onBlur={handleCardFieldBlur('expiry')}
-                                                    />
-                                                </div>
-                                            </div>
-                                            {expiryError ? (
-                                                <p className="mt-1.5 text-[0.85rem] text-red-600">{expiryError}</p>
-                                            ) : null}
-                                        </div>
-                                        <div ref={(el) => (fieldRefs.current['cvc'] = el)}>
-                                            <div className={cardBoxClass(Boolean(cvcError), blinkingField === 'cvc')}>
-                                                <div className="min-w-0 flex-1">
-                                                    <CardCvcElement
-                                                        options={{
-                                                            ...cardCvcOptions,
-                                                            placeholder: 'CVC',
-                                                        }}
-                                                        onChange={handleCardFieldChange('cvc')}
-                                                        onBlur={handleCardFieldBlur('cvc')}
-                                                    />
-                                                </div>
-                                                <span
-                                                    title="3 or 4 digit code on your card"
-                                                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-500 text-[0.7rem] text-zinc-600"
-                                                >
-                                                    ?
-                                                </span>
-                                            </div>
-                                            {cvcError ? (
-                                                <p className="mt-1.5 text-[0.85rem] text-red-600">{cvcError}</p>
-                                            ) : null}
-                                        </div>
-                                    </div>
-
-                                    {/* Name on card */}
-                                    <div ref={(el) => (fieldRefs.current['nameOnCard'] = el)}>
-                                        <div className={cardBoxClass(nameError, blinkingField === 'nameOnCard')}>
-                                            <div className="min-w-0 flex-1">
-                                                <input
-                                                    type="text"
-                                                    value={nameOnCard}
-                                                    onChange={(event) => setNameOnCard(event.target.value)}
-                                                    onBlur={() => setTouchedCardFields((prev) => ({ ...prev, nameOnCard: true }))}
-                                                    placeholder="Name on Card"
-                                                    autoComplete="cc-name"
-                                                    style={{ textTransform: 'none' }}
-                                                    className="w-full bg-transparent text-[0.95rem] text-zinc-900 outline-none placeholder:text-zinc-500 placeholder:normal-case border-none p-0 focus:ring-0"
-                                                />
-                                            </div>
-                                        </div>
-                                        {nameError ? (
-                                            <p className="mt-1.5 text-[0.85rem] text-red-600">Enter the name on your card</p>
-                                        ) : null}
-                                    </div>
-                                </div>
+                {/* Expiry + CVC */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div ref={(el) => (fieldRefs.current['expiry'] = el)}>
+                        <div className={cardBoxClass(Boolean(expiryError), blinkingField === 'expiry')}>
+                            <div className="min-w-0 flex-1">
+                                <CardExpiryElement
+                                    options={{
+                                        ...cardExpiryOptions,
+                                        placeholder: 'MM / YY',
+                                    }}
+                                    onChange={handleCardFieldChange('expiry')}
+                                    onBlur={handleCardFieldBlur('expiry')}
+                                />
                             </div>
                         </div>
+                        {expiryError ? (
+                            <p className="mt-1.5 text-[0.85rem] text-red-600">{expiryError}</p>
+                        ) : null}
                     </div>
+                    <div ref={(el) => (fieldRefs.current['cvc'] = el)}>
+                        <div className={cardBoxClass(Boolean(cvcError), blinkingField === 'cvc')}>
+                            <div className="min-w-0 flex-1">
+                                <CardCvcElement
+                                    options={{
+                                        ...cardCvcOptions,
+                                        placeholder: 'CVC',
+                                    }}
+                                    onChange={handleCardFieldChange('cvc')}
+                                    onBlur={handleCardFieldBlur('cvc')}
+                                />
+                            </div>
+                            <span
+                                title="3 or 4 digit code on your card"
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-500 text-[0.7rem] text-zinc-600"
+                            >
+                                ?
+                            </span>
+                        </div>
+                        {cvcError ? (
+                            <p className="mt-1.5 text-[0.85rem] text-red-600">{cvcError}</p>
+                        ) : null}
+                    </div>
+                </div>
+
+                {/* Name on card */}
+                <div ref={(el) => (fieldRefs.current['nameOnCard'] = el)}>
+                    <div className={cardBoxClass(nameError, blinkingField === 'nameOnCard')}>
+                        <div className="min-w-0 flex-1">
+                            <input
+                                type="text"
+                                value={nameOnCard}
+                                onChange={(event) => setNameOnCard(event.target.value)}
+                                onBlur={() => setTouchedCardFields((prev) => ({ ...prev, nameOnCard: true }))}
+                                placeholder="Name on Card"
+                                autoComplete="cc-name"
+                                style={{ textTransform: 'none' }}
+                                className="w-full bg-transparent text-[0.95rem] text-zinc-900 outline-none placeholder:text-zinc-500 placeholder:normal-case border-none p-0 focus:ring-0"
+                            />
+                        </div>
+                    </div>
+                    {nameError ? (
+                        <p className="mt-1.5 text-[0.85rem] text-red-600">Enter the name on your card</p>
+                    ) : null}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                     <button
                         type="button"
