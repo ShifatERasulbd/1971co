@@ -258,6 +258,45 @@ function LazyCheckoutImage({ src, alt, className }) {
     );
 }
 
+const CHECKOUT_SESSION_KEY = 'checkout_session_id';
+let memoryCheckoutSessionId = null;
+
+function getCheckoutSessionId() {
+    if (memoryCheckoutSessionId) {
+        return memoryCheckoutSessionId;
+    }
+
+    let id = null;
+    try {
+        id = localStorage.getItem(CHECKOUT_SESSION_KEY);
+    } catch {
+        // storage blocked
+    }
+
+    if (!id) {
+        id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `cs-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        try {
+            localStorage.setItem(CHECKOUT_SESSION_KEY, id);
+        } catch {
+            // storage blocked
+        }
+    }
+
+    memoryCheckoutSessionId = id;
+    return id;
+}
+
+function resetCheckoutSessionId() {
+    memoryCheckoutSessionId = null;
+    try {
+        localStorage.removeItem(CHECKOUT_SESSION_KEY);
+    } catch {
+        // ignore
+    }
+}
+
 function CheckoutForm() {
     const navigate = useNavigate();
     const stripe = useStripe();
@@ -270,6 +309,7 @@ function CheckoutForm() {
 
     // Refs and state for error scrolling and blinking
     const fieldRefs = useRef({});
+    const lastSavedCheckoutRef = useRef('');
     const [blinkingField, setBlinkingField] = useState(null);
 
     function scrollToAndBlink(fieldName) {
@@ -575,8 +615,42 @@ function CheckoutForm() {
         return errors;
     }
 
+    function saveCheckoutProgress(overrides = {}) {
+        const values = { ...form, ...overrides };
+        const filled = Object.fromEntries(
+            Object.entries(values).filter(([, value]) => String(value || '').trim() !== ''),
+        );
+
+        if (Object.keys(filled).length === 0 || normalizedItems.length === 0) {
+            return;
+        }
+
+        const body = JSON.stringify({
+            session_id: getCheckoutSessionId(),
+            ...filled,
+            items: normalizedItems,
+            subtotal,
+            shipping,
+            tax,
+            total,
+        });
+
+        if (body === lastSavedCheckoutRef.current) {
+            return;
+        }
+        lastSavedCheckoutRef.current = body;
+
+        fetch('/api/public/checkout-sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body,
+            keepalive: true,
+        }).catch(() => {});
+    }
+
     function handleBlur(field) {
         return () => {
+            saveCheckoutProgress();
             setTouchedFields((previous) => ({ ...previous, [field]: true }));
             const validationErrors = validateFormValues(form);
             setFieldErrors((previous) => {
@@ -1161,6 +1235,17 @@ function CheckoutForm() {
                 items: normalizedItems,
             });
 
+            fetch('/api/public/checkout-sessions/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({
+                    session_id: getCheckoutSessionId(),
+                    order_number: String(payload?.order_number || ''),
+                }),
+                keepalive: true,
+            }).catch(() => {});
+            resetCheckoutSessionId();
+
             clearCart();
             toast.success('Payment successful and order placed');
             navigate(
@@ -1316,6 +1401,7 @@ function CheckoutForm() {
                                                     handleStateChange(state.state_code);
                                                     setStateQuery(`${state.state_name} (${state.state_code})`);
                                                     setIsOpen(false);
+                                                    saveCheckoutProgress({ state: state.state_code });
                                                 }}
                                                 className="cursor-pointer px-3 py-2 text-zinc-800 hover:bg-zinc-100"
                                             >

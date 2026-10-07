@@ -35,6 +35,7 @@ use App\Http\Controllers\FacebookPixelController;
 use App\Http\Controllers\ReturnRequestController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\CartAnalyticsController;
+use App\Http\Controllers\CheckoutSessionController;
 
 // OTP validation
 Route::post('/login/send-otp', [AuthOtpController::class, 'sendOtp']);
@@ -75,6 +76,8 @@ Route::get('/public/community-page-sections', [CommunityPageSectionController::c
 Route::get('/public/orders/{orderNumber}', [CheckoutOrderController::class, 'publicShow']);
 Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShipping']);
 Route::post('/public/tax/quote', [CheckoutOrderController::class, 'quoteTax']);
+Route::post('/public/checkout-sessions', [CheckoutSessionController::class, 'store'])->middleware('throttle:60,1');
+Route::post('/public/checkout-sessions/complete', [CheckoutSessionController::class, 'complete'])->middleware('throttle:30,1');
 
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
 Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);
