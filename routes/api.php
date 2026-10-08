@@ -149,6 +149,9 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('/collections', [CollectionController::class, 'index']);
 	Route::put('/collections', [CollectionController::class, 'update']);
 
+
+	// Checkout Attempt
+	Route::get('/checkout-attempt', [CheckoutSessionController::class, 'index']);
 	Route::get('/our-story', [OurStorySectionController::class, 'index']);
 	Route::post('/our-story', [OurStorySectionController::class, 'update']);
 	Route::get('/home-background-section', [HomeBackgroundSectionController::class, 'index']);

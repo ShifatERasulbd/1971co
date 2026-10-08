@@ -6,6 +6,7 @@ use App\Models\CheckoutSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class CheckoutSessionController extends Controller
 {
@@ -13,6 +14,52 @@ class CheckoutSessionController extends Controller
         'first_name', 'last_name', 'email', 'phone', 'address_line_1',
         'address_line_2', 'city', 'state', 'postal_code', 'country', 'notes',
     ];
+
+ public function index(Request $request): JsonResponse
+{
+    $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
+    $status  = (string) $request->query('status', '');
+    $search  = trim((string) $request->query('search', ''));
+
+    // Latest row per session only
+    $latestIds = CheckoutSession::selectRaw('MAX(id)')->groupBy('session_id');
+
+    $query = CheckoutSession::whereIn('id', $latestIds);
+
+    if ($status === 'abandoned') {
+        $query->where('status', 'in_progress')
+            ->where('last_activity_at', '<', now()->subHour());
+    } elseif ($status === 'in_progress') {
+        $query->where('status', 'in_progress')
+            ->where('last_activity_at', '>=', now()->subHour());
+    } elseif ($status === 'completed') {
+        $query->where('status', 'completed');
+    }
+
+    if ($search !== '') {
+        $like = '%' . $search . '%';
+        $query->where(function ($q) use ($like) {
+            $q->where('email', 'like', $like)
+                ->orWhere('first_name', 'like', $like)
+                ->orWhere('last_name', 'like', $like)
+                ->orWhere('phone', 'like', $like)
+                ->orWhere('session_id', 'like', $like)
+                ->orWhere('order_number', 'like', $like);
+        });
+    }
+
+    $page = $query->orderByDesc('last_activity_at')->orderByDesc('id')->paginate($perPage);
+
+    return response()->json([
+        'data' => $page->items(),
+        'meta' => [
+            'current_page' => $page->currentPage(),
+            'last_page'    => $page->lastPage(),
+            'per_page'     => $page->perPage(),
+            'total'        => $page->total(),
+        ],
+    ]);
+}
 
     public function store(Request $request)
     {

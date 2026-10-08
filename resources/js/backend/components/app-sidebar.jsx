@@ -52,6 +52,7 @@ const inventoryItems = [
 
 const orderItems = [
     { title: 'Orders', icon: ShoppingBag, path: '/admin/orders' },
+    { title: 'Checkout Attempt', icon: ShoppingBag, path:'/admin/checkout-attempt'},
 ];
 
 

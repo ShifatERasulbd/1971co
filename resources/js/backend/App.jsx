@@ -73,6 +73,7 @@ const EditProduct = lazyWithRetry(() => import('@/pages/Product/editProduct'), '
 const Orders = lazyWithRetry(() => import('@/pages/Order/orders'), 'orders');
 const CustomerOrders = lazyWithRetry(() => import('@/pages/Order/customerOrders'), 'customer-orders');
 const EditOrder = lazyWithRetry(() => import('@/pages/Order/editOrder'), 'edit-order');
+const CheckoutAttempts = lazyWithRetry(() => import('@/pages/CheckoutAttempts/checkout-attempts'), 'checkout-attempts');
 
 // Settings Management
 const Settings = lazyWithRetry(() => import('@/pages/Settings/settings'), 'settings');
@@ -147,6 +148,7 @@ export default function App() {
                             {/* Order Management */}
                             <Route path="orders" element={<Orders />} />
                             <Route path="orders/:id/edit" element={<EditOrder />} />
+                            <Route path="checkout-attempt" element={<CheckoutAttempts />} />
 
                             {/* Settings Management */}
                             <Route path="settings" element={<Settings />} />
