@@ -65,6 +65,22 @@ export function trackPixelPageView() {
     trackPixelEvent('PageView');
 }
 
+export function grantFacebookPixel() {
+    if (!isInitialized || typeof window === 'undefined' || !window.fbq) {
+        return;
+    }
+
+    window.fbq('consent', 'grant');
+}
+
+export function revokeFacebookPixel() {
+    if (!isInitialized || typeof window === 'undefined' || !window.fbq) {
+        return;
+    }
+
+    window.fbq('consent', 'revoke');
+}
+
 // --- Ecommerce helpers: content_ids / contents[].id are ALWAYS the product slug ---
 
 function toPixelContent(item = {}) {

@@ -40,6 +40,32 @@ export function trackPageView(pathname) {
     }
 }
 
+export function enableGoogleAnalytics() {
+    if (!isInitialized) {
+        return;
+    }
+
+    ReactGA.gtag('consent', 'update', {
+        analytics_storage: 'granted',
+        ad_storage: 'granted',
+        ad_user_data: 'granted',
+        ad_personalization: 'granted',
+    });
+}
+
+export function disableGoogleAnalytics() {
+    if (!isInitialized) {
+        return;
+    }
+
+    ReactGA.gtag('consent', 'update', {
+        analytics_storage: 'denied',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+    });
+}
+
 export function trackEvent(category, action, label, value) {
     if (!isInitialized) {
         return;

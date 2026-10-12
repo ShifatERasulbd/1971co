@@ -9,12 +9,17 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
-import useDisableZoom from './frontend/hooks/useDisableZoom.js'; // UPDATED: import
+import useDisableZoom from './frontend/hooks/useDisableZoom.js';
 import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden.js';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
-import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
-import { initializeFacebookPixel, trackPixelPageView } from './utils/facebookPixel.js';
-import { initializeMicrosoftClarity } from './utils/microsoftClarity.js';
+
+// ==========================================
+// CHANGE 1: Imported consent & control functions
+// ==========================================
+import { initializeGoogleAnalytics, trackPageView, enableGoogleAnalytics, disableGoogleAnalytics } from './utils/googleAnalytics.js';
+import { initializeFacebookPixel, trackPixelPageView, grantFacebookPixel, revokeFacebookPixel } from './utils/facebookPixel.js';
+import { initializeMicrosoftClarity, grantMicrosoftClarity, revokeMicrosoftClarity } from './utils/microsoftClarity.js';
+import { getConsent, onConsentChange, deleteCookies } from './utils/consent.js';
 
 preventInvalidBodyAriaHidden();
 
@@ -120,29 +125,92 @@ function DocumentBrandingManager() {
             faviconLink.href = favicon;
         }
 
-        trackPageView(pathname);
-        trackPixelPageView();
+        // ==========================================
+        // CHANGE 2: Respect consent for page views
+        // ==========================================
+        const consent = getConsent();
+        if (consent.targeting) {
+            trackPageView(pathname);
+        }
+        if (consent.social) {
+            trackPixelPageView();
+        }
     }, [pathname, settings]);
 
+    // ==========================================
+    // CHANGE 3: Consent Initialization & Real-time Listener (`applyCurrentConsent`)
+    // ==========================================
     useEffect(() => {
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
-        if (gaId && !window.__gaInitialized) {
-            initializeGoogleAnalytics(gaId);
-            window.__gaInitialized = true;
-        }
-
         const clarityId = settings?.microsoft_clarity_id || '';
-        if (clarityId && !window.__clarityInitialized) {
-            initializeMicrosoftClarity(clarityId);
-            window.__clarityInitialized = true;
-        }
+
+        // Apply initial state based on consent (Defaults to true/ON if not set)
+        const applyCurrentConsent = () => {
+            const consent = getConsent();
+
+            // 1. Targeting -> Google Analytics
+            if (gaId) {
+                if (!window.__gaInitialized) {
+                    initializeGoogleAnalytics(gaId);
+                    window.__gaInitialized = true;
+                }
+                if (consent.targeting) {
+                    enableGoogleAnalytics();
+                } else {
+                    disableGoogleAnalytics();
+                    deleteCookies({
+                        names: ['_ga', '_gid', '_gat', '_gcl_au', '_gcl_aw', '_gcl_dc', 'FPID'],
+                        prefixes: ['_ga_', '_gac_', '_gat_', '_dc_gtm_'],
+                    });
+                }
+            }
+
+            // 2. Performance -> Microsoft Clarity
+            if (clarityId) {
+                if (!window.__clarityInitialized) {
+                    initializeMicrosoftClarity(clarityId);
+                    window.__clarityInitialized = true;
+                }
+                if (consent.performance) {
+                    grantMicrosoftClarity();
+                } else {
+                    revokeMicrosoftClarity();
+                    deleteCookies({ names: ['_clck', '_clsk', 'CLID', 'ANONCHK', 'MR', 'SM'] });
+                }
+            }
+
+            // 3. Social -> Meta Pixel
+            const pixelId = window.__fbPixelId;
+            if (pixelId) {
+                if (!window.__fbPixelInitialized) {
+                    initializeFacebookPixel(pixelId);
+                    window.__fbPixelInitialized = true;
+                }
+                if (consent.social) {
+                    grantFacebookPixel();
+                } else {
+                    revokeFacebookPixel();
+                    deleteCookies({ names: ['_fbp', '_fbc'] });
+                }
+            }
+        };
+
+        applyCurrentConsent();
+
+        // Listen for changes when user updates preferences in the footer modal
+        const unsubscribeConsent = onConsentChange(() => {
+            applyCurrentConsent();
+        });
+
+        return () => {
+            unsubscribeConsent();
+        };
     }, [settings]);
 
+    // ==========================================
+    // CHANGE 4: Tied Meta Pixel Dynamic Config Fetch to Consent State
+    // ==========================================
     useEffect(() => {
-        if (window.__fbPixelInitialized) {
-            return;
-        }
-
         let isCancelled = false;
 
         fetch('/api/public/facebook-pixel-config')
@@ -152,9 +220,17 @@ function DocumentBrandingManager() {
                     return;
                 }
 
+                window.__fbPixelId = payload.pixelId;
+                const consent = getConsent();
                 initializeFacebookPixel(payload.pixelId);
-                trackPixelPageView();
                 window.__fbPixelInitialized = true;
+
+                if (consent.social) {
+                    grantFacebookPixel();
+                    trackPixelPageView();
+                } else {
+                    revokeFacebookPixel();
+                }
             })
             .catch(() => {});
 
@@ -163,11 +239,7 @@ function DocumentBrandingManager() {
         };
     }, []);
 
-    function handleConsentDecision() {
-        // Consent no longer gates tracking init; banner is informational only.
-    }
-
-    return <CookieConsentBanner onDecision={handleConsentDecision} />;
+    return <CookieConsentBanner />;
 }
 
 function withPageFallback(Component) {
@@ -193,7 +265,7 @@ function FrontendLayout() {
 }
 
 function AppRouter() {
-    useDisableZoom(); // UPDATED: central zoom off (ctrl+scroll, pinch, ctrl +/-)
+    useDisableZoom();
 
     useEffect(() => {
         bootstrapPublicSettings();

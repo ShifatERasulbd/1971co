@@ -35,6 +35,20 @@ export function isMicrosoftClarityInitialized() {
     return isInitialized;
 }
 
+export function grantMicrosoftClarity() {
+    clarity('consentv2', {
+        ad_Storage: 'granted',
+        analytics_Storage: 'granted',
+    });
+}
+
+export function revokeMicrosoftClarity() {
+    clarity('consentv2', {
+        ad_Storage: 'denied',
+        analytics_Storage: 'denied',
+    });
+}
+
 // --- Product tracking: product_slug is the identifier (same as GA4/GTM/Pixel) ---
 
 function clarity(...args) {
