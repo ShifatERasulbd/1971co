@@ -105,10 +105,15 @@ export default function SingleProductMediaGallery({
             </div>
 
             {/* Modal Lightbox Viewport Component */}
-            <ProductZoomModal 
+           <ProductZoomModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 imageSrc={modalImage}
+                images={safeImages.slice(0, 6)}                 // UPDATED
+                onChangeImage={(image) => {                      // UPDATED
+                    setModalImage(image);
+                    onSelectImage(image);
+                }}
             />
         </div>
     );

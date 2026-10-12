@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
-// UPDATED: zoom helpers
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const DOUBLE_TAP_SCALE = 2.5;
+const SWIPE_DISTANCE = 50; // UPDATED: minimum px to count as a swipe
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -38,14 +38,31 @@ function applyZoom(prev, rawScale, clientX, clientY, rect) {
     );
 }
 
-export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
-    // UPDATED: zoom state and refs
+export default function ProductZoomModal({
+    isOpen,
+    onClose,
+    imageSrc,
+    images = [], // UPDATED: list of product images
+    onChangeImage, // UPDATED: called with the new image when swiping
+}) {
     const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
     const [isInteracting, setIsInteracting] = useState(false);
+    const [swipeX, setSwipeX] = useState(0); // UPDATED: image follows the finger while swiping
     const dialogRef = useRef(null);
     const imageBoxRef = useRef(null);
     const pointersRef = useRef(new Map());
     const gestureRef = useRef(null);
+    const swipeRef = useRef(null); // UPDATED: swipe start point
+
+    // UPDATED: go to next/previous image (loops around)
+    const goToImage = (step) => {
+        if (!Array.isArray(images) || images.length < 2 || typeof onChangeImage !== 'function') {
+            return;
+        }
+        const currentIndex = Math.max(0, images.indexOf(imageSrc));
+        const nextIndex = (currentIndex + step + images.length) % images.length;
+        onChangeImage(images[nextIndex]);
+    };
 
     useEffect(() => {
         if (!isOpen) {
@@ -55,28 +72,38 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
-        function handleEscape(event) {
+        function handleKeyDown(event) {
             if (event.key === 'Escape') {
                 onClose();
+                return;
+            }
+            // UPDATED: arrow keys, same direction as the swipe
+            if (event.key === 'ArrowRight') {
+                goToImage(1);
+            } else if (event.key === 'ArrowLeft') {
+                goToImage(-1);
             }
         }
 
-        window.addEventListener('keydown', handleEscape);
+        window.addEventListener('keydown', handleKeyDown);
 
         return () => {
-            window.removeEventListener('keydown', handleEscape);
+            window.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = previousOverflow;
         };
-    }, [isOpen, onClose]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, onClose, images, imageSrc, onChangeImage]);
 
-    // UPDATED: reset zoom when the modal opens or the image changes
+    // Reset zoom when the modal opens or the image changes
     useEffect(() => {
         setView({ scale: 1, x: 0, y: 0 });
+        setSwipeX(0);
         pointersRef.current.clear();
         gestureRef.current = null;
+        swipeRef.current = null;
     }, [isOpen, imageSrc]);
 
-    // UPDATED: wheel / Ctrl+wheel / trackpad pinch zooms the image only
+    // Wheel / Ctrl+wheel / trackpad pinch zooms the image only
     useEffect(() => {
         const dialog = dialogRef.current;
         if (!isOpen || !dialog) {
@@ -103,13 +130,20 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
         return null;
     }
 
-    // UPDATED: pointer handlers (drag to pan, two-finger pinch)
     const handlePointerDown = (event) => {
         event.currentTarget.setPointerCapture(event.pointerId);
         pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         setIsInteracting(true);
 
+        if (pointersRef.current.size === 1) {
+            // UPDATED: remember where the swipe started
+            swipeRef.current = { x: event.clientX, y: event.clientY, multi: false };
+        }
+
         if (pointersRef.current.size === 2) {
+            if (swipeRef.current) {
+                swipeRef.current.multi = true; // UPDATED: pinch is not a swipe
+            }
             const [a, b] = [...pointersRef.current.values()];
             gestureRef.current = {
                 dist: Math.hypot(a.x - b.x, a.y - b.y),
@@ -148,17 +182,43 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
         if (pointers.size === 1) {
             const dx = event.clientX - previous.x;
             const dy = event.clientY - previous.y;
-            setView((prev) =>
-                prev.scale > 1 ? clampView({ ...prev, x: prev.x + dx, y: prev.y + dy }, rect) : prev,
-            );
+
+            if (view.scale > 1) {
+                // Zoomed in: drag pans the image
+                setView((prev) => clampView({ ...prev, x: prev.x + dx, y: prev.y + dy }, rect));
+            } else if (swipeRef.current && !swipeRef.current.multi) {
+                // UPDATED: not zoomed: image follows the finger horizontally
+                setSwipeX(event.clientX - swipeRef.current.x);
+            }
         }
     };
 
+    // UPDATED: pointer up decides whether it was a swipe
     const handlePointerEnd = (event) => {
         pointersRef.current.delete(event.pointerId);
         gestureRef.current = null;
-        if (pointersRef.current.size === 0) {
-            setIsInteracting(false);
+
+        if (pointersRef.current.size > 0) {
+            return;
+        }
+
+        setIsInteracting(false);
+        setSwipeX(0);
+
+        const start = swipeRef.current;
+        swipeRef.current = null;
+
+        if (!start || start.multi || view.scale > 1 || event.type !== 'pointerup') {
+            return;
+        }
+
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+
+        if (Math.abs(dx) >= SWIPE_DISTANCE && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            // swipe right -> next image, swipe left -> previous image
+            // (to flip the direction, change `dx > 0 ? 1 : -1` to `dx > 0 ? -1 : 1`)
+            goToImage(dx > 0 ? 1 : -1);
         }
     };
 
@@ -175,7 +235,7 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
 
     return (
         <div
-            ref={dialogRef} // UPDATED
+            ref={dialogRef}
             className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/90 p-4"
             role="dialog"
             aria-modal="true"
@@ -196,7 +256,6 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
                 <X className="size-6" />
             </button>
 
-            {/* UPDATED: wrapper receives the zoom gestures; the image scales inside it */}
             <div
                 ref={imageBoxRef}
                 onPointerDown={handlePointerDown}
@@ -215,7 +274,7 @@ export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
                     draggable={false}
                     className="max-h-[92svh] max-w-[94vw] object-contain pointer-events-none"
                     style={{
-                        transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+                        transform: `translate(${view.x + (isZoomed ? 0 : swipeX)}px, ${view.y}px) scale(${view.scale})`,
                         transformOrigin: 'center center',
                         transition: isInteracting ? 'none' : 'transform 0.15s ease-out',
                         willChange: 'transform',
