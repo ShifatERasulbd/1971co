@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ProductZoomModal from './ProductZoomModal'; 
+import { useAllowZoom } from '../hooks/useDisableZoom.js'; // UPDATED: import
 
 export default function SingleProductMediaGallery({
     images,
@@ -16,6 +17,8 @@ export default function SingleProductMediaGallery({
     // Modal Control State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImage, setModalImage] = useState('');
+
+    useAllowZoom(isModalOpen); // UPDATED: zoom allowed only while the popup is open
 
     useEffect(() => {
         setIsVideoReady(false);
@@ -78,20 +81,6 @@ export default function SingleProductMediaGallery({
                 {/* Product Images Loop */}
                 {safeImages.slice(0, 6).map((image, index) => {
                     const isCurrentlyActive = activeImage === image;
-                    
-                    /* CRITICAL FIX: Calculate the ACTUAL visual column placement.
-                       If a video exists, it occupies slot 0, pushing index 0 to grid slot 1.
-                    */
-                    const visualGridIndex = primaryVideo ? index + 1 : index;
-                    const isRightColumn = visualGridIndex % 2 !== 0;
-
-                    /* THE ROW ALIGNMENT FIX:
-                       If the item is visually on the right column, show zoom on its left.
-                       If the item is visually on the left column, show zoom on its right.
-                    */
-                    const alignmentClass = isRightColumn 
-                        ? 'right-[calc(100%+12px)]' 
-                        : 'left-[calc(100%+12px)]';
 
                     return (
                         <div key={`${image}-${index}`} className="relative leading-none">
@@ -110,7 +99,6 @@ export default function SingleProductMediaGallery({
                                     className="h-full w-full pointer-events-none object-cover object-center"
                                 />
                             </button>
-
                         </div>
                     );
                 })}
