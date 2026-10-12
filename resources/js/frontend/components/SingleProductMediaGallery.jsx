@@ -24,6 +24,26 @@ export default function SingleProductMediaGallery({
         setIsVideoReady(false);
     }, [primaryVideo]);
 
+    // PAUSE: pause the gallery video while the modal is open, resume when it closes
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) {
+            return;
+        }
+
+        if (isModalOpen) {
+            video.pause();
+            return;
+        }
+
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+                // Ignore autoplay interruptions (browser policy/network timing).
+            });
+        }
+    }, [isModalOpen]);
+
     if (!primaryVideo && !activeImage) return null;
 
     const handleImageClick = (image) => {
@@ -35,7 +55,7 @@ export default function SingleProductMediaGallery({
     const handleVideoCanPlay = () => {
         setIsVideoReady(true);
 
-        if (!videoRef.current) {
+        if (!videoRef.current || isModalOpen) { // PAUSE: added `|| isModalOpen`
             return;
         }
 
@@ -112,8 +132,11 @@ export default function SingleProductMediaGallery({
                 images={safeImages.slice(0, 6)}                 // UPDATED
                 onChangeImage={(image) => {                      // UPDATED
                     setModalImage(image);
-                    onSelectImage(image);
+                    if (image !== primaryVideo) {
+                        onSelectImage(image);
+                    }
                 }}
+                videoSrc={primaryVideo}
             />
         </div>
     );
