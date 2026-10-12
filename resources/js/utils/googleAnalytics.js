@@ -2,12 +2,6 @@ import ReactGA from 'react-ga4';
 import { toGaItem, getItemPrice, sumValue } from './dataLayer';
 
 let isInitialized = false;
-let isEnabled = true;
-let activeMeasurementId = '';
-
-function canTrack() {
-    return isInitialized && isEnabled;
-}
 
 export function initializeGoogleAnalytics(measurementId) {
     if (!measurementId || typeof measurementId !== 'string') {
@@ -23,7 +17,6 @@ export function initializeGoogleAnalytics(measurementId) {
     try {
         ReactGA.initialize(measurementId);
         isInitialized = true;
-        activeMeasurementId = measurementId;
         console.log('Google Analytics: Initialized with ID', measurementId);
         return true;
     } catch (error) {
@@ -33,7 +26,7 @@ export function initializeGoogleAnalytics(measurementId) {
 }
 
 export function trackPageView(pathname) {
-    if (!canTrack()) {
+    if (!isInitialized) {
         return;
     }
 
@@ -48,7 +41,7 @@ export function trackPageView(pathname) {
 }
 
 export function trackEvent(category, action, label, value) {
-    if (!canTrack()) {
+    if (!isInitialized) {
         return;
     }
 
@@ -71,7 +64,7 @@ export function isGoogleAnalyticsInitialized() {
 // --- GA4 ecommerce: item_id is ALWAYS the product slug (via shared toGaItem) ---
 
 export function trackGaViewItem(product) {
-    if (!canTrack() || !product) {
+    if (!isInitialized || !product) {
         return;
     }
 
@@ -87,7 +80,7 @@ export function trackGaViewItem(product) {
 }
 
 export function trackGaAddToCart(item) {
-    if (!canTrack() || !item) {
+    if (!isInitialized || !item) {
         return;
     }
 
@@ -103,7 +96,7 @@ export function trackGaAddToCart(item) {
 }
 
 export function trackGaBeginCheckout(items = [], value) {
-    if (!canTrack()) {
+    if (!isInitialized) {
         return;
     }
 
@@ -119,7 +112,7 @@ export function trackGaBeginCheckout(items = [], value) {
 }
 
 export function trackGaPurchase({ transactionId, value, tax = 0, shipping = 0, items = [] } = {}) {
-    if (!canTrack()) {
+    if (!isInitialized) {
         return;
     }
 
@@ -139,22 +132,5 @@ export function trackGaPurchase({ transactionId, value, tax = 0, shipping = 0, i
         });
     } catch (error) {
         console.error('Google Analytics: Failed to track purchase', error);
-    }
-}
-// --- Consent controls: GA4 stays loaded but is switched off / on without a reload ---
-
-export function disableGoogleAnalytics() {
-    isEnabled = false;
-
-    if (activeMeasurementId && typeof window !== 'undefined') {
-        window[`ga-disable-${activeMeasurementId}`] = true;
-    }
-}
-
-export function enableGoogleAnalytics() {
-    isEnabled = true;
-
-    if (activeMeasurementId && typeof window !== 'undefined') {
-        window[`ga-disable-${activeMeasurementId}`] = false;
     }
 }

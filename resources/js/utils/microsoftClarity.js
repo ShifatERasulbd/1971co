@@ -1,7 +1,6 @@
 import { getProductSlug } from './dataLayer';
 
 let isInitialized = false;
-let isEnabled = true;
 
 export function initializeMicrosoftClarity(projectId) {
     if (!projectId || typeof projectId !== 'string') {
@@ -39,7 +38,7 @@ export function isMicrosoftClarityInitialized() {
 // --- Product tracking: product_slug is the identifier (same as GA4/GTM/Pixel) ---
 
 function clarity(...args) {
-    if (!isInitialized || !isEnabled || typeof window === 'undefined' || typeof window.clarity !== 'function') {
+    if (!isInitialized || typeof window === 'undefined' || typeof window.clarity !== 'function') {
         return;
     }
 
@@ -71,29 +70,4 @@ export function trackClarityPurchase(items = []) {
 
     clarity('set', 'product_slug', slugs.join(','));
     clarity('event', 'purchase');
-}
-// --- Consent controls (call window.clarity directly: the gated helper above is off when revoked) ---
-
-export function grantMicrosoftClarity() {
-    isEnabled = true;
-
-    try {
-        if (isInitialized && typeof window.clarity === 'function') {
-            window.clarity('consent');
-        }
-    } catch (error) {
-        console.error('Microsoft Clarity: Failed to grant consent', error);
-    }
-}
-
-export function revokeMicrosoftClarity() {
-    isEnabled = false;
-
-    try {
-        if (isInitialized && typeof window.clarity === 'function') {
-            window.clarity('consent', false);
-        }
-    } catch (error) {
-        console.error('Microsoft Clarity: Failed to revoke consent', error);
-    }
 }
