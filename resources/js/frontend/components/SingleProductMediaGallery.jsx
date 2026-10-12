@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ProductZoomModal from './ProductZoomModal'; 
-import { useAllowZoom } from '../hooks/useDisableZoom.js'; // UPDATED: import
+
 
 export default function SingleProductMediaGallery({
     images,
@@ -18,7 +18,7 @@ export default function SingleProductMediaGallery({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImage, setModalImage] = useState('');
 
-    useAllowZoom(isModalOpen); // UPDATED: zoom allowed only while the popup is open
+
 
     useEffect(() => {
         setIsVideoReady(false);
