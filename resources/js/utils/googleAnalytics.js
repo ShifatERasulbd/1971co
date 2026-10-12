@@ -1,7 +1,22 @@
 import ReactGA from 'react-ga4';
 import { toGaItem, getItemPrice, sumValue } from './dataLayer';
+import { hasConsent } from './consent'; // CONSENT
 
 let isInitialized = false;
+let activeMeasurementId = ''; // CONSENT: needed for the ga-disable flag
+
+// CONSENT: every tracking call goes through this check
+function canTrack() {
+    return isInitialized && hasConsent('targeting');
+}
+
+// CONSENT: official GA opt-out flag, stops all hits for this measurement ID
+function setGaDisabled(disabled) {
+    if (typeof window === 'undefined' || !activeMeasurementId) {
+        return;
+    }
+    window[`ga-disable-${activeMeasurementId}`] = disabled;
+}
 
 export function initializeGoogleAnalytics(measurementId) {
     if (!measurementId || typeof measurementId !== 'string') {
@@ -10,14 +25,19 @@ export function initializeGoogleAnalytics(measurementId) {
     }
 
     if (isInitialized) {
-        console.warn('Google Analytics: Already initialized');
         return true;
     }
 
+    // CONSENT: do not load GA at all unless targeting is allowed
+    if (!hasConsent('targeting')) {
+        return false;
+    }
+
     try {
+        activeMeasurementId = measurementId;
+        setGaDisabled(false);
         ReactGA.initialize(measurementId);
         isInitialized = true;
-        console.log('Google Analytics: Initialized with ID', measurementId);
         return true;
     } catch (error) {
         console.error('Google Analytics: Failed to initialize', error);
@@ -26,7 +46,7 @@ export function initializeGoogleAnalytics(measurementId) {
 }
 
 export function trackPageView(pathname) {
-    if (!isInitialized) {
+    if (!canTrack()) { // CONSENT
         return;
     }
 
@@ -45,6 +65,7 @@ export function enableGoogleAnalytics() {
         return;
     }
 
+    setGaDisabled(false); // CONSENT
     ReactGA.gtag('consent', 'update', {
         analytics_storage: 'granted',
         ad_storage: 'granted',
@@ -58,6 +79,7 @@ export function disableGoogleAnalytics() {
         return;
     }
 
+    setGaDisabled(true); // CONSENT: hard stop
     ReactGA.gtag('consent', 'update', {
         analytics_storage: 'denied',
         ad_storage: 'denied',
@@ -67,7 +89,7 @@ export function disableGoogleAnalytics() {
 }
 
 export function trackEvent(category, action, label, value) {
-    if (!isInitialized) {
+    if (!canTrack()) { // CONSENT
         return;
     }
 
@@ -90,7 +112,7 @@ export function isGoogleAnalyticsInitialized() {
 // --- GA4 ecommerce: item_id is ALWAYS the product slug (via shared toGaItem) ---
 
 export function trackGaViewItem(product) {
-    if (!isInitialized || !product) {
+    if (!canTrack() || !product) { // CONSENT
         return;
     }
 
@@ -106,7 +128,7 @@ export function trackGaViewItem(product) {
 }
 
 export function trackGaAddToCart(item) {
-    if (!isInitialized || !item) {
+    if (!canTrack() || !item) { // CONSENT
         return;
     }
 
@@ -122,7 +144,7 @@ export function trackGaAddToCart(item) {
 }
 
 export function trackGaBeginCheckout(items = [], value) {
-    if (!isInitialized) {
+    if (!canTrack()) { // CONSENT
         return;
     }
 
@@ -138,7 +160,7 @@ export function trackGaBeginCheckout(items = [], value) {
 }
 
 export function trackGaPurchase({ transactionId, value, tax = 0, shipping = 0, items = [] } = {}) {
-    if (!isInitialized) {
+    if (!canTrack()) { // CONSENT
         return;
     }
 

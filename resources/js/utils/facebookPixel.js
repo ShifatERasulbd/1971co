@@ -1,4 +1,5 @@
 import { getProductSlug, getItemPrice, sumValue } from './dataLayer';
+import { hasConsent } from './consent'; // CONSENT
 
 let isInitialized = false;
 
@@ -38,6 +39,8 @@ export function initializeFacebookPixel(pixelId) {
 
     try {
         injectPixelScript();
+        // CONSENT: Meta requires the consent state to be set BEFORE init
+        window.fbq('consent', hasConsent('social') ? 'grant' : 'revoke');
         window.fbq('set', 'autoConfig', false, pixelId);
         window.fbq('init', pixelId);
         isInitialized = true;
@@ -50,6 +53,11 @@ export function initializeFacebookPixel(pixelId) {
 
 export function trackPixelEvent(eventName, params = {}, eventId) {
     if (!isInitialized || typeof window === 'undefined' || !window.fbq) {
+        return;
+    }
+
+    // CONSENT: covers every caller, including direct trackPixelEvent calls
+    if (!hasConsent('social')) {
         return;
     }
 

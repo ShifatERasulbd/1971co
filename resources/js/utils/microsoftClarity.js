@@ -1,4 +1,5 @@
 import { getProductSlug } from './dataLayer';
+import { hasConsent } from './consent'; // CONSENT
 
 let isInitialized = false;
 
@@ -9,6 +10,11 @@ export function initializeMicrosoftClarity(projectId) {
 
     if (isInitialized || typeof window === 'undefined') {
         return isInitialized;
+    }
+
+    // CONSENT: do not load Clarity at all unless performance is allowed
+    if (!hasConsent('performance')) {
+        return false;
     }
 
     try {
@@ -64,6 +70,10 @@ function clarity(...args) {
 }
 
 export function trackClarityProductEvent(eventName, item) {
+    if (!hasConsent('performance')) { // CONSENT
+        return;
+    }
+
     const slug = getProductSlug(item);
     if (!slug) {
         return;
@@ -77,6 +87,10 @@ export const trackClarityViewItem = (product) => trackClarityProductEvent('view_
 export const trackClarityAddToCart = (item) => trackClarityProductEvent('add_to_cart', item);
 
 export function trackClarityPurchase(items = []) {
+    if (!hasConsent('performance')) { // CONSENT
+        return;
+    }
+
     const slugs = items.map(getProductSlug).filter(Boolean);
     if (!slugs.length) {
         return;

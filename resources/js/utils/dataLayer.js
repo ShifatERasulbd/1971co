@@ -1,5 +1,6 @@
 // GTM/GA4-compatible ecommerce dataLayer helpers.
 // Product identifier is ALWAYS the product slug across GTM, GA4, Meta Pixel and Clarity.
+import { hasConsent } from './consent'; // CONSENT
 
 function ensureDataLayer() {
     if (typeof window === 'undefined') {
@@ -11,6 +12,11 @@ function ensureDataLayer() {
 }
 
 function pushEcommerceEvent(eventName, ecommerce) {
+    // CONSENT: no ecommerce pushes to GTM unless targeting is allowed
+    if (!hasConsent('targeting')) {
+        return;
+    }
+
     const dataLayer = ensureDataLayer();
     if (!dataLayer) {
         return;
@@ -108,7 +114,8 @@ const firedPurchaseTransactionIds = new Set();
 
 export function trackPurchase({ transactionId, value, tax = 0, shipping = 0, items = [] } = {}) {
     const id = String(transactionId || '').trim();
-    if (!id || firedPurchaseTransactionIds.has(id)) {
+    // CONSENT: check before marking the purchase as fired
+    if (!id || !hasConsent('targeting') || firedPurchaseTransactionIds.has(id)) {
         return;
     }
 
