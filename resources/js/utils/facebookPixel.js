@@ -1,6 +1,7 @@
 import { getProductSlug, getItemPrice, sumValue } from './dataLayer';
 
 let isInitialized = false;
+let isEnabled = true;
 
 function injectPixelScript() {
     if (typeof window === 'undefined' || window.fbq) {
@@ -49,7 +50,7 @@ export function initializeFacebookPixel(pixelId) {
 }
 
 export function trackPixelEvent(eventName, params = {}, eventId) {
-    if (!isInitialized || typeof window === 'undefined' || !window.fbq) {
+    if (!isInitialized || !isEnabled || typeof window === 'undefined' || !window.fbq) {
         return;
     }
 
@@ -145,6 +146,30 @@ export function trackPixelPurchase({ value, items = [] } = {}, eventId) {
 
 export function isFacebookPixelInitialized() {
     return isInitialized;
+}
+
+export function grantFacebookPixel() {
+    isEnabled = true;
+
+    try {
+        if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+            window.fbq('consent', 'grant');
+        }
+    } catch (error) {
+        console.error('Facebook Pixel: Failed to grant consent', error);
+    }
+}
+
+export function revokeFacebookPixel() {
+    isEnabled = false;
+
+    try {
+        if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+            window.fbq('consent', 'revoke');
+        }
+    } catch (error) {
+        console.error('Facebook Pixel: Failed to revoke consent', error);
+    }
 }
 
 export function getFacebookBrowserId() {

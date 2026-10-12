@@ -6,6 +6,7 @@ import { getSettingsPayload, onSettingsUpdated } from '../../utils/siteSettings'
 import { buildOptimizedImageUrl } from '../utils/media';
 import { timelessFontClass } from '../utils/typography';
 import { sectionTypography } from '../utils/sectionTypography';
+import CookiePreferencesModal from './CookiePreferencesModal.jsx'; // PRIVACY: import
 
 const shopLinks = [
     { label: 'Shop All', href: '/shop' },
@@ -18,7 +19,8 @@ const shopLinks = [
 const supportLinks = [
     { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
-    { label: 'Return and Refund', href:'/returnandrefund'}
+    { label: 'Return and Refund', href: '/returnandrefund' }, // PRIVACY: added the missing comma
+    { label: 'Your Privacy Settings', action: 'cookie-preferences' }, // PRIVACY: opens the modal instead of a page
 ];
 
 const companyLinks = [
@@ -44,27 +46,32 @@ function resolveAssetUrl(path) {
     return `/${raw.replace(/^\/+/, '')}`;
 }
 
-function FooterCol({ heading, links }) {
+function FooterCol({ heading, links, onAction }) { // PRIVACY: onAction prop
+    const linkClass = `font-monstrate ${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`;
+
     return (
         <nav aria-label={heading}>
             <h3 className={`font-monstrate ${sectionTypography.footerHeading} text-white`}>
                 {heading}
             </h3>
             <ul className="space-y-2.5">
-                {links.map(({ label, href }) => (
+                {links.map(({ label, href, action }) => (
                     <li key={label}>
-                        {href.startsWith('/') ? (
-                            <Link
-                                to={href}
-                                className={`font-monstrate ${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`}
+                        {action ? (
+                            // PRIVACY: button that triggers the modal
+                            <button
+                                type="button"
+                                onClick={() => onAction?.(action)}
+                                className={`${linkClass} text-left`}
                             >
+                                {label}
+                            </button>
+                        ) : href.startsWith('/') ? (
+                            <Link to={href} className={linkClass}>
                                 {label}
                             </Link>
                         ) : (
-                            <a
-                                href={href}
-                                className={`font-monstrate ${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`}
-                            >
+                            <a href={href} className={linkClass}>
                                 {label}
                             </a>
                         )}
@@ -78,6 +85,13 @@ function FooterCol({ heading, links }) {
 export default function Footer() {
     const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
     const [footerEmail, setFooterEmail] = useState('');
+    const [isPrivacyOpen, setIsPrivacyOpen] = useState(false); // PRIVACY: modal state
+
+    const handleFooterAction = (action) => { // PRIVACY
+        if (action === 'cookie-preferences') {
+            setIsPrivacyOpen(true);
+        }
+    };
 
     const handleFooterEmailSubmit = (event) => {
         event.preventDefault();
@@ -173,7 +187,7 @@ export default function Footer() {
 
                     <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:contents">
                         <FooterCol heading="Shop" links={shopLinks} />
-                        <FooterCol heading="Support" links={supportLinks} />
+                        <FooterCol heading="Support" links={supportLinks} onAction={handleFooterAction} /> {/* PRIVACY */}
                         <FooterCol heading="Company" links={companyLinks} />
 
                         {/* Newsletter column */}
@@ -226,6 +240,13 @@ export default function Footer() {
                     </div>
                 </div>
             </div>
+
+            {/* PRIVACY: Your Privacy Choices modal */}
+            <CookiePreferencesModal
+                isOpen={isPrivacyOpen}
+                onClose={() => setIsPrivacyOpen(false)}
+                logoSrc={footerLogo}
+            />
         </footer>
     );
 }

@@ -1,3 +1,5 @@
+import { hasConsent } from './consent';
+
 // GTM/GA4-compatible ecommerce dataLayer helpers.
 // Product identifier is ALWAYS the product slug across GTM, GA4, Meta Pixel and Clarity.
 
@@ -11,6 +13,11 @@ function ensureDataLayer() {
 }
 
 function pushEcommerceEvent(eventName, ecommerce) {
+    // GTM / GA4 are controlled by the Targeting cookie category.
+    if (!hasConsent('targeting')) {
+        return;
+    }
+
     const dataLayer = ensureDataLayer();
     if (!dataLayer) {
         return;
@@ -107,6 +114,11 @@ export function trackAddPaymentInfo(items = [], value, paymentType) {
 const firedPurchaseTransactionIds = new Set();
 
 export function trackPurchase({ transactionId, value, tax = 0, shipping = 0, items = [] } = {}) {
+    // Check consent first so a blocked purchase is not marked as already fired.
+    if (!hasConsent('targeting')) {
+        return;
+    }
+
     const id = String(transactionId || '').trim();
     if (!id || firedPurchaseTransactionIds.has(id)) {
         return;
