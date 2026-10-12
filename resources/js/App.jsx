@@ -9,6 +9,7 @@ import Header from './frontend/components/Header.jsx';
 import Footer from './frontend/components/Footer.jsx';
 import PageSkeleton from './frontend/components/PageSkeleton.jsx';
 import { CartProvider } from './frontend/context/CartContext.jsx';
+import useDisableZoom from './frontend/hooks/useDisableZoom.js'; // UPDATED: import
 import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden.js';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
 import { initializeGoogleAnalytics, trackPageView } from './utils/googleAnalytics.js';
@@ -192,6 +193,8 @@ function FrontendLayout() {
 }
 
 function AppRouter() {
+    useDisableZoom(); // UPDATED: central zoom off (ctrl+scroll, pinch, ctrl +/-)
+
     useEffect(() => {
         bootstrapPublicSettings();
     }, []);
