@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react'; // ARROWS (updated): ← → icons
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -262,7 +262,10 @@ export default function ProductZoomModal({
     };
 
     const isZoomed = view.scale > 1;
-    const hasMultipleMedia = mediaList.length > 1; // only show arrows when there is more than one item
+    const hasMultipleMedia = mediaList.length > 1; // only show arrows/slider when there is more than one item
+
+    // SLIDER: position of the active item (drives the progress bar)
+    const currentIndex = Math.max(0, mediaList.indexOf(imageSrc));
 
     // shared style so the video also follows the swipe
     const mediaStyle = {
@@ -294,8 +297,6 @@ export default function ProductZoomModal({
             >
                 <X className="size-6" />
             </button>
-
-            {/* ARROWS (updated): the old arrow block outside the image box was removed */}
 
             <div
                 ref={imageBoxRef}
@@ -336,7 +337,7 @@ export default function ProductZoomModal({
                     />
                 )}
 
-                {/* ARROWS (updated): ← / → shown ON the image (desktop only) */}
+                {/* ← / → shown ON the image (desktop only) */}
                 {hasMultipleMedia ? (
                     <>
                         <button
@@ -360,6 +361,29 @@ export default function ProductZoomModal({
                     </>
                 ) : null}
             </div>
+
+            {/* SLIDER: mobile progress bar (hidden on md and up), shown only with multiple items */}
+            {hasMultipleMedia ? (
+                <div
+                    className="pointer-events-none absolute inset-x-4 z-[1602] md:hidden"
+                    style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
+                    role="progressbar"
+                    aria-label="Media position"
+                    aria-valuemin={1}
+                    aria-valuemax={mediaList.length}
+                    aria-valuenow={currentIndex + 1}
+                >
+                    <div className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/25">
+                        <div
+                            className="absolute inset-y-0 rounded-full bg-white transition-all duration-300 ease-out"
+                            style={{
+                                width: `${100 / mediaList.length}%`,
+                                left: `${(currentIndex * 100) / mediaList.length}%`,
+                            }}
+                        />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
