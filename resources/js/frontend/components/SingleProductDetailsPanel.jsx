@@ -196,12 +196,13 @@ export default function SingleProductDetailsPanel({
 
     return (
         <div className="p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                  <h1 className="font-serif text-[2rem] uppercase leading-tight tracking-[0.02em] text-zinc-900 sm:text-[1.35rem]">
                      {product.name}
                 </h1>
 
-                <p className="text-[1.15rem] font-medium leading-none text-zinc-900">{product.price}</p>
+                {/* Increased price font size */}
+                <p className="text-[1.35rem] font-medium leading-none text-zinc-900 sm:text-[1.5rem]">{product.price}</p>
             </div>
             
             <div className="mt-5 space-y-4">
