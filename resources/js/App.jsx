@@ -13,9 +13,6 @@ import useDisableZoom from './frontend/hooks/useDisableZoom.js';
 import { preventInvalidBodyAriaHidden } from './utils/preventInvalidBodyAriaHidden.js';
 import { bootstrapPublicSettings, getSettingsPayload, onSettingsUpdated } from './utils/siteSettings.js';
 
-// ==========================================
-// CHANGE 1: Imported consent & control functions
-// ==========================================
 import { initializeGoogleAnalytics, trackPageView, enableGoogleAnalytics, disableGoogleAnalytics } from './utils/googleAnalytics.js';
 import { initializeFacebookPixel, trackPixelPageView, grantFacebookPixel, revokeFacebookPixel } from './utils/facebookPixel.js';
 import { initializeMicrosoftClarity, grantMicrosoftClarity, revokeMicrosoftClarity } from './utils/microsoftClarity.js';
@@ -125,9 +122,6 @@ function DocumentBrandingManager() {
             faviconLink.href = favicon;
         }
 
-        // ==========================================
-        // CHANGE 2: Respect consent for page views
-        // ==========================================
         const consent = getConsent();
         if (consent.targeting) {
             trackPageView(pathname);
@@ -137,22 +131,18 @@ function DocumentBrandingManager() {
         }
     }, [pathname, settings]);
 
-    // ==========================================
-    // CHANGE 3: Consent Initialization & Real-time Listener (`applyCurrentConsent`)
-    // ==========================================
     useEffect(() => {
         const gaId = settings?.google_analytics_id || settings?.ga_measurement_id || '';
         const clarityId = settings?.microsoft_clarity_id || '';
 
-        // Apply initial state based on consent (Defaults to true/ON if not set)
         const applyCurrentConsent = () => {
             const consent = getConsent();
 
             // 1. Targeting -> Google Analytics
             if (gaId) {
-                if (!window.__gaInitialized) {
-                    initializeGoogleAnalytics(gaId);
-                    window.__gaInitialized = true;
+                // CONSENT: load GA only when allowed; the flag is set only if it really loaded
+                if (!window.__gaInitialized && consent.targeting) {
+                    window.__gaInitialized = initializeGoogleAnalytics(gaId);
                 }
                 if (consent.targeting) {
                     enableGoogleAnalytics();
@@ -167,9 +157,9 @@ function DocumentBrandingManager() {
 
             // 2. Performance -> Microsoft Clarity
             if (clarityId) {
-                if (!window.__clarityInitialized) {
-                    initializeMicrosoftClarity(clarityId);
-                    window.__clarityInitialized = true;
+                // CONSENT: load Clarity only when allowed; the flag is set only if it really loaded
+                if (!window.__clarityInitialized && consent.performance) {
+                    window.__clarityInitialized = initializeMicrosoftClarity(clarityId);
                 }
                 if (consent.performance) {
                     grantMicrosoftClarity();
@@ -197,7 +187,6 @@ function DocumentBrandingManager() {
 
         applyCurrentConsent();
 
-        // Listen for changes when user updates preferences in the footer modal
         const unsubscribeConsent = onConsentChange(() => {
             applyCurrentConsent();
         });
@@ -207,9 +196,6 @@ function DocumentBrandingManager() {
         };
     }, [settings]);
 
-    // ==========================================
-    // CHANGE 4: Tied Meta Pixel Dynamic Config Fetch to Consent State
-    // ==========================================
     useEffect(() => {
         let isCancelled = false;
 
@@ -239,6 +225,7 @@ function DocumentBrandingManager() {
         };
     }, []);
 
+    return null;
 }
 
 function withPageFallback(Component) {
