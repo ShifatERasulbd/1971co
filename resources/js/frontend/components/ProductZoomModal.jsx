@@ -1,111 +1,58 @@
-import { useEffect, useRef, useState } from 'react';
-import ProductZoomModal from './ProductZoomModal';
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 
-export default function SingleProductMediaGallery({
-    images,
-    primaryVideo,
-    selectedImage,
-    onSelectImage,
-}) {
-    const safeImages = Array.isArray(images) && images.length > 0 ? images : [];
-    const activeImage = selectedImage || safeImages[0];
-    const videoPlaceholderImage = safeImages[0] || activeImage || '';
-    const [isVideoReady, setIsVideoReady] = useState(false);
-    const videoRef = useRef(null);
-
-    // Modal Control State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalImage, setModalImage] = useState('');
-
+export default function ProductZoomModal({ isOpen, onClose, imageSrc }) {
     useEffect(() => {
-        setIsVideoReady(false);
-    }, [primaryVideo]);
-
-    if (!primaryVideo && !activeImage) return null;
-
-    const handleImageClick = (image) => {
-        onSelectImage(image);
-        setModalImage(image);
-        setIsModalOpen(true);
-    };
-
-    const handleVideoCanPlay = () => {
-        setIsVideoReady(true);
-
-        if (!videoRef.current) {
+        if (!isOpen) {
             return;
         }
 
-        const playPromise = videoRef.current.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(() => {
-                // Ignore autoplay interruptions (browser policy/network timing).
-            });
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        function handleEscape(event) {
+            if (event.key === 'Escape') {
+                onClose();
+            }
         }
-    };
+
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isOpen, onClose]);
+
+    if (!isOpen || !imageSrc) {
+        return null;
+    }
 
     return (
-        <div className="w-full">
-            {/* Main grid wrapper handling the columns */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3 leading-none">
-                {/* Primary Video Panel */}
-                {primaryVideo ? (
-                    <div className="relative aspect-[4/5] overflow-hidden">
-                        {!isVideoReady && videoPlaceholderImage ? (
-                            <img
-                                src={videoPlaceholderImage}
-                                alt="Product preview"
-                                className="h-full w-full object-cover object-center"
-                            />
-                        ) : null}
-                        <video
-                            ref={videoRef}
-                            src={primaryVideo}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            controls
-                            onCanPlay={handleVideoCanPlay}
-                            className={`absolute inset-0 h-full w-full object-cover object-center ${
-                                isVideoReady ? 'opacity-100' : 'opacity-0'
-                            }`}
-                            preload="metadata"
-                        />
-                    </div>
-                ) : null}
-
-                {/* Product Images Loop */}
-                {safeImages.slice(0, 6).map((image, index) => {
-                    const isCurrentlyActive = activeImage === image;
-
-                    return (
-                        <div key={`${image}-${index}`} className="relative leading-none">
-                            <button
-                                type="button"
-                                onClick={() => handleImageClick(image)}
-                                className={`block aspect-[4/5] w-full cursor-zoom-in overflow-hidden transition-all duration-200 ${
-                                    isCurrentlyActive
-                                        ? 'ring-1 ring-zinc-300'
-                                        : 'ring-1 ring-zinc-200 hover:ring-zinc-400'
-                                }`}
-                            >
-                                <img
-                                    src={image}
-                                    alt={`Product ${index + 1}`}
-                                    className="h-full w-full pointer-events-none object-cover object-center"
-                                />
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Modal Lightbox Viewport Component */}
-            <ProductZoomModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                imageSrc={modalImage}
+        <div
+            className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/90 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Product image"
+        >
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close product image"
+                className="absolute inset-0 cursor-zoom-out"
+            />
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close product image"
+                className="absolute right-4 top-4 z-[1601] inline-flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
+                <X className="size-6" />
+            </button>
+            <img
+                src={imageSrc}
+                alt="Product"
+                className="relative z-[1601] max-h-[92svh] max-w-[94vw] object-contain"
             />
         </div>
     );
