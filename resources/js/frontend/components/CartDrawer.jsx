@@ -50,14 +50,14 @@ export default function CartDrawer() {
                 aria-label="Cart drawer"
                 className={`
                     fixed top-0 right-0 z-[1400]
-                    flex h-screen w-full max-w-[420px]
+                    flex h-[100dvh] max-h-[100dvh] w-full max-w-[420px]
                     flex-col font-monstrate bg-white border-l border-zinc-200 shadow-2xl
                     transition-transform duration-300
                     ${isDrawerOpen ? 'translate-x-0' : 'translate-x-full'}
                 `}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+                <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-5 py-4">
                     <div>
                         <p className="text-[0.84rem] uppercase tracking-[0.16em] text-zinc-500">
                             Your Cart
@@ -85,7 +85,7 @@ export default function CartDrawer() {
                         </p>
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
                         {items.map((item) => (
                             <article
                                 key={item.lineId}
@@ -151,7 +151,7 @@ export default function CartDrawer() {
                 )}
 
                 {/* Footer */}
-                <div className="border-t border-zinc-200 px-5 py-4">
+                <div className="shrink-0 border-t border-zinc-200 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                     <div className="flex justify-between mb-3">
                         <span>Subtotal</span>
                         <span className="font-semibold">
