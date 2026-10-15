@@ -88,7 +88,6 @@ export default function SingleProductMediaGallery({
                             loop
                             muted
                             playsInline
-                            controls
                             onCanPlay={handleVideoCanPlay}
                             className={`absolute inset-0 h-full w-full object-cover object-center ${
                                 isVideoReady ? 'opacity-100' : 'opacity-0'
