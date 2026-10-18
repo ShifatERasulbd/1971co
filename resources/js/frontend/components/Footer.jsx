@@ -133,6 +133,10 @@ export default function Footer() {
         () => resolveAssetUrl(siteSettings?.footer_logo || ''),
         [siteSettings],
     );
+    const headerLogo = useMemo(
+        () => resolveAssetUrl(siteSettings?.header_logo || ''),
+        [siteSettings],
+    );
 
     const optimizedCardImage = useMemo(
         () => buildOptimizedImageUrl('/cardImage.png', { w: 520, q: 70 }),
@@ -271,7 +275,7 @@ export default function Footer() {
             <CookiePreferencesModal
                 isOpen={isPrivacyOpen}
                 onClose={() => setIsPrivacyOpen(false)}
-                logoSrc={footerLogo}
+                logoSrc={headerLogo}
             />
         </footer>
     );
