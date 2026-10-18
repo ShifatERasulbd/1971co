@@ -555,3 +555,48 @@
     --sidebar-border: hsl(240 3.7% 15.9%);
     --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
+/* Product video loader (radar) */
+.radar-loader {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    background:
+        radial-gradient(circle, transparent 38%, rgba(255, 255, 255, 0.12) 39%, transparent 41%),
+        radial-gradient(circle, transparent 62%, rgba(255, 255, 255, 0.12) 63%, transparent 65%);
+    overflow: hidden;
+}
+
+.radar-loader::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%);
+    animation: radarSpin 1.4s linear infinite;
+}
+
+.radar-loader::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+@keyframes radarSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .radar-loader::before {
+        animation-duration: 3s;
+    }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import ProductZoomModal from './ProductZoomModal'; 
+import ProductZoomModal from './ProductZoomModal';
 
 
 export default function SingleProductMediaGallery({
@@ -12,16 +12,16 @@ export default function SingleProductMediaGallery({
     const activeImage = selectedImage || safeImages[0];
     const videoPlaceholderImage = safeImages[0] || activeImage || '';
     const [isVideoReady, setIsVideoReady] = useState(false);
+    const [hasVideoError, setHasVideoError] = useState(false);
     const videoRef = useRef(null);
 
     // Modal Control State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalImage, setModalImage] = useState('');
 
-
-
     useEffect(() => {
         setIsVideoReady(false);
+        setHasVideoError(false);
     }, [primaryVideo]);
 
     // PAUSE: pause the gallery video while the modal is open, resume when it closes
@@ -48,14 +48,13 @@ export default function SingleProductMediaGallery({
 
     const handleImageClick = (image) => {
         onSelectImage(image);
-        setModalImage(image);  
-        setIsModalOpen(true);  
+        setModalImage(image);
+        setIsModalOpen(true);
     };
 
+    // Only start playback here. The loader hides in onPlaying, once the video is actually playing.
     const handleVideoCanPlay = () => {
-        setIsVideoReady(true);
-
-        if (!videoRef.current || isModalOpen) { // PAUSE: added `|| isModalOpen`
+        if (!videoRef.current || isModalOpen) {
             return;
         }
 
@@ -73,7 +72,7 @@ export default function SingleProductMediaGallery({
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 leading-none">
                 {/* Primary Video Panel */}
                 {primaryVideo ? (
-                    <div className="relative aspect-[4/5] overflow-hidden">
+                    <div className="relative aspect-[4/5] overflow-hidden bg-[#212121]">
                         {!isVideoReady && videoPlaceholderImage ? (
                             <img
                                 src={videoPlaceholderImage}
@@ -81,6 +80,7 @@ export default function SingleProductMediaGallery({
                                 className="h-full w-full object-cover object-center"
                             />
                         ) : null}
+
                         <video
                             ref={videoRef}
                             src={primaryVideo}
@@ -88,12 +88,26 @@ export default function SingleProductMediaGallery({
                             loop
                             muted
                             playsInline
+                            preload="metadata"
                             onCanPlay={handleVideoCanPlay}
-                            className={`absolute inset-0 h-full w-full object-cover object-center ${
+                            onPlaying={() => setIsVideoReady(true)}
+                            onError={() => setHasVideoError(true)}
+                            className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ${
                                 isVideoReady ? 'opacity-100' : 'opacity-0'
                             }`}
-                            preload="metadata"
                         />
+
+                        {/* Radar loader: shown until the video starts playing */}
+                        {!isVideoReady && !hasVideoError ? (
+                            <div
+                                className="absolute inset-0 flex items-center justify-center bg-[#212121]/70"
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <div className="radar-loader" />
+                                <span className="sr-only">Loading video</span>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -124,12 +138,12 @@ export default function SingleProductMediaGallery({
             </div>
 
             {/* Modal Lightbox Viewport Component */}
-           <ProductZoomModal
+            <ProductZoomModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 imageSrc={modalImage}
-                images={safeImages.slice(0, 6)}                 // UPDATED
-                onChangeImage={(image) => {                      // UPDATED
+                images={safeImages.slice(0, 6)}
+                onChangeImage={(image) => {
                     setModalImage(image);
                     if (image !== primaryVideo) {
                         onSelectImage(image);
