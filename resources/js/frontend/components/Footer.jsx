@@ -18,14 +18,14 @@ const shopLinks = [
 
 const supportLinks = [
     { label: 'Shipping', href: '/shipping' },
-    { label: 'Contact', href: '/contact' },
+    { label: 'Contact Us', href: '/contact' },
     { label: 'Return and Refund', href: '/returnandrefund' },
 ];
 
 const companyLinks = [
     { label: 'About', href: '/about' },
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'Terms', href: '/terms' },
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms & Condition', href: '/terms' },
 ];
 
 function resolveAssetUrl(path) {
@@ -54,8 +54,23 @@ function SwitchIcon({ className = '' }) {
             viewBox="0 0 30 14"
             className={`pointer-events-none h-3.5 w-[30px] shrink-0 select-none ${className}`}
         >
-            <rect x="0.75" y="0.75" width="28.5" height="12.5" rx="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="22.5" cy="7" r="4" fill="currentColor" />
+            <rect x="0" y="0" width="30" height="14" rx="7" fill="#0066FF" />
+            <rect x="1.25" y="1.25" width="16" height="11.5" rx="5.75" fill="#fff" />
+            <path
+                d="M5.2 7.2 L7.8 9.8 L12.6 4.4"
+                fill="none"
+                stroke="#0066FF"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M21.6 4.6 L25.4 9.4 M25.4 4.6 L21.6 9.4"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+            />
         </svg>
     );
 }
@@ -246,8 +261,8 @@ export default function Footer() {
                             onClick={() => setIsPrivacyOpen(true)}
                             className="font-monstrate inline-flex items-center gap-2 text-zinc-500 transition-colors hover:text-white"
                         >
+                            <span>Your Privacy Choices</span>
                             <SwitchIcon />
-                            <span>Your Privacy Settings</span>
                         </button>
                     </div>
                     <div className="overflow-hidden">
