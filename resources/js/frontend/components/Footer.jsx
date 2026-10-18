@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -45,36 +45,30 @@ function resolveAssetUrl(path) {
     return `/${raw.replace(/^\/+/, '')}`;
 }
 
-// Decorative toggle-switch icon (not clickable)
-function SwitchIcon({ className = '' }) {
+// Colorful sliders icon for "Your Privacy Choices"
+function PrivacyIcon({ className = '' }) {
     return (
-        <svg
+        <span
             aria-hidden="true"
-            focusable="false"
-            viewBox="0 0 30 14"
-            className={`pointer-events-none h-3.5 w-[30px] shrink-0 select-none ${className}`}
+            className={`pointer-events-none inline-flex size-6 shrink-0 select-none items-center justify-center rounded-md bg-white ${className}`}
         >
-            <rect x="0" y="0" width="30" height="14" rx="7" fill="#0066FF" />
-            <rect x="1.25" y="1.25" width="16" height="11.5" rx="5.75" fill="#fff" />
-            <path
-                d="M5.2 7.2 L7.8 9.8 L12.6 4.4"
+            <svg
+                focusable="false"
+                viewBox="0 0 24 24"
+                className="size-[18px]"
                 fill="none"
-                stroke="#0066FF"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M21.6 4.6 L25.4 9.4 M25.4 4.6 L21.6 9.4"
-                fill="none"
-                stroke="#fff"
                 strokeWidth="1.6"
                 strokeLinecap="round"
-            />
-        </svg>
+            >
+                <path d="M3 4.5h18M3 9.5h18M3 14.5h18M3 19.5h18" stroke="#2563eb" />
+                <circle cx="15" cy="4.5" r="2" fill="#fff" stroke="#2563eb" />
+                <circle cx="8" cy="9.5" r="2" fill="#fff" stroke="#2563eb" />
+                <circle cx="17" cy="14.5" r="2" fill="#fff" stroke="#2563eb" />
+                <circle cx="10" cy="19.5" r="2" fill="#fff" stroke="#2563eb" />
+            </svg>
+        </span>
     );
 }
-
 function FooterCol({ heading, links, onAction }) { // PRIVACY: onAction prop
     const linkClass = `font-monstrate ${sectionTypography.footerLink} text-zinc-400 transition-colors hover:text-white`;
 
@@ -91,7 +85,7 @@ function FooterCol({ heading, links, onAction }) { // PRIVACY: onAction prop
                             <button
                                 type="button"
                                 onClick={() => onAction?.(action)}
-                                className={`${linkClass} text-left`}
+                                className={`${linkClass} cursor-pointer text-left`}
                             >
                                 {label}
                             </button>
@@ -221,7 +215,7 @@ export default function Footer() {
                             <p className={`font-monstrate mb-5 ${sectionTypography.footerLink} text-zinc-400`}>
                                 {contactEmail}
                             </p>
-                            
+
                             <form
                                 onSubmit={handleFooterEmailSubmit}
                                 className="flex flex-col items-start gap-2 sm:flex-row sm:items-stretch sm:gap-0 border-b border-zinc-600 focus-within:border-white transition-colors"
@@ -238,14 +232,12 @@ export default function Footer() {
                                 />
                                 <button
                                     type="submit"
-                                    className="font-monstrate py-2 sm:pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
+                                    className="font-monstrate cursor-pointer py-2 sm:pl-3 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-60"
                                 >
                                     Join
                                 </button>
                             </form>
-                            
                         </div>
-                        
                     </div>
 
                 </div>
@@ -259,10 +251,10 @@ export default function Footer() {
                         <button
                             type="button"
                             onClick={() => setIsPrivacyOpen(true)}
-                            className="font-monstrate inline-flex items-center gap-2 text-zinc-500 transition-colors hover:text-white"
+                            className="font-monstrate inline-flex cursor-pointer items-center gap-2 whitespace-nowrap text-zinc-500 transition-colors hover:text-white"
                         >
                             <span>Your Privacy Choices</span>
-                            <SwitchIcon />
+                            <PrivacyIcon />
                         </button>
                     </div>
                     <div className="overflow-hidden">
