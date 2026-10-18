@@ -19,8 +19,7 @@ const shopLinks = [
 const supportLinks = [
     { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
-    { label: 'Return and Refund', href: '/returnandrefund' }, // PRIVACY: added the missing comma
-    { label: 'Your Privacy Settings', action: 'cookie-preferences' }, // PRIVACY: opens the modal instead of a page
+    { label: 'Return and Refund', href: '/returnandrefund' },
 ];
 
 const companyLinks = [
@@ -44,6 +43,21 @@ function resolveAssetUrl(path) {
     }
 
     return `/${raw.replace(/^\/+/, '')}`;
+}
+
+// Decorative toggle-switch icon (not clickable)
+function SwitchIcon({ className = '' }) {
+    return (
+        <svg
+            aria-hidden="true"
+            focusable="false"
+            viewBox="0 0 30 14"
+            className={`pointer-events-none h-3.5 w-[30px] shrink-0 select-none ${className}`}
+        >
+            <rect x="0.75" y="0.75" width="28.5" height="12.5" rx="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="22.5" cy="7" r="4" fill="currentColor" />
+        </svg>
+    );
 }
 
 function FooterCol({ heading, links, onAction }) { // PRIVACY: onAction prop
@@ -86,12 +100,6 @@ export default function Footer() {
     const [siteSettings, setSiteSettings] = useState(() => getSettingsPayload());
     const [footerEmail, setFooterEmail] = useState('');
     const [isPrivacyOpen, setIsPrivacyOpen] = useState(false); // PRIVACY: modal state
-
-    const handleFooterAction = (action) => { // PRIVACY
-        if (action === 'cookie-preferences') {
-            setIsPrivacyOpen(true);
-        }
-    };
 
     const handleFooterEmailSubmit = (event) => {
         event.preventDefault();
@@ -187,7 +195,7 @@ export default function Footer() {
 
                     <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:contents">
                         <FooterCol heading="Shop" links={shopLinks} />
-                        <FooterCol heading="Support" links={supportLinks} onAction={handleFooterAction} /> {/* PRIVACY */}
+                        <FooterCol heading="Support" links={supportLinks} />
                         <FooterCol heading="Company" links={companyLinks} />
 
                         {/* Newsletter column */}
@@ -230,7 +238,18 @@ export default function Footer() {
 
             <div className="border-t border-zinc-700">
                 <div className={`mx-auto flex w-full max-w-[1700px] flex-col items-center justify-between gap-3 px-6 py-5 ${sectionTypography.footerLegal} text-zinc-500 sm:flex-row sm:px-10 lg:px-16`}>
-                    <span>© 2026 1971Co. All rights reserved.</span>
+                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 sm:justify-start">
+                        <span className="font-monstrate">© 2026 1971Co. All rights reserved.</span>
+                        <span aria-hidden="true" className="font-monstrate text-zinc-600">|</span>
+                        <button
+                            type="button"
+                            onClick={() => setIsPrivacyOpen(true)}
+                            className="font-monstrate inline-flex items-center gap-2 text-zinc-500 transition-colors hover:text-white"
+                        >
+                            <SwitchIcon />
+                            <span>Your Privacy Settings</span>
+                        </button>
+                    </div>
                     <div className="overflow-hidden">
                         <img
                             src={optimizedCardImage}

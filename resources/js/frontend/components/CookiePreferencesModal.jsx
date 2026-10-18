@@ -30,35 +30,30 @@ function ensureMontserrat() {
 const categories = [
     {
         id: 'necessary',
-        title: 'Strictly Necessary Cookies',
+        title: 'Essential Website Cookies',
         locked: true,
         description:
-            'These cookies are required for the site to work, such as keeping items in your cart and securing checkout. They cannot be switched off.',
+            'These cookies help our website work properly. They keep items in your shopping cart, help you stay securely logged in, and remember your cookie preferences. They are always active because they are necessary for the website to function.',
     },
     {
         id: 'targeting',
-        title: 'Targeting Cookies',
+        title: 'Advertising & Measurement Cookies',
         description:
-            'These cookies help us and our partners show you relevant ads and measure how well our campaigns perform.',
+            'These cookies help us understand how you find our store. They may also help us show you products, special offers, and ads that match your interests.',
     },
     {
         id: 'performance',
-        title: 'Performance Cookies',
+        title: 'Performance & Experience Cookies',
         description:
-            'These cookies tell us how visitors use the site, which pages are popular and where problems occur, so we can improve it.',
+            'These cookies help us understand how you use our website, such as which pages you visit and what you click on. This helps us fix problems, improve loading speed, and make your shopping experience easier.',
     },
     {
         id: 'social',
-        title: 'Social Media Cookies',
+        title: 'Social Media & Sharing Cookies',
         description:
-            'These cookies let you share content on social networks and may track your browsing across other sites.',
+            'These cookies help social media features from platforms like Facebook and Instagram work on our website. They may also help us understand how you interact with our social media ads and whether those ads bring you to our store.',
     },
-    {
-        id: 'functional',
-        title: 'Functional Cookies',
-        description:
-            'These cookies remember your choices, such as language, region and preferences, to give you a more personal experience.',
-    },
+   
 ];
 
 function readPreferences() {
