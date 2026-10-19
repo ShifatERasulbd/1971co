@@ -1697,7 +1697,7 @@ function CheckoutForm() {
                         ))}
                     </div>
 
-                    <div className="mt-6 space-y-3 text-[0.9rem] text-zinc-700">
+                  <div className="mt-6 space-y-3 text-[0.9rem] text-zinc-700">
                         <div className="flex items-center justify-between">
                             <span>Subtotal</span>
                             <span>${subtotal.toFixed(2)}</span>
@@ -1712,7 +1712,22 @@ function CheckoutForm() {
                                 <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
                             )}
                         </div>
-                       
+                        {tax > 0 && (
+                            <div className="flex items-center justify-between">
+                                <span>Tax</span>
+                                <span>${tax.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
+                            <span>Total</span>
+                            {isFetchingShipping || shippingOptions.length === 0 ? (
+                                <span className="select-none blur-sm" aria-label="Calculating total">
+                                    ${subtotal.toFixed(2)}
+                                </span>
+                            ) : (
+                                <span>${total.toFixed(2)}</span>
+                            )}
+                        </div>
                     </div>
 
                    {/* Payment */}
