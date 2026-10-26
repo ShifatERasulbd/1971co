@@ -438,13 +438,7 @@ function HeroPage({ view }) {
                 {tagline && (
                     <p className="mt-[1.5cqw] max-w-[88%] text-[1.5cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>
                 )}
-                {features.length > 0 && (
-                    <ul className="mt-[2cqw] flex flex-wrap gap-x-[3cqw] gap-y-[0.6cqw]">
-                        {features.slice(0, 4).map((f) => (
-                            <li key={f} className="text-[1.9cqw] uppercase tracking-wider text-zinc-700">· {f}</li>
-                        ))}
-                    </ul>
-                )}
+               
             </div>
 
             <BrandStrip />
@@ -459,28 +453,38 @@ function HeroPage({ view }) {
 }
 
 function DetailsPage({ view }) {
-    const { product, composition, sizes, colors, gallery } = view;
+    const { product, composition, sizes, colors, gallery, features } = view;
 
     return (
         <div className="size-full bg-[#f6f6f4]" style={CQ}>
             <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[5cqw]">
                 <div className="flex min-h-0 flex-[3] gap-[3cqw]">
                     <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw] overflow-hidden">
-                        {composition && (
-                            <Section title="Product Composition">
-                                <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">{composition}</p>
-                            </Section>
-                        )}
-                        {product.sku && (
+                         {product.sku && (
                             <Section title="Style">
                                 <p className="truncate text-[2.1cqw] text-zinc-600">{product.sku}</p>
                             </Section>
-                        )}
+                        )} 
+
                         {sizes.length > 0 && (
                             <Section title="Size Variant">
                                 <SizeChips sizes={sizes} />
                             </Section>
                         )}
+                        {features.length > 0 && (                  
+                            <Section title="Product Features">
+                                {features.slice(0, 4).map((f) => (
+                                        <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600"> {f}</p>
+                                        ))}
+                                    </Section>
+                        )}
+                        {composition && (
+                            <Section title="Product Composition">
+                                <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">{composition}</p>
+                            </Section>
+                        )}
+                       
+                        
 
                         <WholesaleNote />
                     </div>
