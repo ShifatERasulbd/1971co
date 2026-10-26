@@ -297,7 +297,8 @@ function buildView(p, colorMap, sizeMap) {
 const PRODUCT_CATEGORY_ORDER = [
     ['tshirt', 'tshirts'],
     ['polo'],
-    ['hoodie', 'sweatshirt'],
+    ['hoodie'],
+    ['sweatshirt'],
     ['sweatjacket'],
     ['vest'],
     ['jogger'],
@@ -317,8 +318,19 @@ function orderCatalogProducts(products, subcategories, grandchilds) {
             ?? grandchild?.sub_category_id
             ?? grandchild?.child_id;
         const subcategory = subcategoryById.get(String(subcategoryId ?? '')) ?? grandchild?.sub_category;
-        const text = [
-            product.name,
+        const productName = String(product.name || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+        if (productName.includes('polo')) return 1;
+        if (productName.includes('hoodie')) return 2;
+        if (productName.includes('sweatshirt')) return 3;
+
+        const productNameOrder = PRODUCT_CATEGORY_ORDER.findIndex((terms) =>
+            terms.some((term) => productName.includes(term)),
+        );
+        if (productNameOrder !== -1) return productNameOrder;
+
+        const categoryText = [
             product.sku,
             grandchild?.name,
             grandchild?.slug,
@@ -329,7 +341,11 @@ function orderCatalogProducts(products, subcategories, grandchilds) {
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '');
 
-        return PRODUCT_CATEGORY_ORDER.findIndex((terms) => terms.some((term) => text.includes(term)));
+        if (categoryText.includes('polo')) return 1;
+        if (categoryText.includes('hoodie')) return 2;
+        if (categoryText.includes('sweatshirt')) return 3;
+
+        return PRODUCT_CATEGORY_ORDER.findIndex((terms) => terms.some((term) => categoryText.includes(term)));
     };
 
     return products
@@ -650,7 +666,7 @@ function EditorialPage({ view }) {
                 </div>
 
                 {/* 1. Product name */}
-                <h2 className="mt-[1.5cqw] line-clamp-2 text-[5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
+                <h2 className="mt-[1.5cqw] line-clamp-2 text-[3.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
                     {product.name}
                 </h2>
 
@@ -727,7 +743,7 @@ function InfoPage({ view }) {
                 </div>
 
                 {/* 1. Product name */}
-                <h2 className="mt-[2cqw] line-clamp-3 text-[5.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
+                <h2 className="mt-[2cqw] line-clamp-3 text-[3.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
                     {product.name}
                 </h2>
 
