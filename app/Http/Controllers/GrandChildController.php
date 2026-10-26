@@ -76,9 +76,6 @@ class GrandChildController extends Controller
             'category_id' => ['nullable', 'exists:categories,id'],
         ]);
 
-        $validated['child_id'] = $validated['sub_category_id'];
-        unset($validated['sub_category_id']);
-
         $grandChild = GrandChilds::query()->create($validated)->load(['category', 'subCategory']);
         $this->clearGrandChildCache();
         return response()->json($grandChild, 201);
@@ -97,9 +94,6 @@ class GrandChildController extends Controller
             'sub_category_id' => ['required', 'exists:sub_categories,id'],
             'category_id' => ['nullable', 'exists:categories,id'],
         ]);
-
-        $validated['child_id'] = $validated['sub_category_id'];
-        unset($validated['sub_category_id']);
 
         $grandChild->update($validated);
         $this->clearGrandChildCache();

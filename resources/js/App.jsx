@@ -31,6 +31,7 @@ const CheckoutPage = lazy(() => import('./frontend/pages/Checkout.jsx'));
 const OrderConfirmationPage = lazy(() => import('./frontend/pages/OrderConfirmation.jsx'));
 const TogetherWeGrowPage = lazy(() => import('./frontend/pages/TogetherWeGrow.jsx'));
 const CompliancePolicyPage = lazy(() => import('./frontend/pages/CompliancePolicyPage.jsx'));
+const ProductCatelog = lazy(() => import('./frontend/pages/Catelog.jsx'));
 
 const BRAND_NAME = '1971Co';
 
@@ -61,6 +62,7 @@ function resolvePageLabel(pathname) {
     if (path === '/contact') return 'Contact';
     if (path === '/together-we-grow') return 'Together We Grow';
     if (path === '/checkout') return 'Checkout';
+     if (path === '/catelog') return 'Product Catelog';
     if (path === '/order-confirmation') return 'Order Confirmation';
     if (path === '/shipping') return 'Shipping';
     if (path === '/returnandrefund') return 'Return & Refund Policy';
@@ -271,6 +273,7 @@ function AppRouter() {
                         <Route path="new-arrivals" element={withPageFallback(ShopPage)} />
                         <Route path="trending" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />
+                        <Route path="catelog" element={withPageFallback(ProductCatelog)} />
                         <Route path=":subCategorySlug/:grandChildSlug?" element={withPageFallback(ShopPage)} />
                         <Route path="product-details/:slug/:color?" element={withPageFallback(SingleProductPage)} />
                         <Route path="singleProduct" element={withPageFallback(SingleProductPage)} />

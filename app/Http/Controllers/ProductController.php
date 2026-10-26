@@ -158,6 +158,12 @@ class ProductController extends Controller
             $columns[] = 'discount_price';
         }
 
+        foreach (['category_id', 'subcategory_id'] as $column) {
+            if (Schema::hasColumn('products', $column)) {
+                $columns[] = $column;
+            }
+        }
+
         $products = Product::query()
             ->select($columns)
             ->when(Schema::hasColumn('products', 'is_active'), fn ($query) => $query->where('is_active', true))
