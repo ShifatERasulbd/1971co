@@ -257,16 +257,66 @@ function buildView(p, colorMap, sizeMap) {
     };
 }
 
+const PRODUCT_CATEGORY_ORDER = [
+    ['tshirt', 'tshirts'],
+    ['polo'],
+    ['hoodie', 'sweatshirt'],
+    ['sweatjacket'],
+    ['vest'],
+    ['jogger'],
+    ['undershirtbundle', 'undershirtsbundle'],
+    ['shortsbundle'],
+    ['tanktopbundle', 'tanktopsbundle'],
+];
+
+function orderCatalogProducts(products, subcategories, grandchilds) {
+    const subcategoryById = new Map(subcategories.map((subcategory) => [String(subcategory.id), subcategory]));
+    const grandchildById = new Map(grandchilds.map((grandchild) => [String(grandchild.id), grandchild]));
+
+    const getProductOrder = (product) => {
+        const grandchild = grandchildById.get(String(product.grand_child_id ?? ''));
+        const subcategoryId = product.subcategory_id
+            ?? product.sub_category_id
+            ?? grandchild?.sub_category_id
+            ?? grandchild?.child_id;
+        const subcategory = subcategoryById.get(String(subcategoryId ?? '')) ?? grandchild?.sub_category;
+        const text = [
+            product.name,
+            product.sku,
+            grandchild?.name,
+            grandchild?.slug,
+            subcategory?.name,
+            subcategory?.slug,
+        ]
+            .join(' ')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+
+        return PRODUCT_CATEGORY_ORDER.findIndex((terms) => terms.some((term) => text.includes(term)));
+    };
+
+    return products
+        .map((product, index) => ({ product, index, order: getProductOrder(product) }))
+        .sort((a, b) => {
+            const orderA = a.order === -1 ? PRODUCT_CATEGORY_ORDER.length : a.order;
+            const orderB = b.order === -1 ? PRODUCT_CATEGORY_ORDER.length : b.order;
+            return orderA - orderB || a.index - b.index;
+        })
+        .map(({ product }) => product);
+}
+
 // Index 0 = closed book (cover on the right). Then the intro spread,
 // then one spread per product, cycling through the layouts (A, B, C, A, B, C ...).
 function buildPages(products, colorMap, sizeMap, categories, subcategories, grandchilds) {
+    const orderedProducts = orderCatalogProducts(products, subcategories, grandchilds);
+
     return [
         { src: COVER, single: true },
         {
             intro: true,
             categories: buildCategoryHierarchy(categories, subcategories, grandchilds),
         },
-        ...products.map((p, i) => ({ ...buildView(p, colorMap, sizeMap), layout: i % LAYOUTS.length })),
+        ...orderedProducts.map((p, i) => ({ ...buildView(p, colorMap, sizeMap), layout: i % LAYOUTS.length })),
     ];
 }
 
