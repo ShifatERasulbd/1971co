@@ -601,7 +601,7 @@ function DetailsPage({ view }) {
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
                         <GalleryGrid
                             images={gallery}
-                            cols={isTankTopBundle ? 3 : 2}
+                            cols={2}
                             rows={isTankTopBundle ? 4 : 3}
                             fitContent={!isTankTopBundle}
                             aspectRatio="4 / 3"
