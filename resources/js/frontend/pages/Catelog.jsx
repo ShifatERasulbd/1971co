@@ -576,39 +576,59 @@ function EditorialPage({ view }) {
     return (
         <div className="size-full bg-[#f1ede4]" style={CQ}>
             <div className="flex size-full flex-col px-[4.5cqw] pb-[4cqw] pt-[3.5cqw]">
-                <div className="flex items-center justify-between text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
+                {/* Brand only; the style number moved into the info column */}
+                <div className="text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
                     <span>{BRAND_TEXT}</span>
-                    {product.sku && <span>Style {product.sku}</span>}
                 </div>
 
-                <h2 className="mt-[1.5cqw] line-clamp-2 text-[5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">{product.name}</h2>
-                {tagline && <p className="mt-[1.5cqw] text-[1.4cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>}
+                {/* 1. Product name */}
+                <h2 className="mt-[1.5cqw] line-clamp-2 text-[5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
+                    {product.name}
+                </h2>
 
-                {features.length > 0 && (
-                    <ul className="mt-[2.5cqw] grid grid-cols-3 gap-x-[2cqw] gap-y-[1.4cqw] border-y border-zinc-300 py-[2cqw]">
-                        {features.map((f) => (
-                            <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.8cqw] text-zinc-700">
-                                <CheckIcon className="size-[2.6cqw] shrink-0" />
-                                <span className="truncate">{f}</span>
-                            </li>
-                        ))}
-                    </ul>
+                {/* 2. Product description */}
+                {tagline && (
+                    <p className="mt-[1.5cqw] text-[1.4cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>
                 )}
 
-                <div className="mt-[2.5cqw] flex min-h-0 flex-[3] gap-[2.5cqw]">
-                    <div className="flex w-[40%] min-w-0 flex-col gap-[1.8cqw] overflow-hidden">
-                        {composition && (
-                            <Section title="Product Composition">
-                                <p className="line-clamp-3 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
+                <div className="mt-[2.5cqw] flex min-h-0 flex-[3] gap-[2.5cqw] border-t border-zinc-300 pt-[2cqw]">
+                    <div className="flex w-[42%] min-w-0 flex-col gap-[1.5cqw] overflow-hidden">
+                        {/* 3. Style number */}
+                        {product.sku && (
+                            <Section title="Style Number">
+                                <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
                             </Section>
                         )}
+
+                        {/* 4. Size variant */}
                         {sizes.length > 0 && (
                             <Section title="Size Variant">
                                 <SizeChips sizes={sizes} />
                             </Section>
                         )}
 
-                        <WholesaleNote />
+                        {/* 5. Features */}
+                        {features.length > 0 && (
+                            <Section title="Features">
+                                <ul className="flex flex-col gap-[0.8cqw]">
+                                    {features.slice(0, 6).map((f) => (
+                                        <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.8cqw] text-zinc-700">
+                                            <CheckIcon className="size-[2.4cqw] shrink-0" />
+                                            <span className="truncate">{f}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </Section>
+                        )}
+
+                        {/* 6. Composition */}
+                        {composition && (
+                            <Section title="Product Composition">
+                                <p className="line-clamp-3 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
+                            </Section>
+                        )}
+
+                        <WholesaleNote className="!text-[1.7cqw]" />
                     </div>
 
                     <GalleryGrid images={gallery} cols={3} rows={2} />
@@ -624,7 +644,6 @@ function EditorialPage({ view }) {
         </div>
     );
 }
-
 /* ---------- LAYOUT C: info left / showcase right ---------- */
 
 function InfoPage({ view }) {
@@ -633,41 +652,57 @@ function InfoPage({ view }) {
     return (
         <div className="size-full bg-[#fafaf8]" style={CQ}>
             <div className="flex size-full flex-col px-[5cqw] pb-[4cqw] pt-[5cqw]">
-                <div className="flex items-center justify-between text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
+                {/* Brand only; the style number moved into its own section */}
+                <div className="text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
                     <span>{BRAND_TEXT}</span>
-                    {product.sku && <span>{product.sku}</span>}
                 </div>
 
-                <h2 className="mt-[2cqw] line-clamp-3 text-[5.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">{product.name}</h2>
+                {/* 1. Product name */}
+                <h2 className="mt-[2cqw] line-clamp-3 text-[5.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
+                    {product.name}
+                </h2>
+
+                {/* 2. Product description */}
                 {tagline && <p className="mt-[2cqw] max-w-[92%] text-[1.5cqw] leading-snug text-zinc-500">{tagline}</p>}
 
-                {features.length > 0 && (
-                    <ul className="mt-[2.5cqw] grid grid-cols-2 gap-x-[2cqw] gap-y-[1.2cqw]">
-                        {features.slice(0, 4).map((f) => (
-                            <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.9cqw] text-zinc-700">
-                                <CheckIcon className="size-[2.6cqw] shrink-0" />
-                                <span className="truncate">{f}</span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-
-                <div className="mt-[3cqw] grid grid-cols-2 gap-x-[3cqw] gap-y-[2cqw]">
-                    {composition && (
-                        <div className="col-span-2">
-                            <Section title="Product Composition">
-                                <p className="line-clamp-3 text-[2cqw] leading-snug text-zinc-600">{composition}</p>
-                            </Section>
-                        </div>
+                <div className="mt-[2.5cqw] flex flex-col gap-[1.8cqw] border-t border-zinc-300 pt-[2cqw]">
+                    {/* 3. Style number */}
+                    {product.sku && (
+                        <Section title="Style Number">
+                            <p className="truncate text-[2cqw] text-zinc-600">{product.sku}</p>
+                        </Section>
                     )}
+
+                    {/* 4. Size variant */}
                     {sizes.length > 0 && (
                         <Section title="Size Variant">
                             <SizeChips sizes={sizes} />
                         </Section>
                     )}
+
+                    {/* 5. Features */}
+                    {features.length > 0 && (
+                        <Section title="Features">
+                            <ul className="grid grid-cols-2 gap-x-[2cqw] gap-y-[1cqw]">
+                                {features.slice(0, 6).map((f) => (
+                                    <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.9cqw] text-zinc-700">
+                                        <CheckIcon className="size-[2.6cqw] shrink-0" />
+                                        <span className="truncate">{f}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Section>
+                    )}
+
+                    {/* 6. Composition */}
+                    {composition && (
+                        <Section title="Product Composition">
+                            <p className="line-clamp-3 text-[2cqw] leading-snug text-zinc-600">{composition}</p>
+                        </Section>
+                    )}
                 </div>
 
-                <WholesaleNote className="mt-[3cqw]" />
+                <WholesaleNote className="mt-[2.5cqw]" />
 
                 <div className="mt-auto">
                     {colors.length > 0 && (
