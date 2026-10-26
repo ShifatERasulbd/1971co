@@ -272,7 +272,7 @@ function buildView(p, colorMap, sizeMap) {
     // Catalog feature images from the product module; fall back to the product gallery.
     const catalogFeatures = toArray(p.catalog_feature_images).filter(Boolean);
     const tankTopBundleGallery = isTankTopBundle
-        ? colors.flatMap((color) => color.images.slice(0, 2))
+        ? (catalogFeatures.length ? catalogFeatures : colors.flatMap((color) => color.images.slice(0, 2))).slice(0, 4)
         : [];
     const gallery = isTankTopBundle
         ? tankTopBundleGallery
@@ -618,7 +618,7 @@ function DetailsPage({ view }) {
                         <GalleryGrid
                             images={gallery}
                             cols={2}
-                            rows={isTankTopBundle ? 4 : 3}
+                            rows={isTankTopBundle ? 2 : 3}
                             fitContent={!isTankTopBundle}
                             aspectRatio="4 / 3"
                         />
@@ -711,7 +711,7 @@ function EditorialPage({ view }) {
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-[1.5cqw]">
-                        <GalleryGrid images={gallery} cols={3} rows={2} fitContent />
+                        <GalleryGrid images={gallery} cols={3} rows={2} />
                         <SwatchFabric image={swatch} className="mt-auto" />
                     </div>
                 </div>
