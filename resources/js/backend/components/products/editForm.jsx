@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import RichTextEditor from './richTextEditor';
 import ProductFeaturesRepeater from './ProductFeaturesRepeater';
+import CatalogImagesField from './catalogImagesField';
 
 export default function EditForm({
     form = {},
@@ -60,6 +61,16 @@ export default function EditForm({
     onRemoveSizeChartImage,
     sizeChartPreviewItems = [],
     productVideoPreviewItems = [],
+    catalogThumbPreviewUrl = '',
+    catalogGalleryImages = [],
+    catalogFeatureImages = [],
+    catalogFeaturePreviewItems = [],
+    onCatalogThumbFileChange,
+    onCatalogFeatureFilesChange,
+    onSelectCatalogThumb,
+    onToggleCatalogFeature,
+    onRemoveCatalogThumb,
+    onRemoveCatalogFeatureFile,
     onSubmit,
     onCancel,
     submitLabel = 'Update Product',
@@ -430,6 +441,22 @@ export default function EditForm({
                                 />
                                 <p className="text-xs text-muted-foreground">Upload more images to add them into this product gallery.</p>
                             </div>
+
+                            <CatalogImagesField
+                                thumbPreviewUrl={catalogThumbPreviewUrl}
+                                selectedThumb={form.catalog_thumb_image}
+                                galleryImages={catalogGalleryImages}
+                                selectedFeatureImages={catalogFeatureImages}
+                                newFeatureImages={catalogFeaturePreviewItems}
+                                onThumbFileChange={onCatalogThumbFileChange}
+                                onFeatureFilesChange={onCatalogFeatureFilesChange}
+                                onSelectThumb={onSelectCatalogThumb}
+                                onToggleFeature={onToggleCatalogFeature}
+                                onRemoveThumb={onRemoveCatalogThumb}
+                                onRemoveFeatureFile={onRemoveCatalogFeatureFile}
+                                errors={errors}
+                                disabled={isSubmitting}
+                            />
 
                             <div className="space-y-2">
                                 <Label htmlFor="product-size-chart-upload">Size Chart Image</Label>

@@ -47,6 +47,8 @@ function buildProductPayload(data = {}) {
         clear_videos: Boolean(data.clear_videos),
         size_chart_images_existing: Array.isArray(data.size_chart_images_existing) ? data.size_chart_images_existing : [],
         clear_size_charts: Boolean(data.clear_size_charts),
+        catalog_thumb_image: data.catalog_thumb_image?.trim() || '',
+        catalog_feature_images: Array.isArray(data.catalog_feature_images) ? data.catalog_feature_images : [],
     };
 }
 
@@ -107,6 +109,21 @@ function buildProductFormData(data = {}) {
         });
     }
 
+    if (data.catalogThumbFile instanceof File) {
+        formData.append('catalog_thumb_file', data.catalogThumbFile);
+    }
+
+    if (Array.isArray(data.catalogFeatureFiles)) {
+        data.catalogFeatureFiles.forEach((file) => {
+            if (file instanceof File) {
+                formData.append('catalog_feature_files[]', file);
+            }
+        });
+    }
+
+    // always send the list, even when empty, so removing every selected image is saved
+    formData.set('catalog_feature_images', JSON.stringify(payload.catalog_feature_images));
+
     return formData;
 }
 
@@ -116,7 +133,9 @@ function hasUploadFiles(data = {}) {
     const hasMultiSizeCharts = Array.isArray(data.sizeChartImageFiles) && data.sizeChartImageFiles.some((file) => file instanceof File);
     const hasGallery = Array.isArray(data.galleryImageFiles) && data.galleryImageFiles.some((file) => file instanceof File);
     const hasVideos = Array.isArray(data.productVideoFiles) && data.productVideoFiles.some((file) => file instanceof File);
-    return hasThumbnail || hasSizeChart || hasMultiSizeCharts || hasGallery || hasVideos;
+    const hasCatalogThumb = data.catalogThumbFile instanceof File;
+    const hasCatalogFeatures = Array.isArray(data.catalogFeatureFiles) && data.catalogFeatureFiles.some((file) => file instanceof File);
+    return hasThumbnail || hasSizeChart || hasMultiSizeCharts || hasGallery || hasVideos || hasCatalogThumb || hasCatalogFeatures;
 }
 
 export async function fetchProducts() {

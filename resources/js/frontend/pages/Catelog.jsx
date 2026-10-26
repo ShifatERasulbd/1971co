@@ -242,12 +242,14 @@ function buildView(p, colorMap, sizeMap) {
         .filter(Boolean)
         .slice(0, 6);
 
-    const gallery = toArray(p.image_gallery).slice(0, 6);
+    // Catalog feature images from the product module; fall back to the product gallery.
+    const catalogFeatures = toArray(p.catalog_feature_images).filter(Boolean);
+    const gallery = (catalogFeatures.length ? catalogFeatures : toArray(p.image_gallery)).slice(0, 6);
     if (gallery.length === 0 && p.cover_image) gallery.push(p.cover_image);
 
     return {
         product: p,
-        image: p.cover_image || gallery[0] || '',
+        image: p.catalog_thumb_image || p.cover_image || gallery[0] || '',
         tagline: stripHtml(p.description),
         composition: stripHtml(p.product_composition) || stripHtml(p.fabric_and_care),
         features,

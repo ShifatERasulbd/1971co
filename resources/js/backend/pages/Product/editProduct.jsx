@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import EditForm from '@/components/products/editForm';
+import CatalogImagesField from '@/components/products/catalogImagesField';
 import { useAppContext } from '@/context/AppContext';
 import { fetchCategories } from '@/pages/Category/api';
 import { fetchColors } from '@/pages/Color/api';
@@ -31,6 +32,8 @@ const initialForm = {
     width: '',
     height: '',
     cover_image: '',
+    catalog_thumb_image: '',
+    catalog_feature_images: [],
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
@@ -121,6 +124,8 @@ export default function EditProduct() {
     const [form, setForm] = useState(initialForm);
     const [existingGalleryUrls, setExistingGalleryUrls] = useState([]);
     const [newGalleryImageFiles, setNewGalleryImageFiles] = useState([]);
+    const [catalogThumbFile, setCatalogThumbFile] = useState(null);
+    const [catalogFeatureFiles, setCatalogFeatureFiles] = useState([]);
     const [existingProductVideos, setExistingProductVideos] = useState([]);
     const [newProductVideoFiles, setNewProductVideoFiles] = useState([]);
     const [existingSizeChartImages, setExistingSizeChartImages] = useState([]);
@@ -329,6 +334,23 @@ export default function EditProduct() {
         return [...existing, ...fresh];
     }, [existingProductVideos, newProductVideoFiles]);
 
+    const catalogGalleryImages = useMemo(
+        () => galleryPreviewItems,
+        [galleryPreviewItems],
+    );
+    const catalogThumbPreviewUrl = useMemo(
+        () => (catalogThumbFile ? URL.createObjectURL(catalogThumbFile) : form.catalog_thumb_image || ''),
+        [catalogThumbFile, form.catalog_thumb_image],
+    );
+    const catalogFeaturePreviewItems = useMemo(
+        () => catalogFeatureFiles.map((file) => ({
+            id: `${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            url: URL.createObjectURL(file),
+        })),
+        [catalogFeatureFiles],
+    );
+
     useEffect(() => {
         setPageTitle('Edit Product');
     }, [setPageTitle]);
@@ -407,6 +429,13 @@ export default function EditProduct() {
     }, [productVideoPreviewItems]);
 
     useEffect(() => {
+        return () => {
+            if (catalogThumbFile) URL.revokeObjectURL(catalogThumbPreviewUrl);
+            catalogFeaturePreviewItems.forEach((item) => URL.revokeObjectURL(item.url));
+        };
+    }, [catalogThumbPreviewUrl, catalogFeaturePreviewItems]);
+
+    useEffect(() => {
         let ignore = false;
 
         async function loadProduct() {
@@ -451,6 +480,8 @@ export default function EditProduct() {
                         width: data?.width ?? '',
                         height: data?.height ?? '',
                         cover_image: data?.cover_image || '',
+                        catalog_thumb_image: data?.catalog_thumb_image || '',
+                        catalog_feature_images: Array.isArray(data?.catalog_feature_images) ? data.catalog_feature_images : [],
                         size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
@@ -458,6 +489,8 @@ export default function EditProduct() {
                         stock: data?.stock ?? '',
                         show_on_best_sellers: Boolean(data?.show_on_best_sellers),
                     });
+                    setCatalogThumbFile(null);
+                    setCatalogFeatureFiles([]);
 
                     setExistingGalleryUrls(Array.isArray(data?.image_gallery) ? data.image_gallery : []);
                     setExistingProductVideos(Array.isArray(data?.product_videos) ? data.product_videos : []);
@@ -965,14 +998,73 @@ export default function EditProduct() {
     const handleGalleryFilesChange = (event) => {
         const files = Array.from(event.target.files || []);
         setNewGalleryImageFiles(files);
+        const fileNames = new Set(files.map((file) => file.name));
+        setForm((previous) => ({
+            ...previous,
+            catalog_thumb_image: previous.catalog_thumb_image.includes('/')
+                || fileNames.has(previous.catalog_thumb_image)
+                ? previous.catalog_thumb_image
+                : '',
+            catalog_feature_images: previous.catalog_feature_images.filter(
+                (image) => image.includes('/') || fileNames.has(image),
+            ),
+        }));
     };
+
+    const handleCatalogThumbFileChange = (event) => {
+        setCatalogThumbFile(event.target.files?.[0] || null);
+        event.target.value = '';
+    };
+
+    const handleCatalogFeatureFilesChange = (event) => {
+        const files = Array.from(event.target.files || []);
+        const selectedCount = Array.isArray(form.catalog_feature_images) ? form.catalog_feature_images.length : 0;
+        const remainingSlots = Math.max(0, 6 - selectedCount - catalogFeatureFiles.length);
+        if (files.length > remainingSlots) {
+            toast.warning(remainingSlots === 0
+                ? 'The catalog supports up to 6 feature images.'
+                : `Only ${remainingSlots} more feature image${remainingSlots === 1 ? '' : 's'} can be added.`);
+        }
+        setCatalogFeatureFiles((previous) => [...previous, ...files.slice(0, remainingSlots)]);
+        event.target.value = '';
+    };
+
+    const handleSelectCatalogThumb = (value) => {
+        setCatalogThumbFile(null);
+        setForm((previous) => ({ ...previous, catalog_thumb_image: value }));
+    };
+
+    const handleToggleCatalogFeature = (value) => {
+        setForm((previous) => {
+            const selected = Array.isArray(previous.catalog_feature_images) ? previous.catalog_feature_images : [];
+            return {
+                ...previous,
+                catalog_feature_images: selected.includes(value)
+                    ? selected.filter((image) => image !== value)
+                    : [...selected, value],
+            };
+        });
+    };
+
+    const handleRemoveCatalogFeatureFile = (indexToRemove) => {
+        setCatalogFeatureFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+    };
+
 
     const handleRemoveExistingGalleryImage = (indexToRemove) => {
         setExistingGalleryUrls((previous) => previous.filter((_, index) => index !== indexToRemove));
     };
 
     const handleRemoveNewGalleryImage = (indexToRemove) => {
+        const removedFile = newGalleryImageFiles[indexToRemove];
         setNewGalleryImageFiles((previous) => previous.filter((_, index) => index !== indexToRemove));
+        if (removedFile) {
+            setForm((previous) => ({
+                ...previous,
+                catalog_thumb_image: previous.catalog_thumb_image === removedFile.name ? '' : previous.catalog_thumb_image,
+                catalog_feature_images: previous.catalog_feature_images.filter((image) => image !== removedFile.name),
+            }));
+        }
     };
 
     const handleProductVideosChange = (event) => {
@@ -1165,6 +1257,8 @@ export default function EditProduct() {
                 color_variant_images: colorVariantImageMap,
                 color_variant_videos: colorVariantVideoMap,
                 color_variant_size_charts: colorVariantSizeChartMap,
+                catalogThumbFile,
+                catalogFeatureFiles,
                 galleryImageFiles: newGalleryImageFiles,
                 image_gallery_existing: existingGalleryUrls,
                 clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
@@ -1224,6 +1318,19 @@ export default function EditProduct() {
                     colorVariantVideoMap={colorVariantVideoMap}
                     colorVariantSizeChartMap={colorVariantSizeChartMap}
                     galleryPreviewItems={galleryPreviewItems}
+                    catalogThumbPreviewUrl={catalogThumbPreviewUrl}
+                    catalogGalleryImages={catalogGalleryImages}
+                    catalogFeatureImages={form.catalog_feature_images}
+                    catalogFeaturePreviewItems={catalogFeaturePreviewItems}
+                    onCatalogThumbFileChange={handleCatalogThumbFileChange}
+                    onCatalogFeatureFilesChange={handleCatalogFeatureFilesChange}
+                    onSelectCatalogThumb={handleSelectCatalogThumb}
+                    onToggleCatalogFeature={handleToggleCatalogFeature}
+                    onRemoveCatalogThumb={() => {
+                        setCatalogThumbFile(null);
+                        setForm((previous) => ({ ...previous, catalog_thumb_image: '' }));
+                    }}
+                    onRemoveCatalogFeatureFile={handleRemoveCatalogFeatureFile}
                     variantGroupName={location.state?.productGroup?.groupName || form.name || ''}
                     onColorSelectChange={setColorSelectValue}
                     onSizeSelectChange={setSizeSelectValue}

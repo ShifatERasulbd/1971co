@@ -116,7 +116,7 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
-    public function publicShopIndex(): JsonResponse
+   public function publicShopIndex(): JsonResponse
     {
         $columns = [
             'id',
@@ -164,6 +164,13 @@ class ProductController extends Controller
             }
         }
 
+        // Catalog images (thumb = 1 image, features = many images)
+        foreach (['catalog_thumb_image', 'catalog_feature_images'] as $column) {
+            if (Schema::hasColumn('products', $column)) {
+                $columns[] = $column;
+            }
+        }
+
         $products = Product::query()
             ->select($columns)
             ->when(Schema::hasColumn('products', 'is_active'), fn ($query) => $query->where('is_active', true))
@@ -183,7 +190,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'catalog_feature_images']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -211,6 +218,12 @@ class ProductController extends Controller
             'size_chart_images' => 'nullable|array',
             'size_chart_images.*' => 'nullable|string|max:2048',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_thumb_image' => 'nullable|string|max:2048',
+            'catalog_thumb_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_feature_images' => 'nullable|array',
+            'catalog_feature_images.*' => 'nullable|string|max:2048',
+            'catalog_feature_files' => 'nullable|array',
+            'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -259,6 +272,11 @@ class ProductController extends Controller
             $uploadedNameMap = $uploadedGalleryResult['name_map'];
             $validated['image_gallery'] = $uploadedGallery;
         }
+
+        $catalog = $this->resolveCatalogImages($request, null, $uploadedNameMap);
+        $validated['catalog_thumb_image'] = $catalog['thumb'];
+        $validated['catalog_feature_images'] = $catalog['features'];
+        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files']);
 
         $uploadedVideoNameMap = [];
 
@@ -333,7 +351,7 @@ class ProductController extends Controller
     {
         
         $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing', 'catalog_feature_images']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -361,6 +379,12 @@ class ProductController extends Controller
             'size_chart_images' => 'nullable|array',
             'size_chart_images.*' => 'nullable|string|max:2048',
             'thumbnail_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_thumb_image' => 'nullable|string|max:2048',
+            'catalog_thumb_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_feature_images' => 'nullable|array',
+            'catalog_feature_images.*' => 'nullable|string|max:2048',
+            'catalog_feature_files' => 'nullable|array',
+            'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -458,6 +482,12 @@ class ProductController extends Controller
             $validated['image_gallery'] = array_values(array_filter(is_array($existingGallery) ? $existingGallery : []));
         }
 
+        $catalog = $this->resolveCatalogImages($request, $product, $uploadedNameMap);
+        $validated['catalog_thumb_image'] = $catalog['thumb'];
+        $validated['catalog_feature_images'] = $catalog['features'];
+        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files']);
+        $keepCatalog = array_values(array_filter(array_merge([$catalog['thumb']], $catalog['features'])));
+
         $existingVideos = $request->boolean('clear_videos')
             ? []
             : (is_array($request->input('product_videos_existing')) ? $request->input('product_videos_existing') : ($product->product_videos ?? []));
@@ -520,14 +550,22 @@ class ProductController extends Controller
             ? $product->size_chart_images
             : array_values(array_filter([$product->size_chart_image]));
 
+        $oldCatalog = array_values(array_filter(array_merge(
+            [$product->catalog_thumb_image],
+            is_array($product->catalog_feature_images ?? null) ? $product->catalog_feature_images : [],
+        )));
+
         $product->update($validated);
         $this->clearProductCache();
         if (array_key_exists('image_gallery', $validated)) {
+            // keep gallery files that the catalog still uses
             $this->deleteRemovedUploadedFiles(
                 $oldGallery,
-                is_array($validated['image_gallery']) ? $validated['image_gallery'] : [],
+                array_merge(is_array($validated['image_gallery']) ? $validated['image_gallery'] : [], $keepCatalog),
             );
         }
+
+        $this->deleteRemovedCatalogFiles($oldCatalog, $keepCatalog);
 
         if (array_key_exists('product_videos', $validated)) {
             $this->deleteRemovedUploadedFiles(
@@ -802,6 +840,65 @@ class ProductController extends Controller
             }
 
             if (! isset($nextSet[$path])) {
+                $this->deleteUploadedFile($path);
+            }
+        }
+    }
+
+    private function resolveCatalogImages(Request $request, ?Product $product = null, array $uploadedGalleryMap = []): array
+    {
+        $thumb = $product?->catalog_thumb_image;
+
+        if ($request->hasFile('catalog_thumb_file')) {
+            $thumb = $this->storeUploadedFileToPublic($request->file('catalog_thumb_file'), 'uploads/products/catalog');
+        } elseif ($request->has('catalog_thumb_image')) {
+            $selectedThumb = (string) $request->input('catalog_thumb_image');
+            $thumb = $this->cleanCatalogPath($uploadedGalleryMap[$selectedThumb] ?? $selectedThumb);
+        }
+
+        $features = is_array($product?->catalog_feature_images) ? $product->catalog_feature_images : [];
+
+        if (is_array($request->input('catalog_feature_images'))) {
+            $features = $request->input('catalog_feature_images');
+        }
+
+        foreach ((array) $request->file('catalog_feature_files', []) as $file) {
+            if ($file) {
+                $features[] = $this->storeUploadedFileToPublic($file, 'uploads/products/catalog');
+            }
+        }
+
+        $features = array_map(
+            fn ($path) => $uploadedGalleryMap[$path] ?? $path,
+            $features,
+        );
+
+        $features = array_values(array_unique(array_filter(array_map(
+            fn ($path) => $this->cleanCatalogPath($path),
+            $features,
+        ))));
+
+        return ['thumb' => $thumb, 'features' => $features];
+    }
+
+    private function cleanCatalogPath($path): ?string
+    {
+        $path = $this->normalizePublicMediaPath((string) $path);
+
+        if ($path === null || str_contains($path, '..')) {
+            return null;
+        }
+
+        return (str_starts_with($path, '/uploads/') || str_starts_with($path, '/storage/')) ? $path : null;
+    }
+
+    private function deleteRemovedCatalogFiles(array $previous, array $next): void
+    {
+        $nextSet = array_fill_keys(array_filter($next, 'is_string'), true);
+
+        foreach ($previous as $path) {
+            // only delete files uploaded specifically for the catalog
+            if (is_string($path) && str_starts_with($path, '/uploads/products/catalog/') && ! isset($nextSet[$path])) {
                 $this->deleteUploadedFile($path);
             }
         }

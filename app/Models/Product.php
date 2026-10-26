@@ -50,6 +50,8 @@ class Product extends Model
         'position',
         'show_on_best_sellers',
         'is_active',
+        'catalog_thumb_image',
+         'catalog_feature_images',
     ];
 
     protected function casts(): array
@@ -73,6 +75,7 @@ class Product extends Model
             'stock' => 'integer',
             'position' => 'integer',
             'show_on_best_sellers' => 'boolean',
+            'catalog_feature_images' => 'array',
             'is_active' => 'boolean',
         ];
     }
