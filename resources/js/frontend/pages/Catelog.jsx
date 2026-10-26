@@ -256,6 +256,8 @@ function buildView(p, colorMap, sizeMap) {
         sizes,
         colors,
         gallery,
+        // Swatch fabric photo. Empty = the placeholder box is shown.
+        swatch: p.catalog_swatch_image || p.swatch_fabric_image || p.swatch_image || '',
     };
 }
 
@@ -422,6 +424,21 @@ function GalleryGrid({ images, cols, rows }) {
     );
 }
 
+// "Swatch Fabric" label on the left, square slot for the fabric photo on the right.
+// Shows an empty dashed box until a swatch image exists.
+function SwatchFabric({ image, className = '' }) {
+    return (
+        <div
+            className={`flex shrink-0 items-center justify-between gap-[2cqw] border border-zinc-300 bg-white/60 px-[2cqw] py-[1.5cqw] ${className}`}
+        >
+            <p className="text-[1.6cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
+            <div className="size-[9cqw] shrink-0 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
+                {image && <Photo src={image} alt="Swatch fabric" />}
+            </div>
+        </div>
+    );
+}
+
 // Colour cards: image on top, name below
 function ColorCards({ colors }) {
     return (
@@ -481,7 +498,7 @@ function BrandStrip({ side = 'left' }) {
 /* ---------- LAYOUT A: hero left / details right ---------- */
 
 function HeroPage({ view }) {
-    const { product, image, tagline, features } = view;
+    const { product, image, tagline } = view;
 
     return (
         <div className="relative flex size-full flex-col overflow-hidden" style={{ ...CQ, background: 'linear-gradient(135deg, #f5f5f4 0%, #d9d9dc 100%)' }}>
@@ -490,7 +507,6 @@ function HeroPage({ view }) {
                 {tagline && (
                     <p className="mt-[1.5cqw] max-w-[88%] text-[1.5cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>
                 )}
-               
             </div>
 
             <BrandStrip />
@@ -505,47 +521,51 @@ function HeroPage({ view }) {
 }
 
 function DetailsPage({ view }) {
-    const { product, composition, sizes, colors, gallery, features } = view;
+    const { product, composition, sizes, colors, gallery, features, swatch } = view;
 
     return (
         <div className="size-full bg-[#f6f6f4]" style={CQ}>
             <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[5cqw]">
                 <div className="flex min-h-0 flex-[3] gap-[3cqw]">
                     <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw] overflow-hidden">
-                         {product.sku && (
+                        {product.sku && (
                             <Section title="Style">
                                 <p className="truncate text-[2.1cqw] text-zinc-600">{product.sku}</p>
                             </Section>
-                        )} 
+                        )}
 
                         {sizes.length > 0 && (
                             <Section title="Size Variant">
                                 <SizeChips sizes={sizes} />
                             </Section>
                         )}
-                        {features.length > 0 && (                  
+
+                        {features.length > 0 && (
                             <Section title="Product Features">
                                 {features.slice(0, 4).map((f) => (
-                                        <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600"> {f}</p>
-                                        ))}
-                                    </Section>
+                                    <p key={f} className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">
+                                        {f}
+                                    </p>
+                                ))}
+                            </Section>
                         )}
+
                         {composition && (
                             <Section title="Product Composition">
                                 <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">{composition}</p>
                             </Section>
                         )}
-                       
-                        
 
-                        <WholesaleNote />
+                       
+                        <SwatchFabric image={swatch} />
+                         <WholesaleNote />
                     </div>
 
                     <GalleryGrid images={gallery} cols={2} rows={3} />
                 </div>
 
                 {colors.length > 0 && (
-                    <div className="mt-[3cqw] flex min-h-0 flex-[1.3] flex-col">
+                    <div className="mt-[3cqw] flex min-h-0 flex-[1] flex-col">
                         <ColorCards colors={colors} />
                     </div>
                 )}
@@ -573,7 +593,7 @@ function PhotoPage({ view }) {
 }
 
 function EditorialPage({ view }) {
-    const { product, tagline, features, composition, sizes, colors, gallery } = view;
+    const { product, tagline, features, composition, sizes, colors, gallery, swatch } = view;
 
     return (
         <div className="size-full bg-[#f1ede4]" style={CQ}>
@@ -633,7 +653,10 @@ function EditorialPage({ view }) {
                         <WholesaleNote className="!text-[1.7cqw]" />
                     </div>
 
-                    <GalleryGrid images={gallery} cols={3} rows={2} />
+                    <div className="flex flex-1 flex-col gap-[1.5cqw] min-h-0">
+                        <GalleryGrid images={gallery} cols={3} rows={2} />
+                        <SwatchFabric image={swatch} />
+                    </div>
                 </div>
 
                 {colors.length > 0 && (
@@ -646,10 +669,11 @@ function EditorialPage({ view }) {
         </div>
     );
 }
+
 /* ---------- LAYOUT C: info left / showcase right ---------- */
 
 function InfoPage({ view }) {
-    const { product, tagline, features, composition, sizes, colors } = view;
+    const { product, tagline, features, composition, sizes, colors, swatch } = view;
 
     return (
         <div className="size-full bg-[#fafaf8]" style={CQ}>
@@ -704,7 +728,9 @@ function InfoPage({ view }) {
                     )}
                 </div>
 
-                <WholesaleNote className="mt-[2.5cqw]" />
+              
+                <SwatchFabric image={swatch} className="mt-[2cqw]" />
+                  <WholesaleNote className="mt-[2.5cqw]" />
 
                 <div className="mt-auto">
                     {colors.length > 0 && (
