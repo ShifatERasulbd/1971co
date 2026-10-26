@@ -44,6 +44,23 @@ const BOOK_ASPECT = 1.7;
 const BOOK_MAX_W = 1800;
 const BOOK_V_SPACE = 140; // px reserved above/below the book
 
+// Below this width each spread is shown as one tall page (left half on top, right half below)
+const MOBILE_QUERY = '(max-width: 767px)';
+const MOBILE_MAX_W = 480;
+const SWIPE_PX = 50;
+
+function useIsMobile() {
+    const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(MOBILE_QUERY);
+        const onChange = () => setMobile(mq.matches);
+        onChange();
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+    return mobile;
+}
+
 const faceStyle = {
     position: 'absolute',
     inset: 0,
@@ -224,12 +241,22 @@ function buildCategoryHierarchy(categories, subcategories, grandchilds) {
 function buildView(p, colorMap, sizeMap) {
     const variantImages = toObject(p.color_variant_images);
     const isBundle = [p.name, p.sku].some((value) => String(value || '').toLowerCase().includes('bundle'));
+    const normalizedProductName = `${p.name || ''} ${p.sku || ''}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const isTankTopBundle = normalizedProductName.includes('tanktop') && normalizedProductName.includes('bundle');
 
     const colors = splitIds(p.color).map((id) => {
         const c = colorMap[id];
         const name = c?.name || id;
         const images = toArray(variantImages[id] ?? variantImages[name]);
-        return { id, name, hex: c?.hex || '', image: (isBundle ? images[1] : images[0]) || images[0] || '' };
+        return {
+            id,
+            name,
+            hex: c?.hex || '',
+            images,
+            image: isTankTopBundle
+                ? images[2] || images[1] || images[0] || ''
+                : (isBundle ? images[1] : images[0]) || images[0] || '',
+        };
     });
 
     const sizeIds = [
@@ -244,18 +271,24 @@ function buildView(p, colorMap, sizeMap) {
 
     // Catalog feature images from the product module; fall back to the product gallery.
     const catalogFeatures = toArray(p.catalog_feature_images).filter(Boolean);
-    const gallery = (catalogFeatures.length ? catalogFeatures : toArray(p.image_gallery)).slice(0, 6);
+    const tankTopBundleGallery = isTankTopBundle
+        ? colors.flatMap((color) => color.images.slice(0, 2))
+        : [];
+    const gallery = isTankTopBundle
+        ? tankTopBundleGallery
+        : (catalogFeatures.length ? catalogFeatures : toArray(p.image_gallery)).slice(0, 6);
     if (gallery.length === 0 && p.cover_image) gallery.push(p.cover_image);
 
     return {
         product: p,
         image: p.catalog_thumb_image || p.cover_image || gallery[0] || '',
-        tagline: stripHtml(p.description),
+   
         composition: stripHtml(p.product_composition) || stripHtml(p.fabric_and_care),
         features,
         sizes,
         colors,
         gallery,
+        isTankTopBundle,
         // Swatch fabric photo. Empty = the placeholder box is shown.
         swatch: p.catalog_swatch_image || p.swatch_fabric_image || p.swatch_image || '',
     };
@@ -320,7 +353,10 @@ function buildPages(products, colorMap, sizeMap, categories, subcategories, gran
             intro: true,
             categories: buildCategoryHierarchy(categories, subcategories, grandchilds),
         },
-        ...orderedProducts.map((p, i) => ({ ...buildView(p, colorMap, sizeMap), layout: i % LAYOUTS.length })),
+        ...orderedProducts.map((p, i) => {
+            const view = buildView(p, colorMap, sizeMap);
+            return { ...view, layout: view.isTankTopBundle ? 0 : i % LAYOUTS.length };
+        }),
     ];
 }
 
@@ -372,7 +408,7 @@ function Photo({ src, alt = '', blur = false, className = '' }) {
 function Section({ title, children }) {
     return (
         <div className="border-b border-zinc-300 pb-[2cqw]">
-            <p className="text-[1.8cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">{title}</p>
+            <p className="text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">{title}</p>
             <div className="mt-[1cqw]">{children}</div>
         </div>
     );
@@ -398,7 +434,7 @@ function SizeChips({ sizes }) {
 // Shown on every product info page, independent of sizes
 function WholesaleNote({ className = '' }) {
     return (
-        <p className={`text-[2cqw] leading-snug text-zinc-600 ${className}`}>
+        <p className={`text-[1.9cqw] leading-snug text-zinc-600 ${className}`}>
             For Wholesale Price please email us on{' '}
             <a
                 href={`mailto:${WHOLESALE_EMAIL}`}
@@ -411,14 +447,23 @@ function WholesaleNote({ className = '' }) {
     );
 }
 
-function GalleryGrid({ images, cols, rows }) {
+function GalleryGrid({ images, cols, rows, fitContent = false, aspectRatio = '3 / 4' }) {
     return (
         <div
-            className="grid min-h-0 min-w-0 flex-1 gap-[1.2cqw]"
-            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+            className={`grid min-h-0 min-w-0 gap-[1.2cqw] ${fitContent ? 'shrink-0' : 'flex-1'}`}
+            style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                ...(fitContent ? {} : { gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }),
+            }}
         >
             {images.slice(0, cols * rows).map((src, i) => (
-                <Photo key={`${src}-${i}`} src={src} />
+                <div
+                    key={`${src}-${i}`}
+                    className="min-h-0 min-w-0"
+                    style={fitContent ? { aspectRatio } : undefined}
+                >
+                    <Photo src={src} />
+                </div>
             ))}
         </div>
     );
@@ -431,7 +476,7 @@ function SwatchFabric({ image, className = '' }) {
         <div
             className={`flex shrink-0 items-center justify-between gap-[2cqw] border border-zinc-300 bg-white/60 px-[2cqw] py-[1.5cqw] ${className}`}
         >
-            <p className="text-[1.6cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
+            <p className="text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
             <div className="size-[9cqw] shrink-0 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
                 {image && <Photo src={image} alt="Swatch fabric" />}
             </div>
@@ -451,7 +496,7 @@ function ColorCards({ colors }) {
                     >
                         {c.image && <Photo src={c.image} alt={c.name} />}
                     </div>
-                    <p className="mt-[1cqw] truncate text-[1.9cqw] text-zinc-600">{c.name}</p>
+                    <p className="mt-[1cqw] truncate text-[1.8cqw] text-zinc-600">{c.name}</p>
                 </div>
             ))}
         </div>
@@ -498,19 +543,10 @@ function BrandStrip({ side = 'left' }) {
 /* ---------- LAYOUT A: hero left / details right ---------- */
 
 function HeroPage({ view }) {
-    const { product, image, tagline } = view;
+    const { product, image } = view;
 
     return (
         <div className="relative flex size-full flex-col overflow-hidden" style={{ ...CQ, background: 'linear-gradient(135deg, #f5f5f4 0%, #d9d9dc 100%)' }}>
-            <div className="relative z-10 shrink-0 px-[6cqw] pt-[6cqw]">
-                <h2 className="line-clamp-2 text-[6cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">{product.name}</h2>
-                {tagline && (
-                    <p className="mt-[1.5cqw] max-w-[88%] text-[1.5cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>
-                )}
-            </div>
-
-            <BrandStrip />
-
             {image && (
                 <div className="relative mb-[5.3cqw] mt-[3cqw] min-h-0 flex-1" style={{ marginLeft: '9%', width: '85%' }}>
                     <Photo src={image} alt={product.name} blur />
@@ -521,16 +557,19 @@ function HeroPage({ view }) {
 }
 
 function DetailsPage({ view }) {
-    const { product, composition, sizes, colors, gallery, features, swatch } = view;
+    const { product, composition, sizes, colors, gallery, features, swatch, isTankTopBundle } = view;
 
     return (
         <div className="size-full bg-[#f6f6f4]" style={CQ}>
-            <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[5cqw]">
+            <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[3cqw]">
+                <h2 className="mb-[2cqw] shrink-0 line-clamp-2 text-[3.5cqw] font-extrabold uppercase leading-tight tracking-tight text-zinc-900">
+                    {product.name}
+                </h2>
                 <div className="flex min-h-0 flex-[3] gap-[3cqw]">
                     <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw] overflow-hidden">
                         {product.sku && (
                             <Section title="Style">
-                                <p className="truncate text-[2.1cqw] text-zinc-600">{product.sku}</p>
+                                <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
                             </Section>
                         )}
 
@@ -543,7 +582,7 @@ function DetailsPage({ view }) {
                         {features.length > 0 && (
                             <Section title="Product Features">
                                 {features.slice(0, 4).map((f) => (
-                                    <p key={f} className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">
+                                    <p key={f} className="line-clamp-4 text-[1.9cqw] leading-snug text-zinc-600">
                                         {f}
                                     </p>
                                 ))}
@@ -552,16 +591,23 @@ function DetailsPage({ view }) {
 
                         {composition && (
                             <Section title="Product Composition">
-                                <p className="line-clamp-4 text-[2.1cqw] leading-snug text-zinc-600">{composition}</p>
+                                <p className="line-clamp-4 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
                             </Section>
                         )}
 
-                       
-                        <SwatchFabric image={swatch} />
-                         <WholesaleNote />
+                        <WholesaleNote />
                     </div>
 
-                    <GalleryGrid images={gallery} cols={2} rows={3} />
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
+                        <GalleryGrid
+                            images={gallery}
+                            cols={isTankTopBundle ? 3 : 2}
+                            rows={isTankTopBundle ? 4 : 3}
+                            fitContent={!isTankTopBundle}
+                            aspectRatio="4 / 3"
+                        />
+                        <SwatchFabric image={swatch} />
+                    </div>
                 </div>
 
                 {colors.length > 0 && (
@@ -593,7 +639,7 @@ function PhotoPage({ view }) {
 }
 
 function EditorialPage({ view }) {
-    const { product, tagline, features, composition, sizes, colors, gallery, swatch } = view;
+    const { product,  features, composition, sizes, colors, gallery, swatch } = view;
 
     return (
         <div className="size-full bg-[#f1ede4]" style={CQ}>
@@ -608,11 +654,7 @@ function EditorialPage({ view }) {
                     {product.name}
                 </h2>
 
-                {/* 2. Product description */}
-                {tagline && (
-                    <p className="mt-[1.5cqw] text-[1.4cqw] leading-snug tracking-[0.03em] text-zinc-500">{tagline}</p>
-                )}
-
+               
                 <div className="mt-[2.5cqw] flex min-h-0 flex-[3] gap-[2.5cqw] border-t border-zinc-300 pt-[2cqw]">
                     <div className="flex w-[42%] min-w-0 flex-col gap-[1.5cqw] overflow-hidden">
                         {/* 3. Style number */}
@@ -650,14 +692,15 @@ function EditorialPage({ view }) {
                             </Section>
                         )}
 
-                        <WholesaleNote className="!text-[1.7cqw]" />
                     </div>
 
-                    <div className="flex flex-1 flex-col gap-[1.5cqw] min-h-0">
-                        <GalleryGrid images={gallery} cols={3} rows={2} />
-                        <SwatchFabric image={swatch} />
+                    <div className="flex min-h-0 flex-1 flex-col gap-[1.5cqw]">
+                        <GalleryGrid images={gallery} cols={3} rows={2} fitContent />
+                        <SwatchFabric image={swatch} className="mt-auto" />
                     </div>
                 </div>
+
+                <WholesaleNote className="mt-[1.5cqw] !text-[1.9cqw]" />
 
                 {colors.length > 0 && (
                     <div className="mt-[2.5cqw]">
@@ -673,7 +716,7 @@ function EditorialPage({ view }) {
 /* ---------- LAYOUT C: info left / showcase right ---------- */
 
 function InfoPage({ view }) {
-    const { product, tagline, features, composition, sizes, colors, swatch } = view;
+    const { product, features, composition, sizes, colors, swatch } = view;
 
     return (
         <div className="size-full bg-[#fafaf8]" style={CQ}>
@@ -688,14 +731,13 @@ function InfoPage({ view }) {
                     {product.name}
                 </h2>
 
-                {/* 2. Product description */}
-                {tagline && <p className="mt-[2cqw] max-w-[92%] text-[1.5cqw] leading-snug text-zinc-500">{tagline}</p>}
+                
 
                 <div className="mt-[2.5cqw] flex flex-col gap-[1.8cqw] border-t border-zinc-300 pt-[2cqw]">
                     {/* 3. Style number */}
                     {product.sku && (
                         <Section title="Style Number">
-                            <p className="truncate text-[2cqw] text-zinc-600">{product.sku}</p>
+                            <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
                         </Section>
                     )}
 
@@ -711,7 +753,7 @@ function InfoPage({ view }) {
                         <Section title="Features">
                             <ul className="grid grid-cols-2 gap-x-[2cqw] gap-y-[1cqw]">
                                 {features.slice(0, 6).map((f) => (
-                                    <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.9cqw] text-zinc-700">
+                                    <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.8cqw] text-zinc-700">
                                         <CheckIcon className="size-[2.6cqw] shrink-0" />
                                         <span className="truncate">{f}</span>
                                     </li>
@@ -723,14 +765,13 @@ function InfoPage({ view }) {
                     {/* 6. Composition */}
                     {composition && (
                         <Section title="Product Composition">
-                            <p className="line-clamp-3 text-[2cqw] leading-snug text-zinc-600">{composition}</p>
+                            <p className="line-clamp-3 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
                         </Section>
                     )}
                 </div>
 
-              
                 <SwatchFabric image={swatch} className="mt-[2cqw]" />
-                  <WholesaleNote className="mt-[2.5cqw]" />
+                <WholesaleNote className="mt-[2.5cqw]" />
 
                 <div className="mt-auto">
                     {colors.length > 0 && (
@@ -882,6 +923,20 @@ function Half({ page, side }) {
     return Page ? <Page view={page} /> : null;
 }
 
+// Mobile: one spread as a single tall page, left half on top, right half below
+function MobileSpread({ page }) {
+    return (
+        <div className="flex size-full flex-col bg-white">
+            <div className="relative min-h-0 flex-1 overflow-hidden border-b border-zinc-200">
+                <Half page={page} side="left" />
+            </div>
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+                <Half page={page} side="right" />
+            </div>
+        </div>
+    );
+}
+
 /* ---------- MAIN ---------- */
 
 export default function Catelog() {
@@ -903,6 +958,11 @@ export default function Catelog() {
         [products, colorMap, sizeMap, categories, subcategories, grandchilds],
     );
     const last = pages.length - 1;
+
+    // Mobile skips the cover spread and starts on the intro
+    const isMobile = useIsMobile();
+    const first = isMobile ? 1 : 0;
+    const touchStart = useRef(null);
 
     const timers = useRef([]);
     const pageRef = useRef(0);
@@ -933,7 +993,6 @@ export default function Catelog() {
         ])
             .then(([prods, colors, sizes, categoryList, subcategoryList, grandchildList]) => {
                 if (ignore) return;
-                // console.log('cats', categoryList, 'subs', subcategoryList[0], 'grand', grandchildList[0]);
                 setProducts(prods);
                 setColorMap(toMap(colors));
                 setSizeMap(toMap(sizes));
@@ -1022,7 +1081,7 @@ export default function Catelog() {
         const lastIndex = pagesRef.current.length - 1;
         if (busy.current) return;
         if (dir === 'next' && p >= lastIndex) return;
-        if (dir === 'prev' && p <= 0) return;
+        if (dir === 'prev' && p <= first) return;
         busy.current = true;
         setFlip({ dir, go: false });
         after(30, () => setFlip({ dir, go: true }));
@@ -1035,9 +1094,9 @@ export default function Catelog() {
 
     const enter = () => {
         if (stage !== 'cover' || loading) return;
-        setP(0);
+        setP(first);
         setStage('book');
-        after(400, () => turn('next')); // open the cover
+        if (!isMobile) after(400, () => turn('next')); // open the cover
     };
 
     const close = () => {
@@ -1054,6 +1113,21 @@ export default function Catelog() {
         turn(e.clientX - rect.left > rect.width / 2 ? 'next' : 'prev');
     };
 
+    // Mobile swipe: left = next, right = previous (vertical drags still scroll the page)
+    const onTouchStart = (e) => {
+        const t = e.touches[0];
+        touchStart.current = { x: t.clientX, y: t.clientY };
+    };
+    const onTouchEnd = (e) => {
+        const start = touchStart.current;
+        touchStart.current = null;
+        if (!start) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy)) turn(dx < 0 ? 'next' : 'prev');
+    };
+
     // Keyboard
     useEffect(() => {
         if (stage !== 'book') return;
@@ -1064,11 +1138,11 @@ export default function Catelog() {
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [stage]);
+    }, [stage, isMobile]);
 
-    // Mouse wheel / trackpad scroll
+    // Mouse wheel / trackpad scroll (desktop book only; mobile scrolls the site normally)
     useEffect(() => {
-        if (stage !== 'book') return;
+        if (stage !== 'book' || isMobile) return;
         const el = sectionRef.current;
         if (!el) return;
 
@@ -1091,7 +1165,7 @@ export default function Catelog() {
 
         el.addEventListener('wheel', onWheel, { passive: false });
         return () => el.removeEventListener('wheel', onWheel);
-    }, [stage]);
+    }, [stage, isMobile]);
 
     const leftPage = flip?.dir === 'prev' ? pages[page - 1] : pages[page];
     const rightPage = flip?.dir === 'next' ? pages[page + 1] : pages[page];
@@ -1110,10 +1184,24 @@ export default function Catelog() {
             : { left: 0, transformOrigin: 'right center', transform: flip.go ? 'rotateY(180deg)' : 'rotateY(0deg)' }),
     };
 
+    // Mobile: the whole stacked page turns around its left edge.
+    // next = current page swings away; prev = previous page swings back in.
+    const mobileUnder = flip?.dir === 'next' ? pages[page + 1] : pages[page];
+    const mobileTurning = flip?.dir === 'next' ? pages[page] : pages[page - 1];
+    const mobileFlipStyle = flip && {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 5,
+        transformStyle: 'preserve-3d',
+        transformOrigin: 'left center',
+        transition: `transform ${FLIP_MS}ms ${EASE}`,
+        transform: (flip.dir === 'next') === flip.go ? 'rotateY(-180deg)' : 'rotateY(0deg)',
+    };
+
     return (
         <section
             ref={sectionRef}
-            className="catalog-font relative flex min-h-[calc(100vh-90px)] items-center justify-center overflow-hidden bg-[#333] px-14 py-8 sm:px-20"
+            className="catalog-font relative flex min-h-[calc(100vh-90px)] items-center justify-center overflow-hidden bg-[#333] px-4 py-16 md:px-20 md:py-8"
         >
             <style>{FONT_CSS}</style>
 
@@ -1183,8 +1271,72 @@ export default function Catelog() {
                 </div>
             )}
 
+            {/* ---------- MOBILE: SPREAD STACKED AS ONE PAGE, WITH PAGE FLIP ---------- */}
+            {stage === 'book' && isMobile && (
+                <>
+                    <button
+                        type="button"
+                        onClick={close}
+                        aria-label="Close catalog"
+                        className="absolute right-5 top-4 z-20 cursor-pointer text-3xl leading-none text-white transition-opacity hover:opacity-70"
+                    >
+                        ×
+                    </button>
+
+                    <div className="flex w-full flex-col items-center gap-4">
+                        <div
+                            onClick={onBookClick}
+                            onTouchStart={onTouchStart}
+                            onTouchEnd={onTouchEnd}
+                            className="relative w-full cursor-pointer select-none"
+                            style={{
+                                maxWidth: MOBILE_MAX_W,
+                                aspectRatio: BOOK_ASPECT / 4, // two pages stacked
+                                perspective: '2000px',
+                                filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5))',
+                            }}
+                        >
+                            <div className="absolute inset-0 z-[1]">
+                                <MobileSpread page={mobileUnder} />
+                            </div>
+
+                            {flip && (
+                                <div style={mobileFlipStyle}>
+                                    <div style={faceStyle}><MobileSpread page={mobileTurning} /></div>
+                                    <div style={{ ...faceStyle, transform: 'rotateY(180deg)', background: '#e9e9e6' }} />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-6 text-white">
+                            <button
+                                type="button"
+                                onClick={() => turn('prev')}
+                                disabled={page <= first}
+                                aria-label="Previous page"
+                                className="cursor-pointer transition-opacity hover:opacity-70 disabled:cursor-default disabled:opacity-30"
+                            >
+                                <Chevron dir="left" />
+                            </button>
+                            <span className="min-w-[4rem] text-center text-xs text-white/70">
+                                {page} / {last}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => turn('next')}
+                                disabled={page >= last}
+                                aria-label="Next page"
+                                className="cursor-pointer transition-opacity hover:opacity-70 disabled:cursor-default disabled:opacity-30"
+                            >
+                                <Chevron dir="right" />
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
             {/* ---------- BOOK WITH PAGE FLIP ---------- */}
-            {stage === 'book' && (
+            {stage === 'book' && !isMobile && (
                 <>
                     <button
                         type="button"
