@@ -75,8 +75,11 @@ const CQ = { containerType: 'inline-size' };
 
 // Montserrat everywhere inside the catalogue (!important beats any global heading font)
 const FONT_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
 .catalog-font, .catalog-font * { font-family: 'Montserrat', sans-serif !important; }
+@keyframes catPourUp { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes catFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes catFadeOut { from { opacity: 1; } to { opacity: 0; } }
 `;
 
 /* ---------- PDF EXPORT ---------- */
@@ -88,7 +91,12 @@ const EXPORT_FILE = '1971co-catalogue.pdf';
 // True while the hidden export copy is rendered (turns off lazy image loading)
 const ExportCtx = createContext(false);
 
+// Watermark images still being prepared (the PDF export waits for these)
+const overlayJobs = new Set();
+
 const waitForImages = async (root) => {
+    await Promise.allSettled([...overlayJobs]);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const imgs = Array.from(root.querySelectorAll('img'));
     await Promise.all(
         imgs.map((img) =>
@@ -386,22 +394,514 @@ function Chevron({ dir }) {
     );
 }
 
-function CheckIcon({ className = 'size-[2.6cqw]' }) {
+/* ---------- PRODUCT FEATURES (shared by every layout) ---------- */
+
+// Thin outlined badge icons, one per kind of feature
+const FEATURE_ICON_PATHS = {
+    fabric: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8.5 7.5c1 1.5 1 3 0 4.5s-1 3 0 4.5M12 6.5c1 1.5 1 3.5 0 5.5s-1 3.5 0 5.5M15.5 7.5c1 1.5 1 3 0 4.5s-1 3 0 4.5" />
+        </>
+    ),
+    soft: (
+        <>
+            <path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z" />
+            <path d="M8 10.5c1.3-1 2.7-1 4 0s2.7 1 4 0M8 14c1.3-1 2.7-1 4 0s2.7 1 4 0" />
+        </>
+    ),
+    quality: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="12" cy="12" r="5.5" />
+            <circle cx="12" cy="12" r="1.8" />
+        </>
+    ),
+    weight: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M10 7.5v9h1.5a4.5 4.5 0 0 0 0-9z" />
+        </>
+    ),
+    drop: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 6.5c2.5 3 4 4.8 4 7a4 4 0 0 1-8 0c0-2.2 1.5-4 4-7z" />
+        </>
+    ),
+    fit: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M7.5 12h9M10.5 9.5L8 12l2.5 2.5M13.5 9.5L16 12l-2.5 2.5" />
+        </>
+    ),
+};
+
+const FEATURE_ICON_ORDER = ['fabric', 'soft', 'quality', 'weight'];
+
+const FEATURE_ICON_RULES = [
+    ['weight', /gsm|weight|gram|thick|heavy/],
+    ['soft', /soft|comfort|smooth|cozy|cosy/],
+    ['quality', /quality|lasting|durab|strong|premium|stitch/],
+    ['drop', /breath|cool|dry|moisture|sweat|wick/],
+    ['fit', /fit|size|relax|oversize|regular/],
+    ['fabric', /lycra|rib|cotton|fabric|knit|stretch|fleece|polyester|blend|spandex|yarn|elastic/],
+];
+
+// Picks an icon from the feature text; unknown text cycles through the set
+const featureIconKey = (text, index) => {
+    const t = String(text).toLowerCase();
+    const hit = FEATURE_ICON_RULES.find(([, re]) => re.test(t));
+    return hit ? hit[0] : FEATURE_ICON_ORDER[index % FEATURE_ICON_ORDER.length];
+};
+
+function FeatureIcon({ name, className = '' }) {
     return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12.5l4.5 4.5L19 7.5" />
+        <svg
+            viewBox="0 0 24 24"
+            className={className}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            {FEATURE_ICON_PATHS[name]}
         </svg>
     );
 }
 
+// "Product Features" heading + one icon-and-text row per feature
+function FeatureList({ features, max = 6 }) {
+    return (
+        <div className="border-b border-zinc-300 pb-[2cqw]">
+            <p className="text-[2.3cqw] font-medium tracking-[0.08em] text-zinc-800">Product Features</p>
+            <ul className="mt-[1.6cqw] flex flex-col gap-[1.5cqw]">
+                {features.slice(0, max).map((f, i) => (
+                    <li key={`${f}-${i}`} className="flex min-w-0 items-center gap-[1.6cqw] text-[1.9cqw] leading-snug tracking-[0.02em] text-zinc-700">
+                        <FeatureIcon name={featureIconKey(f, i)} className="size-[3.4cqw] shrink-0 text-zinc-700" />
+                        <span className="line-clamp-2 min-w-0">{f}</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+/* ---------- WATERMARK BEHIND THE MODEL ---------- */
+// The big brand name behind the model is drawn by the browser, per photo:
+//   1. find the plain studio backdrop (computeBackdropMask)
+//   2. draw the text, keep it only where the backdrop is, so it ends up BEHIND the model
+//   3. show that as a transparent image on top of the photo (works in the PDF export too)
+// If a photo can't be read (different site without CORS, or not a plain backdrop) there is no
+// watermark on it, rather than a wrong one over the model.
+
+const MASK_MAX = 360; // px: photo size used to find the backdrop
+const OVERLAY_MAX = 1100; // px: size of the finished watermark image
+const WATERMARK_ALPHA = 0.1; // how dark the text is (0 to 1)
+const WATERMARK_WIDTH = 0.9; // text width as a share of the photo width
+const WATERMARK_STRETCH = 1.6; // makes the letters taller
+const WATERMARK_CENTER_Y = 0.33; // text centre as a share of the photo height
+
+// Finds the plain studio backdrop of a model photo.
+// Input: RGBA pixels. Output: Uint8ClampedArray (w*h), 255 = backdrop, 0 = model, soft edges.
+// Returns null when the photo doesn't look like "one person on a plain backdrop".
+const EDGE_STRONG = 24; // Sobel strength that counts as a real edge
+
+function computeBackdropMask(rgba, w, h) {
+    const n = w * h;
+
+    // Square min filter (shrinks a 0/1 mask by r). Pixels outside the photo are ignored.
+    const erode = (src, r) => {
+        const tmp = new Uint8Array(n);
+        const out = new Uint8Array(n);
+        for (let y = 0; y < h; y += 1) {
+            for (let x = 0; x < w; x += 1) {
+                let v = 1;
+                for (let d = -r; d <= r && v; d += 1) {
+                    const xx = x + d;
+                    if (xx >= 0 && xx < w && !src[y * w + xx]) v = 0;
+                }
+                tmp[y * w + x] = v;
+            }
+        }
+        for (let y = 0; y < h; y += 1) {
+            for (let x = 0; x < w; x += 1) {
+                let v = 1;
+                for (let d = -r; d <= r && v; d += 1) {
+                    const yy = y + d;
+                    if (yy >= 0 && yy < h && !tmp[yy * w + x]) v = 0;
+                }
+                out[y * w + x] = v;
+            }
+        }
+        return out;
+    };
+
+    // Square max filter (grows a 0/1 mask by r)
+    const dilate = (src, r) => {
+        const inv = new Uint8Array(n);
+        for (let i = 0; i < n; i += 1) inv[i] = src[i] ? 0 : 1;
+        const e = erode(inv, r);
+        for (let i = 0; i < n; i += 1) e[i] = e[i] ? 0 : 1;
+        return e;
+    };
+
+    // 1) Light 3x3 blur so JPEG noise doesn't break the fill
+    const ch = [new Uint8Array(n), new Uint8Array(n), new Uint8Array(n)];
+    for (let c = 0; c < 3; c += 1) {
+        const out = ch[c];
+        for (let y = 0; y < h; y += 1) {
+            for (let x = 0; x < w; x += 1) {
+                let sum = 0;
+                let cnt = 0;
+                for (let dy = -1; dy <= 1; dy += 1) {
+                    const yy = y + dy;
+                    if (yy < 0 || yy >= h) continue;
+                    for (let dx = -1; dx <= 1; dx += 1) {
+                        const xx = x + dx;
+                        if (xx < 0 || xx >= w) continue;
+                        sum += rgba[(yy * w + xx) * 4 + c];
+                        cnt += 1;
+                    }
+                }
+                out[y * w + x] = Math.round(sum / cnt);
+            }
+        }
+    }
+    const [R, G, B] = ch;
+    const lum = new Float32Array(n);
+    const chroma = new Uint8Array(n);
+    for (let i = 0; i < n; i += 1) {
+        lum[i] = (R[i] * 299 + G[i] * 587 + B[i] * 114) / 1000;
+        chroma[i] = Math.max(R[i], G[i], B[i]) - Math.min(R[i], G[i], B[i]);
+    }
+
+    // Edge strength (Sobel) of the blurred luminance, used to judge how trustworthy an outline is
+    const grad = new Float32Array(n);
+    for (let y = 1; y < h - 1; y += 1) {
+        for (let x = 1; x < w - 1; x += 1) {
+            const i = y * w + x;
+            const gx = lum[i - w + 1] + 2 * lum[i + 1] + lum[i + w + 1] - lum[i - w - 1] - 2 * lum[i - 1] - lum[i + w - 1];
+            const gy = lum[i + w - 1] + 2 * lum[i + w] + lum[i + w + 1] - lum[i - w - 1] - 2 * lum[i - w] - lum[i - w + 1];
+            grad[i] = Math.abs(gx) + Math.abs(gy);
+        }
+    }
+
+    // 2) What does the backdrop look like? Sample the outer edge of the photo.
+    const ring = Math.max(2, Math.round(Math.min(w, h) * 0.012));
+    const isRing = (x, y) => x < ring || y < ring || x >= w - ring || y >= h - ring;
+    const ringIdx = [];
+    for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+            if (!isRing(x, y)) {
+                x = Math.max(x, w - ring - 1);
+                continue;
+            }
+            ringIdx.push(y * w + x);
+        }
+    }
+    const pct = (values, p) => {
+        const sorted = Float32Array.from(values).sort();
+        return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
+    };
+    const ringLum = ringIdx.map((i) => lum[i]);
+    const ringChroma = ringIdx.map((i) => chroma[i]);
+    const lumLo = pct(ringLum, 0.15) - 12; // percentile, so a model touching the edge is ignored
+    const ringHi = pct(ringLum, 0.95);
+    const chromaMax = Math.min(26, pct(ringChroma, 0.95) + 7);
+    if (ringHi + 12 - lumLo > 90) return null; // edge is not a plain backdrop
+
+    const queue = new Int32Array(n);
+    const floodFromRing = (accept) => {
+        const out = new Uint8Array(n);
+        let head = 0;
+        let tail = 0;
+        for (let k = 0; k < ringIdx.length; k += 1) {
+            const i = ringIdx[k];
+            if (accept(i, -1)) {
+                out[i] = 1;
+                queue[tail++] = i;
+            }
+        }
+        while (head < tail) {
+            const i = queue[head++];
+            const x = i % w;
+            const y = (i - x) / w;
+            const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1];
+            for (let k = 0; k < 4; k += 1) {
+                const j = nb[k];
+                if (j >= 0 && !out[j] && accept(j, i)) {
+                    out[j] = 1;
+                    queue[tail++] = j;
+                }
+            }
+        }
+        return out;
+    };
+
+    const attempt = ({ step: STEP, hiMargin }) => {
+        const lumHi = ringHi + hiMargin;
+        const okColor = (i) => lum[i] >= lumLo && lum[i] <= lumHi && chroma[i] <= chromaMax;
+        const step = (i, j) =>
+            Math.abs(R[i] - R[j]) <= STEP && Math.abs(G[i] - G[j]) <= STEP && Math.abs(B[i] - B[j]) <= STEP;
+
+        // 3) Flood fill inwards from the photo edge; edges between colours stop it
+        let bg = floodFromRing((j, from) => okColor(j) && (from < 0 || step(from, j)));
+
+        // 4) Cut narrow "necks" (shaded white clothing that looks like backdrop) and keep only
+        //    the part still connected to the photo edge
+        const r = Math.max(3, Math.round(Math.min(w, h) * 0.03));
+        const core = erode(bg, r);
+        const opened = dilate(core, r);
+        for (let i = 0; i < n; i += 1) opened[i] = opened[i] && bg[i] ? 1 : 0;
+        bg = floodFromRing((j, from) => opened[j] === 1 && (from < 0 || opened[from] === 1));
+
+        // 5) Drop tiny specks of "model" inside the backdrop (noise, dust)
+        const minBlob = Math.max(30, Math.round(n * 0.0015));
+        const seen = new Uint8Array(n);
+        let modelPixels = 0;
+        let largest = 0;
+        for (let s = 0; s < n; s += 1) {
+            if (bg[s] || seen[s]) continue;
+            let qh = 0;
+            let qt = 0;
+            queue[qt++] = s;
+            seen[s] = 1;
+            while (qh < qt) {
+                const i = queue[qh++];
+                const x = i % w;
+                const y = (i - x) / w;
+                if (x > 0 && !bg[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; queue[qt++] = i - 1; }
+                if (x < w - 1 && !bg[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; queue[qt++] = i + 1; }
+                if (y > 0 && !bg[i - w] && !seen[i - w]) { seen[i - w] = 1; queue[qt++] = i - w; }
+                if (y < h - 1 && !bg[i + w] && !seen[i + w]) { seen[i + w] = 1; queue[qt++] = i + w; }
+            }
+            if (qt < minBlob) {
+                for (let k = 0; k < qt; k += 1) bg[queue[k]] = 1;
+            } else {
+                modelPixels += qt;
+                if (qt > largest) largest = qt;
+            }
+        }
+
+        // Sanity: the person should be in the middle, with backdrop around them
+        let centre = 0;
+        let centreTotal = 0;
+        for (let y = Math.floor(h * 0.3); y < Math.floor(h * 0.7); y += 1) {
+            for (let x = Math.floor(w * 0.35); x < Math.floor(w * 0.65); x += 1) {
+                centreTotal += 1;
+                if (!bg[y * w + x]) centre += 1;
+            }
+        }
+        const modelShare = modelPixels / n;
+        // one person = one big region; several pieces means the backdrop was cut up
+        if (centre / centreTotal < 0.35 || modelShare < 0.04 || modelShare > 0.6 || largest < modelPixels * 0.8) return null;
+
+        // Confidence: a true outline follows strong edges; a leak or bite runs through smooth areas
+        let border = 0;
+        let strong = 0;
+        for (let y = 1; y < h - 1; y += 1) {
+            for (let x = 1; x < w - 1; x += 1) {
+                const i = y * w + x;
+                if (bg[i]) continue;
+                if (bg[i - 1] || bg[i + 1] || bg[i - w] || bg[i + w]) {
+                    border += 1;
+                    if (grad[i] >= EDGE_STRONG) strong += 1;
+                }
+            }
+        }
+        return { bg, score: border ? strong / border : 0 };
+    };
+
+    // Several strictness levels (loose suits uneven backdrops, strict suits pale clothes).
+    // Keep the one whose outline sits best on real edges; stop early once it is clearly good.
+    let best = null;
+    for (const params of [{ step: 6, hiMargin: 12 }, { step: 8, hiMargin: 18 }, { step: 3, hiMargin: 6 }, { step: 2, hiMargin: 3 }]) {
+        const res = attempt(params);
+        if (res && (!best || res.score > best.score + 0.02)) best = res;
+        if (best && best.score >= 0.85) break;
+    }
+    if (!best) return null;
+    const { bg } = best;
+
+    // 6) Shrink the backdrop a little so the text never touches the model's outline
+    const shrunk = erode(bg, Math.max(1, Math.round(Math.min(w, h) * 0.006)));
+
+    // 7) Soften the edge (3x3 box blur) and return as 0..255
+    const out = new Uint8ClampedArray(n);
+    for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+            let sum = 0;
+            let cnt = 0;
+            for (let dy = -1; dy <= 1; dy += 1) {
+                const yy = y + dy;
+                if (yy < 0 || yy >= h) continue;
+                for (let dx = -1; dx <= 1; dx += 1) {
+                    const xx = x + dx;
+                    if (xx < 0 || xx >= w) continue;
+                    sum += shrunk[yy * w + xx];
+                    cnt += 1;
+                }
+            }
+            out[y * w + x] = Math.round((sum / cnt) * 255);
+        }
+    }
+    return out;
+}
+
+const loadImage = (src) =>
+    new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Waits (up to ~3s) for the watermark font so the first photo doesn't use a fallback font
+async function loadWatermarkFont() {
+    const ready = () =>
+        Array.from(document.fonts || []).some((f) => f.family.replace(/["']/g, '') === 'Bebas Neue' && f.status === 'loaded');
+    for (let i = 0; i < 30 && !ready(); i += 1) {
+        try {
+            await document.fonts.load('100px "Bebas Neue"', BRAND_TEXT);
+        } catch {
+            /* ignore */
+        }
+        if (ready()) break;
+        await sleep(100);
+    }
+}
+
+async function buildWatermarkOverlay(src) {
+    const img = await loadImage(src);
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return null;
+
+    // 1) Backdrop mask from a small copy of the photo
+    const ms = Math.min(1, MASK_MAX / Math.max(nw, nh));
+    const mw = Math.max(1, Math.round(nw * ms));
+    const mh = Math.max(1, Math.round(nh * ms));
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = mw;
+    maskCanvas.height = mh;
+    const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    maskCtx.drawImage(img, 0, 0, mw, mh);
+    const mask = computeBackdropMask(maskCtx.getImageData(0, 0, mw, mh).data, mw, mh);
+    if (!mask) return null;
+
+    const alpha = maskCtx.createImageData(mw, mh);
+    for (let i = 0; i < mask.length; i += 1) alpha.data[i * 4 + 3] = mask[i];
+    maskCtx.putImageData(alpha, 0, 0);
+
+    // 2) Text on a canvas with the same proportions as the photo
+    const os = Math.min(1, OVERLAY_MAX / Math.max(nw, nh));
+    const ow = Math.max(1, Math.round(nw * os));
+    const oh = Math.max(1, Math.round(nh * os));
+    const canvas = document.createElement('canvas');
+    canvas.width = ow;
+    canvas.height = oh;
+    const ctx = canvas.getContext('2d');
+
+    await loadWatermarkFont();
+    const family = '"Bebas Neue", "Montserrat", sans-serif';
+    ctx.font = `100px ${family}`;
+    const naturalWidth = ctx.measureText(BRAND_TEXT).width || 1;
+    const fontPx = (100 * ow * WATERMARK_WIDTH) / naturalWidth;
+    ctx.font = `${fontPx}px ${family}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = `rgba(0, 0, 0, ${WATERMARK_ALPHA})`;
+    const glyphHeight = ctx.measureText(BRAND_TEXT).actualBoundingBoxAscent || fontPx * 0.7;
+    ctx.save();
+    ctx.translate(ow / 2, oh * WATERMARK_CENTER_Y);
+    ctx.scale(1, WATERMARK_STRETCH);
+    ctx.fillText(BRAND_TEXT, 0, glyphHeight / 2);
+    ctx.restore();
+
+    // 3) Keep the text only where the backdrop is
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(maskCanvas, 0, 0, ow, oh);
+
+    return canvas.toDataURL('image/png');
+}
+
+const overlayCache = new Map(); // photo url -> Promise of the overlay image (or null)
+const overlayDone = new Map(); // photo url -> finished overlay image (or null)
+
+function getWatermarkOverlay(src) {
+    if (!overlayCache.has(src)) {
+        const job = buildWatermarkOverlay(src)
+            .catch(() => null)
+            .then((url) => {
+                overlayDone.set(src, url);
+                return url;
+            });
+        overlayCache.set(src, job);
+        overlayJobs.add(job);
+        job.finally(() => overlayJobs.delete(job));
+    }
+    return overlayCache.get(src);
+}
+
+// Prepares the watermarks one by one in the background so turning pages stays smooth.
+// Returns a function that stops it.
+function prewarmWatermarks(srcs) {
+    let cancelled = false;
+    (async () => {
+        await sleep(1200); // let the page settle first
+        for (const src of srcs) {
+            if (cancelled) return;
+            await getWatermarkOverlay(src);
+            await sleep(80);
+        }
+    })();
+    return () => {
+        cancelled = true;
+    };
+}
+
+function useWatermarkOverlay(src, enabled) {
+    const [url, setUrl] = useState(() => (enabled && src ? overlayDone.get(src) ?? null : null));
+
+    useEffect(() => {
+        if (!enabled || !src) {
+            setUrl(null);
+            return undefined;
+        }
+        if (overlayDone.has(src)) {
+            setUrl(overlayDone.get(src));
+            return undefined;
+        }
+        let alive = true;
+        setUrl(null);
+        getWatermarkOverlay(src).then((result) => {
+            if (alive) setUrl(result);
+        });
+        return () => {
+            alive = false;
+        };
+    }, [src, enabled]);
+
+    return url;
+}
+
 // Never crops: the whole image is always visible inside a fixed-size frame.
 // blur = fills any empty edges with a blurred copy (use on the big photos).
-function Photo({ src, alt = '', blur = false, className = '' }) {
+function Photo({ src, alt = '', blur = false, watermark = false, cover = false, className = '' }) {
     const exporting = useContext(ExportCtx);
+    const overlay = useWatermarkOverlay(src, watermark);
 
     return (
         <div className={`relative size-full min-h-0 min-w-0 overflow-hidden bg-[#e6e8e8] ${className}`}>
-            {blur && (
+            {blur && !cover && (
                 <img
                     src={src}
                     alt=""
@@ -415,8 +915,18 @@ function Photo({ src, alt = '', blur = false, className = '' }) {
                 alt={alt}
                 loading={blur || exporting ? undefined : 'lazy'}
                 draggable={false}
-                className="relative size-full object-contain"
+                className={`relative size-full ${cover ? 'object-cover' : 'object-contain'}`}
             />
+            {overlay && (
+                // Brand name already cut out around the model, so it sits behind them
+                <img
+                    src={overlay}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className={`pointer-events-none absolute inset-0 size-full select-none ${cover ? 'object-cover' : 'object-contain'}`}
+                />
+            )}
         </div>
     );
 }
@@ -485,6 +995,44 @@ function GalleryGrid({ images, cols, rows, fitContent = false, aspectRatio = '3 
     );
 }
 
+// Photo collage for 3 images: two stacked on the left, one tall photo on the right.
+// Order: [0] top-left, [1] tall right, [2] bottom-left. Photos fill their tiles (cropped).
+function CollageTile({ src, className = '', style }) {
+    const exporting = useContext(ExportCtx);
+
+    return (
+        <div className={`min-h-0 min-w-0 overflow-hidden bg-[#e6e8e8] ${className}`} style={style}>
+            <img
+                src={src}
+                alt=""
+                loading={exporting ? undefined : 'lazy'}
+                draggable={false}
+                className="size-full object-cover"
+                style={{ objectPosition: 'center 30%' }}
+            />
+        </div>
+    );
+}
+
+function CollageGrid({ images }) {
+    const [a, b, c] = images;
+
+    return (
+        <div
+            className="grid w-full shrink-0 gap-[0.8cqw] bg-white p-[0.8cqw]"
+            style={{
+                aspectRatio: '620 / 640',
+                gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)',
+                gridTemplateRows: 'minmax(0, 1.36fr) minmax(0, 1fr)',
+            }}
+        >
+            <CollageTile src={a} style={{ gridColumn: 1, gridRow: 1 }} />
+            <CollageTile src={b} style={{ gridColumn: 2, gridRow: '1 / span 2' }} />
+            <CollageTile src={c} style={{ gridColumn: 1, gridRow: 2 }} />
+        </div>
+    );
+}
+
 // "Swatch Fabric" label on the left, square slot for the fabric photo on the right.
 // Shows an empty dashed box until a swatch image exists.
 function SwatchFabric({ image, className = '' }) {
@@ -496,25 +1044,6 @@ function SwatchFabric({ image, className = '' }) {
             <div className="size-[9cqw] shrink-0 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
                 {image && <Photo src={image} alt="Swatch fabric" />}
             </div>
-        </div>
-    );
-}
-
-// Colour cards: image on top, name below
-function ColorCards({ colors }) {
-    return (
-        <div className="grid min-h-0 flex-1 grid-cols-4 gap-[2cqw]">
-            {colors.slice(0, 4).map((c, i) => (
-                <div key={c.id} className="flex min-h-0 flex-col items-center">
-                    <div
-                        className={`min-h-0 w-full flex-1 overflow-hidden bg-zinc-200 ${i === 0 ? 'ring-1 ring-zinc-500' : ''}`}
-                        style={!c.image && c.hex ? { backgroundColor: c.hex } : undefined}
-                    >
-                        {c.image && <Photo src={c.image} alt={c.name} />}
-                    </div>
-                    <p className="mt-[1cqw] truncate text-[1.8cqw] text-zinc-600">{c.name}</p>
-                </div>
-            ))}
         </div>
     );
 }
@@ -558,14 +1087,109 @@ function BrandStrip({ side = 'left' }) {
 
 /* ---------- LAYOUT A: hero left / details right ---------- */
 
+const POUR_MS = 700; // colour rises over the big photo
+const REVEAL_MS = 600; // colour fades away to show the new photo
+const THUMB_POUR_MS = 650;
+const THUMB_STAGGER_MS = 350;
+
+// Colour thumbnail: starts empty, its colour is poured in, then the photo fades in over it
+function ColorThumb({ color, index, selected, exporting, onPick }) {
+    const delay = index * THUMB_STAGGER_MS;
+    const anim = (css) => (exporting ? undefined : css);
+
+    return (
+        <button
+            type="button"
+            onClick={(e) => {
+                e.stopPropagation(); // don't turn the page
+                onPick(color);
+            }}
+            className="flex min-h-0 min-w-0 cursor-pointer flex-col items-center outline-none"
+        >
+            <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-200/70">
+                {color.hex && (
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            backgroundColor: color.hex,
+                            animation: anim(`catPourUp ${THUMB_POUR_MS}ms ease-out ${delay}ms both`),
+                        }}
+                    />
+                )}
+                {color.image && (
+                    <img
+                        src={color.image}
+                        alt={color.name}
+                        draggable={false}
+                        loading={exporting ? undefined : 'lazy'}
+                        className="absolute inset-0 size-full object-cover object-top"
+                        style={{ animation: anim(`catFadeIn 500ms ease-in ${delay + THUMB_POUR_MS - 100}ms both`) }}
+                    />
+                )}
+            </div>
+            <p className={`mt-[1cqw] w-full truncate text-center text-[1.8cqw] ${selected ? 'font-semibold text-zinc-900' : 'text-zinc-600'}`}>
+                {color.name}
+            </p>
+        </button>
+    );
+}
+
 function HeroPage({ view }) {
-    const { product, image } = view;
+    const { product, image, colors } = view;
+    const exporting = useContext(ExportCtx);
+    const [shown, setShown] = useState(image);
+    const [activeId, setActiveId] = useState(null);
+    const [pour, setPour] = useState(null); // { id, hex }
+    const timers = useRef([]);
+
+    useEffect(() => () => timers.current.forEach(clearTimeout), []);
+    useEffect(() => setShown(image), [image]);
+
+    const pick = (color) => {
+        const target = color.image || image;
+        setActiveId(color.id);
+        if (exporting || target === shown) {
+            setShown(target);
+            return;
+        }
+        timers.current.forEach(clearTimeout);
+        const id = Date.now();
+        setPour({ id, hex: color.hex || '#e6e8e8' });
+        // swap the photo while the colour covers it, then let the colour fade away
+        timers.current = [
+            setTimeout(() => setShown(target), POUR_MS),
+            setTimeout(() => setPour(null), POUR_MS + REVEAL_MS),
+        ];
+    };
+
+    const thumbs = colors.slice(0, 4);
 
     return (
         <div className="relative flex size-full flex-col overflow-hidden" style={{ ...CQ, background: 'linear-gradient(135deg, #f5f5f4 0%, #d9d9dc 100%)' }}>
-            {image && (
-                <div className="relative mb-[5.3cqw] mt-[3cqw] min-h-0 flex-1" style={{ marginLeft: '9%', width: '85%' }}>
-                    <Photo src={image} alt={product.name} blur />
+            {shown && (
+                <div className="relative min-h-0 flex-1" style={{ marginLeft: '9%', width: '85%' }}>
+                    <Photo key={shown} src={shown} alt={product.name} cover watermark />
+                    {pour && (
+                        <div
+                            key={pour.id}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0"
+                            style={{
+                                backgroundColor: pour.hex,
+                                animation: `catPourUp ${POUR_MS}ms ease-out both, catFadeOut ${REVEAL_MS}ms ease-in ${POUR_MS}ms both`,
+                            }}
+                        />
+                    )}
+                </div>
+            )}
+            {thumbs.length > 0 && (
+                <div
+                    className="grid shrink-0 grid-cols-4 gap-[1.5cqw] pb-[3cqw] pt-[1.5cqw]"
+                    style={{ marginLeft: '9%', width: '85%', height: '24cqw' }}
+                >
+                    {thumbs.map((c, i) => (
+                        <ColorThumb key={c.id} color={c} index={i} selected={c.id === activeId} exporting={exporting} onPick={pick} />
+                    ))}
                 </div>
             )}
         </div>
@@ -595,15 +1219,7 @@ function DetailsPage({ view }) {
                             </Section>
                         )}
 
-                        {features.length > 0 && (
-                            <Section title="Product Features">
-                                {features.slice(0, 4).map((f) => (
-                                    <p key={f} className="line-clamp-4 text-[1.9cqw] leading-snug text-zinc-600">
-                                        {f}
-                                    </p>
-                                ))}
-                            </Section>
-                        )}
+                        {features.length > 0 && <FeatureList features={features} max={4} />}
 
                         {composition && (
                             <Section title="Product Composition">
@@ -615,22 +1231,20 @@ function DetailsPage({ view }) {
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
-                        <GalleryGrid
-                            images={gallery}
-                            cols={2}
-                            rows={isTankTopBundle ? 2 : 3}
-                            fitContent={!isTankTopBundle}
-                            aspectRatio="4 / 3"
-                        />
+                        {!isTankTopBundle && gallery.length === 3 ? (
+                            <CollageGrid images={gallery} />
+                        ) : (
+                            <GalleryGrid
+                                images={gallery}
+                                cols={2}
+                                rows={isTankTopBundle ? 2 : 3}
+                                fitContent={!isTankTopBundle}
+                                aspectRatio="4 / 3"
+                            />
+                        )}
                         <SwatchFabric image={swatch} />
                     </div>
                 </div>
-
-                {colors.length > 0 && (
-                    <div className="mt-[3cqw] flex min-h-0 flex-[1] flex-col">
-                        <ColorCards colors={colors} />
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -643,7 +1257,7 @@ function PhotoPage({ view }) {
 
     return (
         <div className="relative size-full overflow-hidden bg-zinc-200" style={CQ}>
-            {image && <Photo src={image} alt={product.name} blur />}
+            {image && <Photo src={image} alt={product.name} blur watermark />}
             <BrandStrip />
             {colors[0] && (
                 <span className="absolute bottom-[3cqw] left-[3cqw] bg-[#3f6b73]/90 px-[2cqw] py-[1cqw] text-[1.8cqw] uppercase tracking-[0.1em] text-white">
@@ -688,18 +1302,7 @@ function EditorialPage({ view }) {
                         )}
 
                         {/* 5. Features */}
-                        {features.length > 0 && (
-                            <Section title="Features">
-                                <ul className="flex flex-col gap-[0.8cqw]">
-                                    {features.slice(0, 6).map((f) => (
-                                        <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.8cqw] text-zinc-700">
-                                            <CheckIcon className="size-[2.4cqw] shrink-0" />
-                                            <span className="truncate">{f}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Section>
-                        )}
+                        {features.length > 0 && <FeatureList features={features} />}
 
                         {/* 6. Composition */}
                         {composition && (
@@ -765,18 +1368,7 @@ function InfoPage({ view }) {
                     )}
 
                     {/* 5. Features */}
-                    {features.length > 0 && (
-                        <Section title="Features">
-                            <ul className="grid grid-cols-2 gap-x-[2cqw] gap-y-[1cqw]">
-                                {features.slice(0, 6).map((f) => (
-                                    <li key={f} className="flex min-w-0 items-center gap-[1cqw] text-[1.8cqw] text-zinc-700">
-                                        <CheckIcon className="size-[2.6cqw] shrink-0" />
-                                        <span className="truncate">{f}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </Section>
-                    )}
+                    {features.length > 0 && <FeatureList features={features} />}
 
                     {/* 6. Composition */}
                     {composition && (
@@ -810,7 +1402,7 @@ function ShowcasePage({ view }) {
         <div className="relative size-full bg-[#ecebe7]" style={CQ}>
             <div className="flex size-full flex-col gap-[1.5cqw] p-[2.5cqw]">
                 <div className="min-h-0 flex-[4]">
-                    {image && <Photo src={image} alt={product.name} blur />}
+                    {image && <Photo src={image} alt={product.name} blur watermark />}
                 </div>
                 {strip.length > 0 && (
                     <div className="grid min-h-0 flex-[1.3] grid-cols-4 gap-[1.5cqw]">
@@ -974,6 +1566,12 @@ export default function Catelog() {
         [products, colorMap, sizeMap, categories, subcategories, grandchilds],
     );
     const last = pages.length - 1;
+
+    // Get the behind-the-model watermarks ready in the background
+    useEffect(() => {
+        const srcs = [...new Set(pages.map((pg) => pg.image).filter(Boolean))];
+        return prewarmWatermarks(srcs);
+    }, [pages]);
 
     // Mobile skips the cover spread and starts on the intro
     const isMobile = useIsMobile();

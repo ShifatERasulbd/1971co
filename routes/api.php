@@ -36,6 +36,8 @@ use App\Http\Controllers\ReturnRequestController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\CartAnalyticsController;
 use App\Http\Controllers\CheckoutSessionController;
+use App\Http\Controllers\WholesaleContactController;
+use App\Http\Controllers\WholesaleApplicationController;
 
 // OTP validation
 Route::post('/login/send-otp', [AuthOtpController::class, 'sendOtp']);
@@ -51,6 +53,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware(['web', 'thr
 Route::post('/register', [AuthController::class, 'register'])->middleware(['web', 'throttle:6,1']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['web', 'throttle:6,1']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['web', 'throttle:6,1']);
+Route::post('/public/wholesale-contact', [WholesaleContactController::class, 'store'])->middleware('throttle:5,1');
+Route::post('/public/wholesale-inquiries', [WholesaleApplicationController::class, 'store'])->middleware('throttle:5,1');
 Route::get('/public/about-hero', [AboutHeroController::class, 'publicIndex']);
 Route::get('/public/about-story', [AboutStoryController::class, 'publicIndex']);
 Route::get('/public/about-mission', [AboutMissionController::class, 'publicIndex']);
