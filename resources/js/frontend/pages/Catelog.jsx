@@ -77,9 +77,6 @@ const CQ = { containerType: 'inline-size' };
 const FONT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
 .catalog-font, .catalog-font * { font-family: 'Montserrat', sans-serif !important; }
-@keyframes catPourUp { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes catFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes catFadeOut { from { opacity: 1; } to { opacity: 0; } }
 `;
 
 /* ---------- PDF EXPORT ---------- */
@@ -1048,6 +1045,22 @@ function SwatchFabric({ image, className = '' }) {
     );
 }
 
+// Square swatch slot (4in x 4in) for DetailsPage: label on top, dashed square for the fabric sample.
+// The box is square and fills the width of the left column, so it keeps its 1:1 shape at any size.
+function SwatchSquare({ image, className = '' }) {
+    return (
+        <div className={`flex aspect-square w-full shrink-0 flex-col gap-[1.2cqw] border border-zinc-300 bg-white/60 p-[1.6cqw] ${className}`}>
+            <div className="flex shrink-0 items-baseline justify-between gap-[1cqw]">
+                <p className="text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
+                <p className="text-[1.5cqw] text-zinc-400">4in × 4in</p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
+                {image && <Photo src={image} alt="Swatch fabric" cover />}
+            </div>
+        </div>
+    );
+}
+
 // Colour row: small thumb with the name beside it
 function ColorRow({ colors }) {
     return (
@@ -1087,15 +1100,83 @@ function BrandStrip({ side = 'left' }) {
 
 /* ---------- LAYOUT A: hero left / details right ---------- */
 
-const POUR_MS = 700; // colour rises over the big photo
-const REVEAL_MS = 600; // colour fades away to show the new photo
-const THUMB_POUR_MS = 650;
+const POUR_MS = 1150; // big photo: colour drops from the top and fills the model photo
+const THUMB_POUR_MS = 1000;
 const THUMB_STAGGER_MS = 350;
+const POUR_FALLBACK = '#9ca3af';
+const POUR_LAG = 22; // % of the box height between the liquid front and the finished colour photo
 
-// Colour thumbnail: starts empty, its colour is poured in, then the photo fades in over it
+// Clip shape of liquid that has filled the box down to `level` (% of height) with a wavy surface
+function liquidPolygon(level, phase, amp) {
+    const N = 18;
+    const pts = ['0% 0%', '100% 0%'];
+    for (let i = N; i >= 0; i--) {
+        const y = level + Math.sin((i / N) * Math.PI * 3 + phase) * amp;
+        pts.push(`${(i / N) * 100}% ${Math.max(0, Math.min(100, y))}%`);
+    }
+    return `polygon(${pts.join(',')})`;
+}
+
+// Starts as a black & white photo (no colour). The colour is poured in from the top like water:
+// the liquid tints the light parts (the t-shirt) while its wavy surface sinks down the box, and the
+// real colour photo is revealed right behind the liquid.
+function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false, children }) {
+    const colRef = useRef(null);
+    const imgRef = useRef(null);
+    const streamRef = useRef(null);
+    const hidden = useMemo(() => liquidPolygon(-amp - POUR_LAG, 0, amp), [amp]);
+
+    useEffect(() => {
+        if (instant) return undefined;
+        let raf;
+        const t0 = performance.now() + delay;
+        const tick = (now) => {
+            const t = Math.min(1, Math.max(0, (now - t0) / duration));
+            const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in-out
+            const span = 100 + 2 * amp + POUR_LAG;
+            const front = -amp - POUR_LAG + e * span + POUR_LAG; // liquid colour front
+            const photo = front - POUR_LAG; // real colour photo follows behind it
+            const phase = now / 170;
+            if (colRef.current) colRef.current.style.clipPath = liquidPolygon(front, phase, amp);
+            if (imgRef.current) imgRef.current.style.clipPath = t >= 1 ? 'none' : liquidPolygon(photo, phase + 1.3, amp);
+            if (streamRef.current) {
+                streamRef.current.style.height = `${Math.max(0, Math.min(100, front))}%`;
+                streamRef.current.style.opacity = t > 0 && t < 0.4 ? String(1 - t / 0.4) : '0';
+            }
+            if (t < 1) raf = requestAnimationFrame(tick);
+            else if (colRef.current) colRef.current.style.display = 'none';
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [instant, delay, duration, amp]);
+
+    if (instant) return <div className="absolute inset-0">{children}</div>;
+
+    return (
+        <div className="absolute inset-0 isolate overflow-hidden">
+            {/* 1. no colour yet: black & white photo */}
+            <div className="absolute inset-0" style={{ filter: 'grayscale(1) brightness(1.12)' }}>
+                {children}
+            </div>
+            {/* 2. the poured colour, tinting the light parts (t-shirt) of the photo */}
+            <div ref={colRef} className="absolute inset-0" style={{ background: hex || POUR_FALLBACK, mixBlendMode: 'multiply', clipPath: hidden }} />
+            {/* 3. the finished colour photo, revealed behind the liquid */}
+            <div ref={imgRef} className="absolute inset-0" style={{ clipPath: hidden }}>
+                {children}
+            </div>
+            <div
+                ref={streamRef}
+                aria-hidden="true"
+                className="absolute left-1/2 top-0 w-[4%] -translate-x-1/2 rounded-b-full"
+                style={{ background: hex || POUR_FALLBACK, height: 0, opacity: 0 }}
+            />
+        </div>
+    );
+}
+
+// Colour thumbnail: starts empty, then its colour is poured in from the top and the model fills in
 function ColorThumb({ color, index, selected, exporting, onPick }) {
     const delay = index * THUMB_STAGGER_MS;
-    const anim = (css) => (exporting ? undefined : css);
 
     return (
         <button
@@ -1107,24 +1188,16 @@ function ColorThumb({ color, index, selected, exporting, onPick }) {
             className="flex min-h-0 min-w-0 cursor-pointer flex-col items-center outline-none"
         >
             <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-200/70">
-                {color.hex && (
-                    <div
-                        className="absolute inset-0"
-                        style={{
-                            backgroundColor: color.hex,
-                            animation: anim(`catPourUp ${THUMB_POUR_MS}ms ease-out ${delay}ms both`),
-                        }}
-                    />
-                )}
                 {color.image && (
-                    <img
-                        src={color.image}
-                        alt={color.name}
-                        draggable={false}
-                        loading={exporting ? undefined : 'lazy'}
-                        className="absolute inset-0 size-full object-cover object-top"
-                        style={{ animation: anim(`catFadeIn 500ms ease-in ${delay + THUMB_POUR_MS - 100}ms both`) }}
-                    />
+                    <PourReveal hex={color.hex} delay={delay} duration={THUMB_POUR_MS} amp={4} instant={exporting}>
+                        <img
+                            src={color.image}
+                            alt={color.name}
+                            draggable={false}
+                            loading={exporting ? undefined : 'lazy'}
+                            className="absolute inset-0 size-full object-cover object-top"
+                        />
+                    </PourReveal>
                 )}
             </div>
             <p className={`mt-[1cqw] w-full truncate text-center text-[1.8cqw] ${selected ? 'font-semibold text-zinc-900' : 'text-zinc-600'}`}>
@@ -1138,8 +1211,8 @@ function HeroPage({ view }) {
     const { product, image, colors } = view;
     const exporting = useContext(ExportCtx);
     const [shown, setShown] = useState(image);
+    const [incoming, setIncoming] = useState(null); // { id, src, hex } photo being poured in over the current one
     const [activeId, setActiveId] = useState(null);
-    const [pour, setPour] = useState(null); // { id, hex }
     const timers = useRef([]);
 
     useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -1148,17 +1221,19 @@ function HeroPage({ view }) {
     const pick = (color) => {
         const target = color.image || image;
         setActiveId(color.id);
-        if (exporting || target === shown) {
+        timers.current.forEach(clearTimeout);
+        if (exporting) {
             setShown(target);
             return;
         }
-        timers.current.forEach(clearTimeout);
-        const id = Date.now();
-        setPour({ id, hex: color.hex || '#e6e8e8' });
-        // swap the photo while the colour covers it, then let the colour fade away
+        if (incoming) setShown(incoming.src); // finish an unfinished pour first
+        if (target === shown && !incoming) return;
+        setIncoming({ id: Date.now(), src: target, hex: color.hex });
         timers.current = [
-            setTimeout(() => setShown(target), POUR_MS),
-            setTimeout(() => setPour(null), POUR_MS + REVEAL_MS),
+            setTimeout(() => {
+                setShown(target);
+                setIncoming(null);
+            }, POUR_MS + 80),
         ];
     };
 
@@ -1169,16 +1244,10 @@ function HeroPage({ view }) {
             {shown && (
                 <div className="relative min-h-0 flex-1" style={{ marginLeft: '9%', width: '85%' }}>
                     <Photo key={shown} src={shown} alt={product.name} cover watermark />
-                    {pour && (
-                        <div
-                            key={pour.id}
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-0"
-                            style={{
-                                backgroundColor: pour.hex,
-                                animation: `catPourUp ${POUR_MS}ms ease-out both, catFadeOut ${REVEAL_MS}ms ease-in ${POUR_MS}ms both`,
-                            }}
-                        />
+                    {incoming && (
+                        <PourReveal key={incoming.id} hex={incoming.hex} duration={POUR_MS} amp={2.5}>
+                            <Photo src={incoming.src} alt={product.name} cover watermark />
+                        </PourReveal>
                     )}
                 </div>
             )}
@@ -1228,6 +1297,8 @@ function DetailsPage({ view }) {
                         )}
 
                         <WholesaleNote />
+
+                        <SwatchSquare image={swatch} className="mt-auto" />
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
@@ -1242,7 +1313,6 @@ function DetailsPage({ view }) {
                                 aspectRatio="4 / 3"
                             />
                         )}
-                        <SwatchFabric image={swatch} />
                     </div>
                 </div>
             </div>
