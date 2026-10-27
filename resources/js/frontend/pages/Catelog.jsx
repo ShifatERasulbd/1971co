@@ -77,6 +77,32 @@ const CQ = { containerType: 'inline-size' };
 const FONT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
 .catalog-font, .catalog-font * { font-family: 'Montserrat', sans-serif !important; }
+
+/* Cut-out model walking round the studio floor.
+   walk = an oval path: front (big, low) -> right -> back (small, higher up) -> left -> front,
+          turning slightly towards the way they are going
+   step = the bounce and side-to-side rock of each footstep */
+@keyframes catalog-model-walk {
+    0%, 100% { transform: perspective(1200px) translate(0, 1%) scale(1.03) rotateY(15deg); }
+    12.5% { transform: perspective(1200px) translate(9.9%, 0.4%) scale(1.011) rotateY(10.6deg); }
+    25% { transform: perspective(1200px) translate(14%, -1%) scale(0.965) rotateY(0deg); }
+    37.5% { transform: perspective(1200px) translate(9.9%, -2.4%) scale(0.919) rotateY(-10.6deg); }
+    50% { transform: perspective(1200px) translate(0, -3%) scale(0.9) rotateY(-15deg); }
+    62.5% { transform: perspective(1200px) translate(-9.9%, -2.4%) scale(0.919) rotateY(-10.6deg); }
+    75% { transform: perspective(1200px) translate(-14%, -1%) scale(0.965) rotateY(0deg); }
+    87.5% { transform: perspective(1200px) translate(-9.9%, 0.4%) scale(1.011) rotateY(10.6deg); }
+}
+@keyframes catalog-model-step {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    25% { transform: translateY(-1.2%) rotate(0deg); }
+    50% { transform: translateY(0) rotate(1deg); }
+    75% { transform: translateY(-1.2%) rotate(0deg); }
+}
+.catalog-model-walk { transform-origin: 50% 92%; animation: catalog-model-walk 16s linear infinite; will-change: transform; }
+.catalog-model-step { transform-origin: 50% 92%; animation: catalog-model-step 1.1s ease-in-out infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+    .catalog-model-walk, .catalog-model-step { animation: none; }
+}
 `;
 
 /* ---------- PDF EXPORT ---------- */
@@ -496,6 +522,7 @@ function FeatureList({ features, max = 6 }) {
 
 const MASK_MAX = 360; // px: photo size used to find the backdrop
 const OVERLAY_MAX = 1100; // px: size of the finished watermark image
+const LAYER_MAX = 1600; // px: size of the moving-model layers (cut-out model, empty backdrop, text)
 const WATERMARK_ALPHA = 0.1; // how dark the text is (0 to 1)
 const WATERMARK_WIDTH = 0.9; // text width as a share of the photo width
 const WATERMARK_STRETCH = 1.6; // makes the letters taller
@@ -748,6 +775,127 @@ function computeBackdropMask(rgba, w, h) {
     return out;
 }
 
+// Box blur of the RGB channels (sliding window, horizontal then vertical)
+function boxBlurRGB(buf, w, h, r) {
+    const tmp = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y += 1) {
+        for (let c = 0; c < 3; c += 1) {
+            let sum = 0;
+            let cnt = 0;
+            for (let x = 0; x <= r && x < w; x += 1) { sum += buf[(y * w + x) * 4 + c]; cnt += 1; }
+            for (let x = 0; x < w; x += 1) {
+                tmp[(y * w + x) * 3 + c] = sum / cnt;
+                const add = x + r + 1;
+                const rem = x - r;
+                if (add < w) { sum += buf[(y * w + add) * 4 + c]; cnt += 1; }
+                if (rem >= 0) { sum -= buf[(y * w + rem) * 4 + c]; cnt -= 1; }
+            }
+        }
+    }
+    for (let x = 0; x < w; x += 1) {
+        for (let c = 0; c < 3; c += 1) {
+            let sum = 0;
+            let cnt = 0;
+            for (let y = 0; y <= r && y < h; y += 1) { sum += tmp[(y * w + x) * 3 + c]; cnt += 1; }
+            for (let y = 0; y < h; y += 1) {
+                buf[(y * w + x) * 4 + c] = sum / cnt;
+                const add = y + r + 1;
+                const rem = y - r;
+                if (add < h) { sum += tmp[(add * w + x) * 3 + c]; cnt += 1; }
+                if (rem >= 0) { sum -= tmp[(rem * w + x) * 3 + c]; cnt -= 1; }
+            }
+        }
+    }
+}
+
+// Paints the backdrop over the spot where the model stands (each row is bridged between the
+// backdrop on its left and right), so the model can move without a copy of itself showing behind.
+// Returns RGBA pixels; alpha is only set where the model was.
+function backdropFill(rgba, mask, w, h) {
+    const SOLID = 250;
+    const out = new Uint8ClampedArray(w * h * 4);
+    // average of up to 3 backdrop pixels, going outwards from x
+    const sample = (y, x, dir) => {
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let c = 0;
+        for (let xx = x; c < 3 && xx >= 0 && xx < w && mask[y * w + xx] >= SOLID; xx += dir) {
+            const i = (y * w + xx) * 4;
+            r += rgba[i];
+            g += rgba[i + 1];
+            b += rgba[i + 2];
+            c += 1;
+        }
+        return c ? [r / c, g / c, b / c] : null;
+    };
+
+    for (let y = 0; y < h; y += 1) {
+        let x = 0;
+        while (x < w) {
+            const i = y * w + x;
+            if (mask[i] >= SOLID) {
+                out[i * 4] = rgba[i * 4];
+                out[i * 4 + 1] = rgba[i * 4 + 1];
+                out[i * 4 + 2] = rgba[i * 4 + 2];
+                x += 1;
+                continue;
+            }
+            let x1 = x;
+            while (x1 < w && mask[y * w + x1] < SOLID) x1 += 1;
+            const L = x > 0 ? sample(y, x - 1, -1) : null;
+            const R = x1 < w ? sample(y, x1, 1) : null;
+            for (let xx = x; xx < x1; xx += 1) {
+                const o = (y * w + xx) * 4;
+                if (L && R) {
+                    const t = (xx - x + 1) / (x1 - x + 1);
+                    for (let c = 0; c < 3; c += 1) out[o + c] = L[c] + (R[c] - L[c]) * t;
+                } else if (L || R) {
+                    const col = L || R;
+                    for (let c = 0; c < 3; c += 1) out[o + c] = col[c];
+                } else if (y > 0) {
+                    for (let c = 0; c < 3; c += 1) out[o + c] = out[o - w * 4 + c];
+                }
+            }
+            x = x1;
+        }
+    }
+
+    // Smooth out the row-by-row streaks
+    boxBlurRGB(out, w, h, Math.max(2, Math.round(Math.min(w, h) * 0.02)));
+    for (let i = 0; i < w * h; i += 1) out[i * 4 + 3] = 255 - mask[i];
+    return out;
+}
+
+// Big brand name centred on a canvas of the given size
+function drawBrandText(ctx, w, h) {
+    const family = '"Bebas Neue", "Montserrat", sans-serif';
+    ctx.font = `100px ${family}`;
+    const naturalWidth = ctx.measureText(BRAND_TEXT).width || 1;
+    const fontPx = (100 * w * WATERMARK_WIDTH) / naturalWidth;
+    ctx.font = `${fontPx}px ${family}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = `rgba(0, 0, 0, ${WATERMARK_ALPHA})`;
+    const glyphHeight = ctx.measureText(BRAND_TEXT).actualBoundingBoxAscent || fontPx * 0.7;
+    ctx.save();
+    ctx.translate(w / 2, h * WATERMARK_CENTER_Y);
+    ctx.scale(1, WATERMARK_STRETCH);
+    ctx.fillText(BRAND_TEXT, 0, glyphHeight / 2);
+    ctx.restore();
+}
+
+const makeCanvas = (w, h) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    return canvas;
+};
+
+// Browsers without WebP encoding fall back to PNG
+const canvasUrl = (canvas, type = 'image/webp', quality = 0.92) =>
+    new Promise((resolve) => canvas.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null), type, quality));
+
 const loadImage = (src) =>
     new Promise((resolve, reject) => {
         const img = new Image();
@@ -789,7 +937,8 @@ async function buildWatermarkOverlay(src) {
     maskCanvas.height = mh;
     const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
     maskCtx.drawImage(img, 0, 0, mw, mh);
-    const mask = computeBackdropMask(maskCtx.getImageData(0, 0, mw, mh).data, mw, mh);
+    const pixels = maskCtx.getImageData(0, 0, mw, mh).data;
+    const mask = computeBackdropMask(pixels, mw, mh);
     if (!mask) return null;
 
     const alpha = maskCtx.createImageData(mw, mh);
@@ -800,38 +949,53 @@ async function buildWatermarkOverlay(src) {
     const os = Math.min(1, OVERLAY_MAX / Math.max(nw, nh));
     const ow = Math.max(1, Math.round(nw * os));
     const oh = Math.max(1, Math.round(nh * os));
-    const canvas = document.createElement('canvas');
-    canvas.width = ow;
-    canvas.height = oh;
+    const canvas = makeCanvas(ow, oh);
     const ctx = canvas.getContext('2d');
 
     await loadWatermarkFont();
-    const family = '"Bebas Neue", "Montserrat", sans-serif';
-    ctx.font = `100px ${family}`;
-    const naturalWidth = ctx.measureText(BRAND_TEXT).width || 1;
-    const fontPx = (100 * ow * WATERMARK_WIDTH) / naturalWidth;
-    ctx.font = `${fontPx}px ${family}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = `rgba(0, 0, 0, ${WATERMARK_ALPHA})`;
-    const glyphHeight = ctx.measureText(BRAND_TEXT).actualBoundingBoxAscent || fontPx * 0.7;
-    ctx.save();
-    ctx.translate(ow / 2, oh * WATERMARK_CENTER_Y);
-    ctx.scale(1, WATERMARK_STRETCH);
-    ctx.fillText(BRAND_TEXT, 0, glyphHeight / 2);
-    ctx.restore();
+    drawBrandText(ctx, ow, oh);
 
     // 3) Keep the text only where the backdrop is
     ctx.globalCompositeOperation = 'destination-in';
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(maskCanvas, 0, 0, ow, oh);
+    const overlay = canvas.toDataURL('image/png');
 
-    return canvas.toDataURL('image/png');
+    // 4) Layers for the moving model: empty backdrop, full text, and the model cut out on its own
+    const ls = Math.min(1, LAYER_MAX / Math.max(nw, nh));
+    const lw = Math.max(1, Math.round(nw * ls));
+    const lh = Math.max(1, Math.round(nh * ls));
+
+    const fillCanvas = makeCanvas(mw, mh);
+    fillCanvas.getContext('2d').putImageData(new ImageData(backdropFill(pixels, mask, mw, mh), mw, mh), 0, 0);
+    const plateCanvas = makeCanvas(lw, lh);
+    const plateCtx = plateCanvas.getContext('2d');
+    plateCtx.imageSmoothingQuality = 'high';
+    plateCtx.drawImage(img, 0, 0, lw, lh);
+    plateCtx.drawImage(fillCanvas, 0, 0, lw, lh);
+
+    const textCanvas = makeCanvas(lw, lh);
+    drawBrandText(textCanvas.getContext('2d'), lw, lh);
+
+    const modelCanvas = makeCanvas(lw, lh);
+    const modelCtx = modelCanvas.getContext('2d');
+    modelCtx.imageSmoothingQuality = 'high';
+    modelCtx.drawImage(img, 0, 0, lw, lh);
+    modelCtx.globalCompositeOperation = 'destination-out';
+    modelCtx.drawImage(maskCanvas, 0, 0, lw, lh);
+
+    const [plate, text, model] = await Promise.all([
+        canvasUrl(plateCanvas, 'image/jpeg'),
+        canvasUrl(textCanvas),
+        canvasUrl(modelCanvas),
+    ]);
+
+    return { overlay, plate, text, model };
 }
 
-const overlayCache = new Map(); // photo url -> Promise of the overlay image (or null)
-const overlayDone = new Map(); // photo url -> finished overlay image (or null)
+const overlayCache = new Map(); // photo url -> Promise of the watermark layers (or null)
+const overlayDone = new Map(); // photo url -> finished watermark layers (or null)
 
 function getWatermarkOverlay(src) {
     if (!overlayCache.has(src)) {
@@ -892,9 +1056,12 @@ function useWatermarkOverlay(src, enabled) {
 
 // Never crops: the whole image is always visible inside a fixed-size frame.
 // blur = fills any empty edges with a blurred copy (use on the big photos).
-function Photo({ src, alt = '', blur = false, watermark = false, cover = false, className = '' }) {
+// animate = the model (only the model) gently moves; backdrop and text stay still.
+function Photo({ src, alt = '', blur = false, watermark = false, animate = false, cover = false, className = '' }) {
     const exporting = useContext(ExportCtx);
-    const overlay = useWatermarkOverlay(src, watermark);
+    const layers = useWatermarkOverlay(src, watermark || animate);
+    const fit = cover ? 'object-cover' : 'object-contain';
+    const moving = animate && !exporting && layers?.model && layers?.plate;
 
     return (
         <div className={`relative size-full min-h-0 min-w-0 overflow-hidden bg-[#e6e8e8] ${className}`}>
@@ -912,17 +1079,32 @@ function Photo({ src, alt = '', blur = false, watermark = false, cover = false, 
                 alt={alt}
                 loading={blur || exporting ? undefined : 'lazy'}
                 draggable={false}
-                className={`relative size-full ${cover ? 'object-cover' : 'object-contain'}`}
+                className={`relative size-full ${fit}`}
             />
-            {overlay && (
-                // Brand name already cut out around the model, so it sits behind them
-                <img
-                    src={overlay}
-                    alt=""
-                    aria-hidden="true"
-                    draggable={false}
-                    className={`pointer-events-none absolute inset-0 size-full select-none ${cover ? 'object-cover' : 'object-contain'}`}
-                />
+            {moving ? (
+                // Backdrop without the model, brand name, then the cut-out model moving on top
+                <>
+                    <img src={layers.plate} alt="" aria-hidden="true" draggable={false} className={`pointer-events-none absolute inset-0 size-full select-none ${fit}`} />
+                    {watermark && layers.text && (
+                        <img src={layers.text} alt="" aria-hidden="true" draggable={false} className={`pointer-events-none absolute inset-0 size-full select-none ${fit}`} />
+                    )}
+                    <div className="catalog-model-sway pointer-events-none absolute inset-0">
+                        <div className="catalog-model-breathe size-full">
+                            <img src={layers.model} alt="" aria-hidden="true" draggable={false} className={`size-full select-none ${fit}`} />
+                        </div>
+                    </div>
+                </>
+            ) : (
+                watermark && layers?.overlay && (
+                    // Brand name already cut out around the model, so it sits behind them
+                    <img
+                        src={layers.overlay}
+                        alt=""
+                        aria-hidden="true"
+                        draggable={false}
+                        className={`pointer-events-none absolute inset-0 size-full select-none ${fit}`}
+                    />
+                )
             )}
         </div>
     );
@@ -992,6 +1174,52 @@ function GalleryGrid({ images, cols, rows, fitContent = false, aspectRatio = '3 
     );
 }
 
+// Three photos as a fanned card gallery: big card in the middle, smaller tilted cards behind on each side.
+// Photos only, no colour names. Fills the space it is given.
+function GalleryFan({ images }) {
+    const list = images.filter(Boolean).slice(0, 3);
+    if (list.length === 0) return <div className="min-h-0 flex-1" />;
+
+    // [left, centre, right] -> with fewer photos the first ones sit in the middle
+    const slots = list.length >= 3 ? [list[0], list[1], list[2]] : list.length === 2 ? [null, list[0], list[1]] : [null, list[0], null];
+
+    const card = 'absolute overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]';
+    const side = { top: '12%', height: '78%', width: '31%', opacity: 0.95, boxShadow: '0 1.2cqw 2.4cqw rgba(0,0,0,0.12)' };
+
+    return (
+        <div className="relative min-h-0 min-w-0 flex-1" style={{ padding: '1cqw 0' }}>
+            <div className="relative size-full">
+                {slots[0] && (
+                    <div className={card} style={{ ...side, left: '1%', transform: 'rotate(-3deg)', zIndex: 1 }}>
+                        <Photo src={slots[0]} cover />
+                    </div>
+                )}
+                {slots[2] && (
+                    <div className={card} style={{ ...side, right: '1%', transform: 'rotate(3deg)', zIndex: 1 }}>
+                        <Photo src={slots[2]} cover />
+                    </div>
+                )}
+                {slots[1] && (
+                    <div
+                        className={card}
+                        style={{
+                            top: 0,
+                            height: '100%',
+                            width: '40%',
+                            left: '30%',
+                            zIndex: 2,
+                            boxShadow: '0 2cqw 4cqw rgba(0,0,0,0.22)',
+                            outline: '0.5cqw solid rgba(255,255,255,0.85)',
+                        }}
+                    >
+                        <Photo src={slots[1]} cover />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // Photo collage for 3 images: two stacked on the left, one tall photo on the right.
 // Order: [0] top-left, [1] tall right, [2] bottom-left. Photos fill their tiles (cropped).
 function CollageTile({ src, className = '', style }) {
@@ -1030,52 +1258,94 @@ function CollageGrid({ images }) {
     );
 }
 
-// "Swatch Fabric" label on the left, square slot for the fabric photo on the right.
-// Shows an empty dashed box until a swatch image exists.
-function SwatchFabric({ image, className = '' }) {
+// Polygon with softly rounded corners, in 0..1 box coordinates (for clip-path)
+function roundedPolyPath(pts, r) {
+    const n = pts.length;
+    const toward = (a, b, dist) => {
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const t = Math.min(dist / (Math.hypot(dx, dy) || 1), 0.45);
+        return [a[0] + dx * t, a[1] + dy * t];
+    };
+    let d = '';
+    for (let i = 0; i < n; i++) {
+        const cur = pts[i];
+        const a = toward(cur, pts[(i + n - 1) % n], r);
+        const b = toward(cur, pts[(i + 1) % n], r);
+        d += `${i === 0 ? 'M' : 'L'} ${a[0].toFixed(4)} ${a[1].toFixed(4)} Q ${cur[0]} ${cur[1]} ${b[0].toFixed(4)} ${b[1].toFixed(4)} `;
+    }
+    return `${d}Z`;
+}
+
+// Left side lower than the right side: a slanted (parallelogram) photo card
+const FEATURE_SKEW_PATH = roundedPolyPath([[0, 0.245], [1, 0], [1, 0.755], [0, 1]], 0.03);
+// The small cards use the same slant as the big photo (same slope), so their top edges run parallel to its bottom edge.
+// The 2nd card is lifted by slope x (card width + gap) so both cards keep the same distance from the big photo.
+const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.345], [1, 0], [1, 0.655], [0, 1]], 0.045);
+const FEATURE_SMALL_LIFT = '10.4cqw';
+const FEATURE_SMALL_RAISE = '4cqw'; // moves both small cards up, closer to the big photo
+
+// One big slanted photo with the other photos as small cards under it (no thumbnail strip).
+// Click a small card to bring that photo up into the big slanted card.
+function FeatureShowcase({ images }) {
+    const slides = images.filter(Boolean).slice(0, 3);
+    const [mainIndex, setMainIndex] = useState(0);
+
+    if (slides.length === 0) return <div className="min-h-0 flex-1" />;
+
+    const main = slides[mainIndex] || slides[0];
+    const others = slides.map((src, index) => ({ src, index })).filter((item) => item.index !== mainIndex);
+
     return (
-        <div
-            className={`flex shrink-0 items-center justify-between gap-[2cqw] border border-zinc-300 bg-white/60 px-[2cqw] py-[1.5cqw] ${className}`}
-        >
-            <p className="text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
-            <div className="size-[9cqw] shrink-0 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
-                {image && <Photo src={image} alt="Swatch fabric" />}
+        <div className="flex min-h-0 size-full flex-col gap-[1.8cqw]">
+            <svg width="0" height="0" className="absolute" aria-hidden="true">
+                <defs>
+                    <clipPath id="catFeatureSkewClip" clipPathUnits="objectBoundingBox"><path d={FEATURE_SKEW_PATH} /></clipPath>
+                    <clipPath id="catFeatureSmallClip" clipPathUnits="objectBoundingBox"><path d={FEATURE_SMALL_PATH} /></clipPath>
+                </defs>
+            </svg>
+
+            <div className="relative min-h-0 flex-1" style={{ filter: 'drop-shadow(0 0.8cqw 1.6cqw rgba(0,0,0,0.14))' }}>
+                <div className="absolute inset-0 bg-[#e6e8e8]" style={{ clipPath: 'url(#catFeatureSkewClip)' }}>
+                    <Photo key={main} src={main} alt="Product feature" cover />
+                </div>
             </div>
+
+            {others.length > 0 && (
+                <div
+                    className="grid shrink-0 gap-[1.5cqw]"
+                    style={{ gridTemplateColumns: `repeat(${others.length}, minmax(0, 1fr))`, filter: 'drop-shadow(0 0.6cqw 1.2cqw rgba(0,0,0,0.12))', transform: `translateY(-${FEATURE_SMALL_RAISE})` }}
+                >
+                    {others.map(({ src, index }, i) => (
+                        <button
+                            key={`${src}-${index}`}
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation(); // don't turn the page
+                                setMainIndex(index);
+                            }}
+                            aria-label={`Show product feature image ${index + 1}`}
+                            className="aspect-[3/4] min-w-0 cursor-pointer bg-transparent outline-none"
+                            style={{ transform: i > 0 ? `translateY(-${FEATURE_SMALL_LIFT})` : undefined }}
+                        >
+                            <div className="size-full bg-[#e6e8e8]" style={{ clipPath: 'url(#catFeatureSmallClip)' }}>
+                                <Photo src={src} alt="" cover />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-// Square swatch slot (4in x 4in) for DetailsPage: label on top, dashed square for the fabric sample.
-// The box is square and fills the width of the left column, so it keeps its 1:1 shape at any size.
+// Square swatch slot sized to 4in x 4in in the exported catalog.
 function SwatchSquare({ image, className = '' }) {
     return (
-        <div className={`flex aspect-square w-full shrink-0 flex-col gap-[1.2cqw] border border-zinc-300 bg-white/60 p-[1.6cqw] ${className}`}>
-            <div className="flex shrink-0 items-baseline justify-between gap-[1cqw]">
-                <p className="text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Swatch Fabric</p>
-                <p className="text-[1.5cqw] text-zinc-400">4in × 4in</p>
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
+        <div className={`flex aspect-square shrink-0 border border-zinc-300 bg-white/60 p-[1.6cqw] ${className}`}>
+            <div className="min-h-0 min-w-0 flex-1 overflow-hidden border border-dashed border-zinc-400 bg-zinc-100">
                 {image && <Photo src={image} alt="Swatch fabric" cover />}
             </div>
-        </div>
-    );
-}
-
-// Colour row: small thumb with the name beside it
-function ColorRow({ colors }) {
-    return (
-        <div className="grid grid-cols-2 gap-[1.5cqw]">
-            {colors.slice(0, 4).map((c, i) => (
-                <div key={c.id} className={`flex min-w-0 items-center gap-[1.5cqw] p-[0.6cqw] ${i === 0 ? 'border border-zinc-400' : ''}`}>
-                    <div
-                        className="h-[8cqw] w-[6cqw] shrink-0 overflow-hidden bg-zinc-200"
-                        style={!c.image && c.hex ? { backgroundColor: c.hex } : undefined}
-                    >
-                        {c.image && <Photo src={c.image} alt={c.name} />}
-                    </div>
-                    <span className="truncate text-[1.8cqw] uppercase tracking-wider text-zinc-600">{c.name}</span>
-                </div>
-            ))}
         </div>
     );
 }
@@ -1175,6 +1445,9 @@ function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false,
 }
 
 // Colour thumbnail: starts empty, then its colour is poured in from the top and the model fills in
+const COLOR_THUMB_ZOOM = 1.7; // 1 = whole photo
+const COLOR_THUMB_ORIGIN = '50% 24%'; // the point that stays put while zooming (head / chest)
+
 function ColorThumb({ color, index, selected, exporting, onPick }) {
     const delay = index * THUMB_STAGGER_MS;
 
@@ -1196,6 +1469,8 @@ function ColorThumb({ color, index, selected, exporting, onPick }) {
                             draggable={false}
                             loading={exporting ? undefined : 'lazy'}
                             className="absolute inset-0 size-full object-cover object-top"
+                            /* zoomed in on the head and upper body so the garment colour is easy to see */
+                            style={{ transform: `scale(${COLOR_THUMB_ZOOM})`, transformOrigin: COLOR_THUMB_ORIGIN }}
                         />
                     </PourReveal>
                 )}
@@ -1207,8 +1482,10 @@ function ColorThumb({ color, index, selected, exporting, onPick }) {
     );
 }
 
-function HeroPage({ view }) {
+function HeroPage({ view, side = 'left', nameStrip = false }) {
     const { product, image, colors } = view;
+    // outer margin is wider than the margin next to the spine
+    const inset = { marginLeft: side === 'left' ? '9%' : '6%', width: '85%' };
     const exporting = useContext(ExportCtx);
     const [shown, setShown] = useState(image);
     const [incoming, setIncoming] = useState(null); // { id, src, hex } photo being poured in over the current one
@@ -1242,8 +1519,8 @@ function HeroPage({ view }) {
     return (
         <div className="relative flex size-full flex-col overflow-hidden" style={{ ...CQ, background: 'linear-gradient(135deg, #f5f5f4 0%, #d9d9dc 100%)' }}>
             {shown && (
-                <div className="relative min-h-0 flex-1" style={{ marginLeft: '9%', width: '85%' }}>
-                    <Photo key={shown} src={shown} alt={product.name} cover watermark />
+                <div className="relative min-h-0 flex-1" style={{ ...inset, marginBottom: '1cqw' }}>
+                    <Photo key={shown} src={shown} alt={product.name} cover watermark animate />
                     {incoming && (
                         <PourReveal key={incoming.id} hex={incoming.hex} duration={POUR_MS} amp={2.5}>
                             <Photo src={incoming.src} alt={product.name} cover watermark />
@@ -1251,10 +1528,38 @@ function HeroPage({ view }) {
                     )}
                 </div>
             )}
+            {nameStrip && product.name && (
+                // Product name written vertically in the outer margin, beside the big photo
+                <div
+                    className={`pointer-events-none absolute top-0 flex items-center justify-center ${side === 'left' ? 'left-0' : 'right-0'}`}
+                    style={{ width: '9%', bottom: '31cqw' }}
+                >
+                    <h2
+                        className="whitespace-nowrap text-[2.1cqw] font-extrabold uppercase leading-none tracking-[0.1em] text-zinc-900"
+                        style={{ writingMode: 'vertical-rl', transform: side === 'left' ? 'rotate(180deg)' : 'none', maxHeight: '100%' }}
+                    >
+                        {product.name}
+                    </h2>
+                </div>
+            )}
+            {thumbs.length > 0 && (
+                // Title for the colour thumbnails, written vertically in the outer margin
+                <div
+                    className={`pointer-events-none absolute flex items-center justify-center ${side === 'left' ? 'left-0' : 'right-0'}`}
+                    style={{ width: '9%', bottom: '7.5cqw', height: '21cqw' }}
+                >
+                    <p
+                        className="whitespace-nowrap text-[1.6cqw] font-normal uppercase leading-none tracking-[0.08em] text-zinc-600"
+                        style={{ writingMode: 'vertical-rl', transform: side === 'left' ? 'rotate(180deg)' : 'none' }}
+                    >
+                        Available Colors
+                    </p>
+                </div>
+            )}
             {thumbs.length > 0 && (
                 <div
                     className="grid shrink-0 grid-cols-4 gap-[1.5cqw] pb-[3cqw] pt-[1.5cqw]"
-                    style={{ marginLeft: '9%', width: '85%', height: '24cqw' }}
+                    style={{ ...inset, height: '30cqw' }}
                 >
                     {thumbs.map((c, i) => (
                         <ColorThumb key={c.id} color={c} index={i} selected={c.id === activeId} exporting={exporting} onPick={pick} />
@@ -1266,14 +1571,11 @@ function HeroPage({ view }) {
 }
 
 function DetailsPage({ view }) {
-    const { product, composition, sizes, colors, gallery, features, swatch, isTankTopBundle } = view;
+    const { product, composition, sizes, gallery, features, swatch, isTankTopBundle } = view;
 
     return (
         <div className="size-full bg-[#f6f6f4]" style={CQ}>
             <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[3cqw]">
-                <h2 className="mb-[2cqw] shrink-0 line-clamp-2 text-[3.5cqw] font-extrabold uppercase leading-tight tracking-tight text-zinc-900">
-                    {product.name}
-                </h2>
                 <div className="flex min-h-0 flex-[3] gap-[3cqw]">
                     <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw] overflow-hidden">
                         {product.sku && (
@@ -1296,9 +1598,8 @@ function DetailsPage({ view }) {
                             </Section>
                         )}
 
+                        <SwatchSquare image={swatch} className="w-[33.87cqw]" />
                         <WholesaleNote />
-
-                        <SwatchSquare image={swatch} className="mt-auto" />
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
@@ -1322,40 +1623,13 @@ function DetailsPage({ view }) {
 
 /* ---------- LAYOUT B: full-bleed photo left / editorial right ---------- */
 
-function PhotoPage({ view }) {
-    const { product, image, colors } = view;
-
-    return (
-        <div className="relative size-full overflow-hidden bg-zinc-200" style={CQ}>
-            {image && <Photo src={image} alt={product.name} blur watermark />}
-            <BrandStrip />
-            {colors[0] && (
-                <span className="absolute bottom-[3cqw] left-[3cqw] bg-[#3f6b73]/90 px-[2cqw] py-[1cqw] text-[1.8cqw] uppercase tracking-[0.1em] text-white">
-                    {colors[0].name}
-                </span>
-            )}
-        </div>
-    );
-}
-
 function EditorialPage({ view }) {
-    const { product,  features, composition, sizes, colors, gallery, swatch } = view;
+    const { product, features, composition, sizes, gallery, swatch } = view;
 
     return (
         <div className="size-full bg-[#f1ede4]" style={CQ}>
             <div className="flex size-full flex-col px-[4.5cqw] pb-[4cqw] pt-[3.5cqw]">
-                {/* Brand only; the style number moved into the info column */}
-                <div className="text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
-                    <span>{BRAND_TEXT}</span>
-                </div>
-
-                {/* 1. Product name */}
-                <h2 className="mt-[1.5cqw] line-clamp-2 text-[3.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
-                    {product.name}
-                </h2>
-
-               
-                <div className="mt-[2.5cqw] flex min-h-0 flex-[3] gap-[2.5cqw] border-t border-zinc-300 pt-[2cqw]">
+                <div className="flex min-h-0 flex-[3] gap-[2.5cqw]">
                     <div className="flex w-[42%] min-w-0 flex-col gap-[1.5cqw] overflow-hidden">
                         {/* 3. Style number */}
                         {product.sku && (
@@ -1381,22 +1655,15 @@ function EditorialPage({ view }) {
                             </Section>
                         )}
 
+                        <SwatchSquare image={swatch} className="w-[33.87cqw]" />
+                        <WholesaleNote className="!text-[1.6cqw]" />
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-[1.5cqw]">
-                        <GalleryGrid images={gallery} cols={3} rows={2} />
-                        <SwatchFabric image={swatch} className="mt-auto" />
+                        <GalleryFan images={gallery} />
                     </div>
                 </div>
 
-                <WholesaleNote className="mt-[1.5cqw] !text-[1.9cqw]" />
-
-                {colors.length > 0 && (
-                    <div className="mt-[2.5cqw]">
-                        <p className="mb-[1cqw] text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Colors</p>
-                        <ColorRow colors={colors} />
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -1405,84 +1672,42 @@ function EditorialPage({ view }) {
 /* ---------- LAYOUT C: info left / showcase right ---------- */
 
 function InfoPage({ view }) {
-    const { product, features, composition, sizes, colors, swatch } = view;
+    const { product, features, composition, sizes, gallery, swatch } = view;
 
     return (
         <div className="size-full bg-[#fafaf8]" style={CQ}>
-            <div className="flex size-full flex-col px-[5cqw] pb-[4cqw] pt-[5cqw]">
-                {/* Brand only; the style number moved into its own section */}
-                <div className="text-[1.7cqw] uppercase tracking-[0.1em] text-zinc-500">
-                    <span>{BRAND_TEXT}</span>
-                </div>
+            <div className="flex size-full flex-col px-[5cqw] pb-[3cqw] pt-[1.5cqw]">
+                <div className="flex min-h-0 flex-1 gap-[2.5cqw]">
+                    <div className="flex w-[48%] min-w-0 flex-col gap-[1.8cqw] overflow-hidden">
+                        {product.sku && (
+                            <Section title="Style Number">
+                                <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
+                            </Section>
+                        )}
 
-                {/* 1. Product name */}
-                <h2 className="mt-[2cqw] line-clamp-3 text-[3.5cqw] font-extrabold uppercase leading-[1.08] tracking-tight text-zinc-900">
-                    {product.name}
-                </h2>
+                        {sizes.length > 0 && (
+                            <Section title="Size Variant">
+                                <SizeChips sizes={sizes} />
+                            </Section>
+                        )}
 
-                
+                        {features.length > 0 && <FeatureList features={features} />}
 
-                <div className="mt-[2.5cqw] flex flex-col gap-[1.8cqw] border-t border-zinc-300 pt-[2cqw]">
-                    {/* 3. Style number */}
-                    {product.sku && (
-                        <Section title="Style Number">
-                            <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
-                        </Section>
-                    )}
+                        {composition && (
+                            <Section title="Product Composition">
+                                <p className="line-clamp-3 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
+                            </Section>
+                        )}
 
-                    {/* 4. Size variant */}
-                    {sizes.length > 0 && (
-                        <Section title="Size Variant">
-                            <SizeChips sizes={sizes} />
-                        </Section>
-                    )}
-
-                    {/* 5. Features */}
-                    {features.length > 0 && <FeatureList features={features} />}
-
-                    {/* 6. Composition */}
-                    {composition && (
-                        <Section title="Product Composition">
-                            <p className="line-clamp-3 text-[1.9cqw] leading-snug text-zinc-600">{composition}</p>
-                        </Section>
-                    )}
-                </div>
-
-                <SwatchFabric image={swatch} className="mt-[2cqw]" />
-                <WholesaleNote className="mt-[2.5cqw]" />
-
-                <div className="mt-auto">
-                    {colors.length > 0 && (
-                        <>
-                            <p className="mb-[1cqw] text-[1.7cqw] font-semibold uppercase tracking-[0.1em] text-zinc-500">Colors</p>
-                            <ColorRow colors={colors} />
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function ShowcasePage({ view }) {
-    const { product, image, gallery } = view;
-    const strip = gallery.filter((src) => src !== image).slice(0, 4);
-
-    return (
-        <div className="relative size-full bg-[#ecebe7]" style={CQ}>
-            <div className="flex size-full flex-col gap-[1.5cqw] p-[2.5cqw]">
-                <div className="min-h-0 flex-[4]">
-                    {image && <Photo src={image} alt={product.name} blur watermark />}
-                </div>
-                {strip.length > 0 && (
-                    <div className="grid min-h-0 flex-[1.3] grid-cols-4 gap-[1.5cqw]">
-                        {strip.map((src, i) => (
-                            <Photo key={`${src}-${i}`} src={src} />
-                        ))}
+                        <SwatchSquare image={swatch} className="mt-auto w-[33.87cqw]" />
+                        <WholesaleNote />
                     </div>
-                )}
+
+                    <div className="flex min-h-0 min-w-0 flex-1">
+                        <FeatureShowcase images={gallery} />
+                    </div>
+                </div>
             </div>
-            {image && <BrandStrip side="right" />}
         </div>
     );
 }
@@ -1583,10 +1808,13 @@ function IntroRightPage({ categories }) {
 
 /* ---------- LAYOUT REGISTRY ---------- */
 
+const HeroPageRight = (props) => <HeroPage {...props} side="right" nameStrip />;
+const HeroPageNameStrip = (props) => <HeroPage {...props} nameStrip />;
+
 const LAYOUTS = [
-    { left: HeroPage, right: DetailsPage }, // A
-    { left: PhotoPage, right: EditorialPage }, // B
-    { left: InfoPage, right: ShowcasePage }, // C
+    { left: HeroPageNameStrip, right: DetailsPage }, // A
+    { left: HeroPageNameStrip, right: EditorialPage }, // B
+    { left: InfoPage, right: HeroPageRight }, // C
 ];
 
 // One half of a spread (or the single cover page)
