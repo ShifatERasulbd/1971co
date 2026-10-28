@@ -1880,6 +1880,18 @@ function MobileSpread({ page }) {
 
 const PRELOAD_PARALLEL = 6; // images downloaded at the same time
 const PRELOAD_TIMEOUT_MS = 8000; // a stuck image never blocks the book
+const catalogImageCache = new Map();
+
+function CatalogImageCache({ urls }) {
+    return (
+        <div aria-hidden="true" className="pointer-events-none fixed left-0 top-0 -z-10 size-px overflow-hidden opacity-0">
+            {urls.map((src) => (
+                <img key={src} src={src} alt="" draggable={false} width="1" height="1" />
+            ))}
+        </div>
+    );
+}
+
 // Every image the book shows: cover, intro, category cards, product photos, colour thumbnails, swatches
 function collectImageUrls(pages) {
     const urls = new Set([COVER, INTRO_IMAGE]);
@@ -1906,7 +1918,8 @@ function preloadImages(urls, onProgress) {
 
     const loadOne = (src) =>
         new Promise((resolve) => {
-            const img = new Image();
+            const img = catalogImageCache.get(src) || new Image();
+            catalogImageCache.set(src, img);
             let finished = false;
             const finish = () => {
                 if (finished) return;
@@ -1917,6 +1930,10 @@ function preloadImages(urls, onProgress) {
                 resolve();
             };
             const timer = setTimeout(finish, PRELOAD_TIMEOUT_MS);
+            if (img.complete && img.naturalWidth > 0) {
+                finish();
+                return;
+            }
             img.onload = finish;
             img.onerror = finish; // a broken image should not stop the book from opening
             img.src = src;
@@ -1959,6 +1976,7 @@ export default function Catelog() {
         [products, colorMap, sizeMap, categories, subcategories, grandchilds],
     );
     const last = pages.length - 1;
+    const imageUrls = useMemo(() => collectImageUrls(pages), [pages]);
     // Progress shown on the cover: content 15% + fonts 5% + images 80%
     const loadedAll = !loading && fontsReady && preload.ready;
     const percent = loadedAll
@@ -1995,7 +2013,7 @@ export default function Catelog() {
     // Download the complete catalogue before opening so page flips only use cached images.
     useEffect(() => {
         if (loading) return undefined;
-        const first = collectImageUrls(pages);
+        const first = imageUrls;
 
         setPreload({ done: 0, total: first.length, ready: first.length === 0 });
         const job = preloadImages(first, (done) => setPreload({ done, total: first.length, ready: false }));
@@ -2006,7 +2024,7 @@ export default function Catelog() {
         return () => {
             job.cancel();
         };
-    }, [loading, pages]);
+    }, [loading, imageUrls]);
 
     // Mobile skips the cover spread and starts on the intro
     const isMobile = useIsMobile();
@@ -2269,6 +2287,7 @@ export default function Catelog() {
             className="catalog-font relative flex min-h-[calc(100vh-90px)] items-center justify-center overflow-hidden bg-[#333] px-4 py-16 md:px-20 md:py-8"
         >
             <style>{FONT_CSS}</style>
+            <CatalogImageCache urls={imageUrls} />
 
             {/* Download button (visible on the cover and inside the book) */}
             <button
