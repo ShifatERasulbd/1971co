@@ -397,9 +397,10 @@ function orderCatalogProducts(products, subcategories, grandchilds) {
 }
 
 // Index 0 = closed book (cover on the right). Then the intro spread,
-// then one spread per product, cycling through the layouts (A, B, C, A, B, C ...).
+// then one spread per product, cycling through the layouts (B, C, B, C ...; A only for 3-photo products).
 function buildPages(products, colorMap, sizeMap, categories, subcategories, grandchilds) {
     const orderedProducts = orderCatalogProducts(products, subcategories, grandchilds);
+    let styleCounter = 0;
 
     return [
         { src: COVER, single: true },
@@ -407,9 +408,16 @@ function buildPages(products, colorMap, sizeMap, categories, subcategories, gran
             intro: true,
             categories: buildCategoryHierarchy(categories, subcategories, grandchilds),
         },
-        ...orderedProducts.map((p, i) => {
+        ...orderedProducts.map((p) => {
             const view = buildView(p, colorMap, sizeMap);
-            return { ...view, layout: view.isTankTopBundle ? 0 : i % LAYOUTS.length };
+            if (view.isTankTopBundle) return { ...view, layout: 0 };
+
+            // Layout A (6-photo grid) is no longer used. A only appears for products with exactly 3 feature photos
+            // (collage); everything else alternates between B and C so the styles keep repeating evenly.
+            const eligible = view.gallery.length === 3 ? [0, 1, 2] : [1, 2];
+            const layout = eligible[styleCounter % eligible.length];
+            styleCounter += 1;
+            return { ...view, layout };
         }),
     ];
 }
