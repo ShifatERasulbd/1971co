@@ -179,6 +179,17 @@ class ProductController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        // Drop catalog images whose files are gone, so the catalog never renders broken cards
+        $products->each(function (Product $product) {
+            if (is_array($product->catalog_feature_images ?? null)) {
+                $product->catalog_feature_images = $this->existingCatalogPaths($product->catalog_feature_images);
+            }
+
+            if (is_string($product->catalog_thumb_image ?? null) && ! $this->existingCatalogPaths([$product->catalog_thumb_image])) {
+                $product->catalog_thumb_image = null;
+            }
+        });
+
         return response()->json($products);
     }
 
@@ -873,12 +884,20 @@ class ProductController extends Controller
             $features,
         );
 
-        $features = array_values(array_unique(array_filter(array_map(
+        $features = $this->existingCatalogPaths(array_values(array_unique(array_filter(array_map(
             fn ($path) => $this->cleanCatalogPath($path),
             $features,
-        ))));
+        )))));
 
         return ['thumb' => $thumb, 'features' => $features];
+    }
+
+    private function existingCatalogPaths(array $paths): array
+    {
+        return array_values(array_filter(
+            $paths,
+            fn ($path) => is_string($path) && is_file(public_path(ltrim($path, '/'))),
+        ));
     }
 
     private function cleanCatalogPath($path): ?string

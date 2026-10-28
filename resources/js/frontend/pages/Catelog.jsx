@@ -213,6 +213,14 @@ const categoryImage = (category) => {
     return `/${image}`;
 };
 
+const catalogImage = (image) => {
+    if (typeof image !== 'string') return '';
+    const value = image.trim();
+    if (!value) return '';
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
+    return `/${value}`;
+};
+
 // Returns the first non-empty value among the given keys, as a string
 const pickId = (item, keys) => {
     for (const k of keys) {
@@ -300,19 +308,18 @@ function buildView(p, colorMap, sizeMap) {
         .filter(Boolean)
         .slice(0, 6);
 
-    // Catalog feature images from the product module; fall back to the product gallery.
-    const catalogFeatures = toArray(p.catalog_feature_images).filter(Boolean);
+    // Only images explicitly selected as catalog features belong in the feature gallery.
+    const catalogFeatures = toArray(p.catalog_feature_images).map(catalogImage).filter(Boolean);
     const tankTopBundleGallery = isTankTopBundle
-        ? (catalogFeatures.length ? catalogFeatures : colors.flatMap((color) => color.images.slice(0, 2))).slice(0, 4)
+        ? catalogFeatures.slice(0, 4)
         : [];
     const gallery = isTankTopBundle
         ? tankTopBundleGallery
-        : (catalogFeatures.length ? catalogFeatures : toArray(p.image_gallery)).slice(0, 6);
-    if (gallery.length === 0 && p.cover_image) gallery.push(p.cover_image);
+        : catalogFeatures.slice(0, 6);
 
     return {
         product: p,
-        image: p.catalog_thumb_image || p.cover_image || gallery[0] || '',
+        image: catalogImage(p.catalog_thumb_image) || catalogImage(p.cover_image) || gallery[0] || '',
    
         composition: stripHtml(p.product_composition) || stripHtml(p.fabric_and_care),
         features,
@@ -1177,25 +1184,38 @@ function GalleryGrid({ images, cols, rows, fitContent = false, aspectRatio = '3 
 // Three photos as a fanned card gallery: big card in the middle, smaller tilted cards behind on each side.
 // Photos only, no colour names. Fills the space it is given.
 function GalleryFan({ images }) {
-    const list = images.filter(Boolean).slice(0, 3);
+    const list = images.filter(Boolean).slice(0, 4);
     if (list.length === 0) return <div className="min-h-0 flex-1" />;
 
-    // [left, centre, right] -> with fewer photos the first ones sit in the middle
-    const slots = list.length >= 3 ? [list[0], list[1], list[2]] : list.length === 2 ? [null, list[0], list[1]] : [null, list[0], null];
+    // Keep all selected feature images visible, layering the fourth behind the left card.
+    const slots =
+        list.length >= 4
+            ? [list[0], list[1], list[2], list[3]]
+            : list.length === 3
+              ? [list[0], list[1], list[2]]
+              : list.length === 2
+                ? [null, list[0], list[1]]
+                : [null, list[0], null];
 
     const card = 'absolute overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]';
-    const side = { top: '12%', height: '78%', width: '31%', opacity: 0.95, boxShadow: '0 1.2cqw 2.4cqw rgba(0,0,0,0.12)' };
+    const side = { top: '10%', height: '80%', width: '42%', opacity: 0.95, boxShadow: '0 1.2cqw 2.4cqw rgba(0,0,0,0.12)' };
 
     return (
-        <div className="relative min-h-0 min-w-0 flex-1" style={{ padding: '1cqw 0' }}>
+        // Fixed-proportion box (matches the red area): full column width, height follows the ratio, sits at the top
+        <div className="relative w-[90%] shrink-0 self-start" style={{ aspectRatio: '407 / 520', padding: '1cqw 0' }}>
             <div className="relative size-full">
                 {slots[0] && (
-                    <div className={card} style={{ ...side, left: '1%', transform: 'rotate(-3deg)', zIndex: 1 }}>
+                    <div className={card} style={{ ...side, left: '-8%', transform: 'rotate(-12deg)', zIndex: 1 }}>
                         <Photo src={slots[0]} cover />
                     </div>
                 )}
+                {slots[3] && (
+                    <div className={card} style={{ ...side, left: '-1%', transform: 'rotate(-6deg)', zIndex: 0 }}>
+                        <Photo src={slots[3]} cover />
+                    </div>
+                )}
                 {slots[2] && (
-                    <div className={card} style={{ ...side, right: '1%', transform: 'rotate(3deg)', zIndex: 1 }}>
+                    <div className={card} style={{ ...side, right: '-6%', transform: 'rotate(12deg)', zIndex: 1 }}>
                         <Photo src={slots[2]} cover />
                     </div>
                 )}
@@ -1205,8 +1225,8 @@ function GalleryFan({ images }) {
                         style={{
                             top: 0,
                             height: '100%',
-                            width: '40%',
-                            left: '30%',
+                            width: '46%',
+                            left: '27%',
                             zIndex: 2,
                             boxShadow: '0 2cqw 4cqw rgba(0,0,0,0.22)',
                             outline: '0.5cqw solid rgba(255,255,255,0.85)',
@@ -1445,7 +1465,7 @@ function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false,
 }
 
 // Colour thumbnail: starts empty, then its colour is poured in from the top and the model fills in
-const COLOR_THUMB_ZOOM = 1.7; // 1 = whole photo
+const COLOR_THUMB_ZOOM = 1.0 // 1 = whole photo
 const COLOR_THUMB_ORIGIN = '50% 24%'; // the point that stays put while zooming (head / chest)
 
 function ColorThumb({ color, index, selected, exporting, onPick }) {
@@ -1655,12 +1675,22 @@ function EditorialPage({ view }) {
                             </Section>
                         )}
 
-                        <SwatchSquare image={swatch} className="w-[33.87cqw]" />
-                        <WholesaleNote className="!text-[1.6cqw]" />
+                        {/* 4th feature image, bottom of the left column */}
+                        {gallery[3] && (
+                            <div
+                                className="relative mt-auto w-full shrink-0 overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]"
+                                style={{ aspectRatio: '263 / 212' }}
+                            >
+                                <Photo src={gallery[3]} cover />
+                            </div>
+                        )}
+                        <WholesaleNote className={`!text-[1.6cqw] ${gallery[3] ? '' : 'mt-auto'}`} />
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-[1.5cqw]">
+                    <div className="flex min-h-0 flex-1 flex-col items-stretch justify-start gap-[1.5cqw]">
                         <GalleryFan images={gallery} />
+                        {/* Swatch fabric moved to the right column, bottom-aligned */}
+                        <SwatchSquare image={swatch} className="mt-[4.5cqw] self-end w-[33.87cqw]" />
                     </div>
                 </div>
 
