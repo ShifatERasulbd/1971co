@@ -397,10 +397,9 @@ function orderCatalogProducts(products, subcategories, grandchilds) {
 }
 
 // Index 0 = closed book (cover on the right). Then the intro spread,
-// then one spread per product, cycling through the layouts (B, C, B, C ...; A only for 3-photo products).
+// then one spread per product, cycling through the layouts (A, B, C, A, B, C ...).
 function buildPages(products, colorMap, sizeMap, categories, subcategories, grandchilds) {
     const orderedProducts = orderCatalogProducts(products, subcategories, grandchilds);
-    let styleCounter = 0;
 
     return [
         { src: COVER, single: true },
@@ -408,16 +407,9 @@ function buildPages(products, colorMap, sizeMap, categories, subcategories, gran
             intro: true,
             categories: buildCategoryHierarchy(categories, subcategories, grandchilds),
         },
-        ...orderedProducts.map((p) => {
+        ...orderedProducts.map((p, i) => {
             const view = buildView(p, colorMap, sizeMap);
-            if (view.isTankTopBundle) return { ...view, layout: 0 };
-
-            // Layout A (6-photo grid) is no longer used. A only appears for products with exactly 3 feature photos
-            // (collage); everything else alternates between B and C so the styles keep repeating evenly.
-            const eligible = view.gallery.length === 3 ? [0, 1, 2] : [1, 2];
-            const layout = eligible[styleCounter % eligible.length];
-            styleCounter += 1;
-            return { ...view, layout };
+            return { ...view, layout: view.isTankTopBundle ? 0 : i % LAYOUTS.length };
         }),
     ];
 }
@@ -1279,9 +1271,9 @@ function CollageGrid({ images }) {
                 gridTemplateRows: 'minmax(0, 1.36fr) minmax(0, 1fr)',
             }}
         >
-            <CollageTile src={a} style={{ gridColumn: 1, gridRow: 1 }} />
-            <CollageTile src={b} style={{ gridColumn: 2, gridRow: '1 / span 2' }} />
-            <CollageTile src={c} style={{ gridColumn: 1, gridRow: 2 }} />
+            {a && <CollageTile src={a} style={{ gridColumn: 1, gridRow: 1 }} />}
+            {b && <CollageTile src={b} style={{ gridColumn: 2, gridRow: '1 / span 2' }} />}
+            {c && <CollageTile src={c} style={{ gridColumn: 1, gridRow: 2 }} />}
         </div>
     );
 }
@@ -1631,8 +1623,8 @@ function DetailsPage({ view }) {
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
-                        {!isTankTopBundle && gallery.length === 3 ? (
-                            <CollageGrid images={gallery} />
+                        {!isTankTopBundle ? (
+                            <CollageGrid images={gallery.slice(0, 3)} />
                         ) : (
                             <GalleryGrid
                                 images={gallery}
