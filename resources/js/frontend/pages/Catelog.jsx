@@ -1085,7 +1085,7 @@ function Photo({ src, alt = '', blur = false, watermark = false, animate = false
             <img
                 src={src}
                 alt={alt}
-                loading={blur || exporting ? undefined : 'lazy'}
+                loading="eager"
                 draggable={false}
                 className={`relative size-full ${fit}`}
             />
@@ -1251,7 +1251,7 @@ function CollageTile({ src, className = '', style }) {
             <img
                 src={src}
                 alt=""
-                loading={exporting ? undefined : 'lazy'}
+                loading="eager"
                 draggable={false}
                 className="size-full object-cover"
                 style={{ objectPosition: 'center 30%' }}
@@ -1489,7 +1489,7 @@ function ColorThumb({ color, index, selected, exporting, onPick }) {
                             src={color.image}
                             alt={color.name}
                             draggable={false}
-                            loading={exporting ? undefined : 'lazy'}
+                            loading="eager"
                             className="absolute inset-0 size-full object-cover object-top"
                             /* zoomed in on the head and upper body so the garment colour is easy to see */
                             style={{ transform: `scale(${COLOR_THUMB_ZOOM})`, transformOrigin: COLOR_THUMB_ORIGIN }}
@@ -1879,9 +1879,8 @@ function MobileSpread({ page }) {
 /* ---------- PRELOADER: download every catalogue image before the book opens ---------- */
 
 const PRELOAD_PARALLEL = 6; // images downloaded at the same time
-const PRELOAD_TIMEOUT_MS = 20000; // a stuck image never blocks the book
-
-// Every image the book can show: cover, intro, category cards, product photos, colour photos, swatches
+const PRELOAD_TIMEOUT_MS = 8000; // a stuck image never blocks the book
+// Every image the book shows: cover, intro, category cards, product photos, colour thumbnails, swatches
 function collectImageUrls(pages) {
     const urls = new Set([COVER, INTRO_IMAGE]);
     const add = (value) => {
@@ -1894,10 +1893,7 @@ function collectImageUrls(pages) {
         add(pg.image);
         toArray(pg.gallery).forEach(add);
         add(pg.swatch);
-        toArray(pg.colors).forEach((c) => {
-            add(c?.image);
-            toArray(c?.images).forEach(add);
-        });
+        toArray(pg.colors).forEach((c) => add(c?.image));
     });
 
     return [...urls];
@@ -1976,38 +1972,41 @@ export default function Catelog() {
               ),
           );
 
-    // Get the behind-the-model watermarks ready in the background
+    // Get the behind-the-model watermarks ready in the background, once the first pages are downloaded
+    // (they use a lot of CPU, so they must not slow down the first download)
     useEffect(() => {
+        if (!preload.ready) return undefined;
         const srcs = [...new Set(pages.map((pg) => pg.image).filter(Boolean))];
         return prewarmWatermarks(srcs);
-    }, [pages]);
+    }, [pages, preload.ready]);
 
-    // After "Read Now": wait for the fonts, then download every catalogue image
+    // Fonts start loading straight away, not only after "Read Now"
     useEffect(() => {
-        if (!waiting || fontsReady) return undefined;
         let ignore = false;
         const fonts = document.fonts?.ready ?? Promise.resolve();
-        Promise.race([fonts, new Promise((resolve) => setTimeout(resolve, 5000))]).then(() => {
+        Promise.race([fonts, new Promise((resolve) => setTimeout(resolve, 3000))]).then(() => {
             if (!ignore) setFontsReady(true);
         });
         return () => {
             ignore = true;
         };
-    }, [waiting, fontsReady]);
+    }, []);
 
+    // Download the complete catalogue before opening so page flips only use cached images.
     useEffect(() => {
-        if (!waiting || loading || preload.ready) return undefined;
-        const urls = collectImageUrls(pages);
-        setPreload({ done: 0, total: urls.length, ready: urls.length === 0 });
-        if (urls.length === 0) return undefined;
+        if (loading) return undefined;
+        const first = collectImageUrls(pages);
 
-        const job = preloadImages(urls, (done) => setPreload({ done, total: urls.length, ready: false }));
+        setPreload({ done: 0, total: first.length, ready: first.length === 0 });
+        const job = preloadImages(first, (done) => setPreload({ done, total: first.length, ready: false }));
         job.promise.then(() => {
-            if (!job.isCancelled()) setPreload({ done: urls.length, total: urls.length, ready: true });
+            if (job.isCancelled()) return;
+            setPreload({ done: first.length, total: first.length, ready: true });
         });
-        return job.cancel;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [waiting, loading, pages]);
+        return () => {
+            job.cancel();
+        };
+    }, [loading, pages]);
 
     // Mobile skips the cover spread and starts on the intro
     const isMobile = useIsMobile();
