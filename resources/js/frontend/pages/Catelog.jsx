@@ -1303,7 +1303,7 @@ const FEATURE_SKEW_PATH = roundedPolyPath([[0, 0.245], [1, 0], [1, 0.755], [0, 1
 // The 2nd card is lifted by slope x (card width + gap) so both cards keep the same distance from the big photo.
 const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.345], [1, 0], [1, 0.655], [0, 1]], 0.045);
 const FEATURE_SMALL_LIFT = '10.4cqw';
-const FEATURE_SMALL_RAISE = '4cqw'; // moves both small cards up, closer to the big photo
+const FEATURE_SMALL_RAISE = '10.3cqw'; // moves both small cards up, closer to the big photo
 
 // One big slanted photo with the other photos as small cards under it (no thumbnail strip).
 // Click a small card to bring that photo up into the big slanted card.
@@ -1838,13 +1838,12 @@ function IntroRightPage({ categories }) {
 
 /* ---------- LAYOUT REGISTRY ---------- */
 
-const HeroPageRight = (props) => <HeroPage {...props} side="right" nameStrip />;
 const HeroPageNameStrip = (props) => <HeroPage {...props} nameStrip />;
 
 const LAYOUTS = [
     { left: HeroPageNameStrip, right: DetailsPage }, // A
     { left: HeroPageNameStrip, right: EditorialPage }, // B
-    { left: InfoPage, right: HeroPageRight }, // C
+    { left: HeroPageNameStrip, right: InfoPage }, // C
 ];
 
 // One half of a spread (or the single cover page)
