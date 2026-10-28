@@ -1876,6 +1876,71 @@ function MobileSpread({ page }) {
 
 /* ---------- MAIN ---------- */
 
+/* ---------- PRELOADER: download every catalogue image before the book opens ---------- */
+
+const PRELOAD_PARALLEL = 6; // images downloaded at the same time
+const PRELOAD_TIMEOUT_MS = 20000; // a stuck image never blocks the book
+
+// Every image the book can show: cover, intro, category cards, product photos, colour photos, swatches
+function collectImageUrls(pages) {
+    const urls = new Set([COVER, INTRO_IMAGE]);
+    const add = (value) => {
+        if (typeof value === 'string' && value) urls.add(value);
+    };
+
+    pages.forEach((pg) => {
+        if (pg.single) add(pg.src);
+        if (pg.intro) toArray(pg.categories).forEach((c) => add(c?.image));
+        add(pg.image);
+        toArray(pg.gallery).forEach(add);
+        add(pg.swatch);
+        toArray(pg.colors).forEach((c) => {
+            add(c?.image);
+            toArray(c?.images).forEach(add);
+        });
+    });
+
+    return [...urls];
+}
+
+function preloadImages(urls, onProgress) {
+    const queue = [...urls];
+    let done = 0;
+    let cancelled = false;
+
+    const loadOne = (src) =>
+        new Promise((resolve) => {
+            const img = new Image();
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timer);
+                done += 1;
+                if (!cancelled) onProgress(done);
+                resolve();
+            };
+            const timer = setTimeout(finish, PRELOAD_TIMEOUT_MS);
+            img.onload = finish;
+            img.onerror = finish; // a broken image should not stop the book from opening
+            img.src = src;
+        });
+
+    const worker = async () => {
+        while (queue.length > 0 && !cancelled) {
+            await loadOne(queue.shift());
+        }
+    };
+
+    return {
+        promise: Promise.all(Array.from({ length: Math.min(PRELOAD_PARALLEL, urls.length) }, worker)),
+        isCancelled: () => cancelled,
+        cancel: () => {
+            cancelled = true;
+        },
+    };
+}
+
 export default function Catelog() {
     const [stage, setStage] = useState('cover'); // cover | book
     const [page, setPage] = useState(0);
@@ -1889,18 +1954,60 @@ export default function Catelog() {
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [exportStatus, setExportStatus] = useState('');
+    const [preload, setPreload] = useState({ done: 0, total: 0, ready: false }); // image preloader
+    const [fontsReady, setFontsReady] = useState(false);
+    const [waiting, setWaiting] = useState(false); // "Read Now" clicked: loading content, fonts and images
 
     const pages = useMemo(
         () => buildPages(products, colorMap, sizeMap, categories, subcategories, grandchilds),
         [products, colorMap, sizeMap, categories, subcategories, grandchilds],
     );
     const last = pages.length - 1;
+    // Progress shown on the cover: content 15% + fonts 5% + images 80%
+    const loadedAll = !loading && fontsReady && preload.ready;
+    const percent = loadedAll
+        ? 100
+        : Math.min(
+              99,
+              Math.round(
+                  (loading ? 0 : 15) +
+                      (fontsReady ? 5 : 0) +
+                      (preload.total ? (preload.done / preload.total) * 80 : 0),
+              ),
+          );
 
     // Get the behind-the-model watermarks ready in the background
     useEffect(() => {
         const srcs = [...new Set(pages.map((pg) => pg.image).filter(Boolean))];
         return prewarmWatermarks(srcs);
     }, [pages]);
+
+    // After "Read Now": wait for the fonts, then download every catalogue image
+    useEffect(() => {
+        if (!waiting || fontsReady) return undefined;
+        let ignore = false;
+        const fonts = document.fonts?.ready ?? Promise.resolve();
+        Promise.race([fonts, new Promise((resolve) => setTimeout(resolve, 5000))]).then(() => {
+            if (!ignore) setFontsReady(true);
+        });
+        return () => {
+            ignore = true;
+        };
+    }, [waiting, fontsReady]);
+
+    useEffect(() => {
+        if (!waiting || loading || preload.ready) return undefined;
+        const urls = collectImageUrls(pages);
+        setPreload({ done: 0, total: urls.length, ready: urls.length === 0 });
+        if (urls.length === 0) return undefined;
+
+        const job = preloadImages(urls, (done) => setPreload({ done, total: urls.length, ready: false }));
+        job.promise.then(() => {
+            if (!job.isCancelled()) setPreload({ done: urls.length, total: urls.length, ready: true });
+        });
+        return job.cancel;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [waiting, loading, pages]);
 
     // Mobile skips the cover spread and starts on the intro
     const isMobile = useIsMobile();
@@ -2041,6 +2148,22 @@ export default function Catelog() {
         setStage('book');
         if (!isMobile) after(400, () => turn('next')); // open the cover
     };
+
+    // "Read Now": open straight away if the images are ready, otherwise show the loading bar first
+    const handleReadNow = () => {
+        if (stage !== 'cover' || waiting) return;
+        if (loadedAll) enter();
+        else setWaiting(true);
+    };
+
+    // Content, fonts and images are all loaded -> open the book
+    useEffect(() => {
+        if (waiting && loadedAll) {
+            setWaiting(false);
+            enter();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [waiting, loadedAll]);
 
     const close = () => {
         clearTimers();
@@ -2193,14 +2316,32 @@ export default function Catelog() {
                     <div className="relative aspect-[372/445] overflow-hidden rounded-bl-[56px] rounded-br-sm rounded-tl-sm rounded-tr-[56px] bg-slate-700">
                         <Photo src={COVER} alt="1971Co. catalogue cover" blur />
 
-                        <button
-                            type="button"
-                            onClick={enter}
-                            disabled={loading}
-                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer bg-black px-2.5 py-1.5 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {loading ? 'Loading...' : 'Read Now'}
-                        </button>
+                        {waiting ? (
+                            <div
+                                role="progressbar"
+                                aria-label="Loading catalogue"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={percent}
+                                className="absolute left-1/2 top-1/2 w-[72%] -translate-x-1/2 -translate-y-1/2 bg-black/75 px-4 py-3 text-center text-white shadow-lg"
+                            >
+                                <p className="mb-2 text-sm font-medium tracking-wide">Loading catalogue... {percent}%</p>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/25">
+                                    <div
+                                        className="h-full rounded-full bg-white transition-[width] duration-200 ease-out"
+                                        style={{ width: `${percent}%` }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleReadNow}
+                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer bg-black px-2.5 py-1.5 text-base font-medium text-white transition-colors hover:bg-zinc-800"
+                            >
+                                Read Now
+                            </button>
+                        )}
                     </div>
 
                     <nav aria-label="Catalog categories" className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-white">
