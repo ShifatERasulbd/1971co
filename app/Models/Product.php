@@ -52,6 +52,7 @@ class Product extends Model
         'is_active',
         'catalog_thumb_image',
          'catalog_feature_images',
+        'catalog_swatch_image',
     ];
 
     protected function casts(): array

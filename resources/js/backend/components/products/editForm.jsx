@@ -71,6 +71,9 @@ export default function EditForm({
     onToggleCatalogFeature,
     onRemoveCatalogThumb,
     onRemoveCatalogFeatureFile,
+    catalogSwatchPreviewUrl = '',
+    onCatalogSwatchFileChange,
+    onRemoveCatalogSwatch,
     onSubmit,
     onCancel,
     submitLabel = 'Update Product',
@@ -454,6 +457,9 @@ export default function EditForm({
                                 onToggleFeature={onToggleCatalogFeature}
                                 onRemoveThumb={onRemoveCatalogThumb}
                                 onRemoveFeatureFile={onRemoveCatalogFeatureFile}
+                                swatchPreviewUrl={catalogSwatchPreviewUrl}
+                                onSwatchFileChange={onCatalogSwatchFileChange}
+                                onRemoveSwatch={onRemoveCatalogSwatch}
                                 errors={errors}
                                 disabled={isSubmitting}
                             />

@@ -14,6 +14,9 @@ export default function CatalogImagesField({
     onToggleFeature,
     onRemoveThumb,
     onRemoveFeatureFile,
+    swatchPreviewUrl = '',
+    onSwatchFileChange,
+    onRemoveSwatch,
     errors = {},
     disabled = false,
 }) {
@@ -126,6 +129,30 @@ export default function CatalogImagesField({
                                 </div>
                             </div>
                         ))}
+                    </div>
+                ) : null}
+            </div>
+
+            <div className="space-y-3 border-t pt-4">
+                <Label htmlFor="catalog-swatch-file">Swatch fabric image (one image)</Label>
+                <Input
+                    id="catalog-swatch-file"
+                    name="catalog_swatch_file"
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={onSwatchFileChange}
+                    disabled={disabled}
+                />
+                <p className="text-xs text-muted-foreground">Square fabric close-up shown in the catalog swatch box. Maximum 4MB.</p>
+                {errors.catalog_swatch_file && <p className="text-xs text-destructive">{errors.catalog_swatch_file[0]}</p>}
+
+                {swatchPreviewUrl ? (
+                    <div className="flex items-center gap-3 rounded-md border p-2">
+                        <img src={swatchPreviewUrl} alt="Swatch fabric preview" className="size-20 rounded bg-muted/30 object-cover" />
+                        <p className="min-w-0 flex-1 text-sm font-medium">Selected swatch image</p>
+                        <Button type="button" variant="outline" size="sm" onClick={onRemoveSwatch} disabled={disabled}>
+                            Remove
+                        </Button>
                     </div>
                 ) : null}
             </div>

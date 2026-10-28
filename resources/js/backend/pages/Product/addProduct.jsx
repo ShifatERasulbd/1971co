@@ -30,6 +30,7 @@ const initialForm = {
     cover_image: '',
     catalog_thumb_image: '',
     catalog_feature_images: [],
+    catalog_swatch_image: '',
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
@@ -98,6 +99,7 @@ export default function AddProduct() {
     const [galleryImageFiles, setGalleryImageFiles] = useState([]);
     const [catalogThumbFile, setCatalogThumbFile] = useState(null);
     const [catalogFeatureFiles, setCatalogFeatureFiles] = useState([]);
+    const [catalogSwatchFile, setCatalogSwatchFile] = useState(null);
     const [productVideoFiles, setProductVideoFiles] = useState([]);
     const [sizeChartImageFiles, setSizeChartImageFiles] = useState([]);
     const [colorSelectValue, setColorSelectValue] = useState('');
@@ -152,6 +154,10 @@ export default function AddProduct() {
     const catalogThumbPreviewUrl = useMemo(
         () => (catalogThumbFile ? URL.createObjectURL(catalogThumbFile) : ''),
         [catalogThumbFile],
+    );
+    const catalogSwatchPreviewUrl = useMemo(
+        () => (catalogSwatchFile ? URL.createObjectURL(catalogSwatchFile) : ''),
+        [catalogSwatchFile],
     );
     const catalogFeaturePreviewItems = useMemo(
         () => catalogFeatureFiles.map((file) => ({
@@ -666,6 +672,7 @@ export default function AddProduct() {
                 galleryImageFiles,
                 catalogThumbFile,
                 catalogFeatureFiles,
+                catalogSwatchFile,
                 productVideoFiles,
                 sizeChartImageFiles,
                 clear_size_charts: sizeChartImageFiles.length === 0,
@@ -742,6 +749,12 @@ export default function AddProduct() {
                         setForm((previous) => ({ ...previous, catalog_thumb_image: '' }));
                     }}
                     onRemoveCatalogFeatureFile={handleRemoveCatalogFeatureFile}
+                    catalogSwatchPreviewUrl={catalogSwatchPreviewUrl}
+                    onCatalogSwatchFileChange={(event) => {
+                        setCatalogSwatchFile(event.target.files?.[0] || null);
+                        event.target.value = '';
+                    }}
+                    onRemoveCatalogSwatch={() => setCatalogSwatchFile(null)}
                     onProductVideosChange={handleProductVideosChange}
                     onRemoveProductVideo={handleRemoveProductVideo}
                     productVideoPreviewItems={productVideoPreviewItems}

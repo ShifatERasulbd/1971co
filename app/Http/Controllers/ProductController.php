@@ -164,8 +164,8 @@ class ProductController extends Controller
             }
         }
 
-        // Catalog images (thumb = 1 image, features = many images)
-        foreach (['catalog_thumb_image', 'catalog_feature_images'] as $column) {
+        // Catalog images (thumb = 1 image, features = many images, swatch = 1 fabric image)
+        foreach (['catalog_thumb_image', 'catalog_feature_images', 'catalog_swatch_image'] as $column) {
             if (Schema::hasColumn('products', $column)) {
                 $columns[] = $column;
             }
@@ -187,6 +187,10 @@ class ProductController extends Controller
 
             if (is_string($product->catalog_thumb_image ?? null) && ! $this->existingCatalogPaths([$product->catalog_thumb_image])) {
                 $product->catalog_thumb_image = null;
+            }
+
+            if (is_string($product->catalog_swatch_image ?? null) && ! $this->existingCatalogPaths([$product->catalog_swatch_image])) {
+                $product->catalog_swatch_image = null;
             }
         });
 
@@ -235,6 +239,8 @@ class ProductController extends Controller
             'catalog_feature_images.*' => 'nullable|string|max:2048',
             'catalog_feature_files' => 'nullable|array',
             'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_swatch_image' => 'nullable|string|max:2048',
+            'catalog_swatch_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -287,7 +293,8 @@ class ProductController extends Controller
         $catalog = $this->resolveCatalogImages($request, null, $uploadedNameMap);
         $validated['catalog_thumb_image'] = $catalog['thumb'];
         $validated['catalog_feature_images'] = $catalog['features'];
-        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files']);
+        $validated['catalog_swatch_image'] = $catalog['swatch'];
+        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files'], $validated['catalog_swatch_file']);
 
         $uploadedVideoNameMap = [];
 
@@ -396,6 +403,8 @@ class ProductController extends Controller
             'catalog_feature_images.*' => 'nullable|string|max:2048',
             'catalog_feature_files' => 'nullable|array',
             'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_swatch_image' => 'nullable|string|max:2048',
+            'catalog_swatch_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -496,8 +505,9 @@ class ProductController extends Controller
         $catalog = $this->resolveCatalogImages($request, $product, $uploadedNameMap);
         $validated['catalog_thumb_image'] = $catalog['thumb'];
         $validated['catalog_feature_images'] = $catalog['features'];
-        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files']);
-        $keepCatalog = array_values(array_filter(array_merge([$catalog['thumb']], $catalog['features'])));
+        $validated['catalog_swatch_image'] = $catalog['swatch'];
+        unset($validated['catalog_thumb_file'], $validated['catalog_feature_files'], $validated['catalog_swatch_file']);
+        $keepCatalog = array_values(array_filter(array_merge([$catalog['thumb'], $catalog['swatch']], $catalog['features'])));
 
         $existingVideos = $request->boolean('clear_videos')
             ? []
@@ -562,7 +572,7 @@ class ProductController extends Controller
             : array_values(array_filter([$product->size_chart_image]));
 
         $oldCatalog = array_values(array_filter(array_merge(
-            [$product->catalog_thumb_image],
+            [$product->catalog_thumb_image, $product->catalog_swatch_image],
             is_array($product->catalog_feature_images ?? null) ? $product->catalog_feature_images : [],
         )));
 
@@ -889,7 +899,15 @@ class ProductController extends Controller
             $features,
         )))));
 
-        return ['thumb' => $thumb, 'features' => $features];
+        $swatch = $product?->catalog_swatch_image;
+
+        if ($request->hasFile('catalog_swatch_file')) {
+            $swatch = $this->storeUploadedFileToPublic($request->file('catalog_swatch_file'), 'uploads/products/catalog');
+        } elseif ($request->has('catalog_swatch_image')) {
+            $swatch = $this->cleanCatalogPath((string) $request->input('catalog_swatch_image'));
+        }
+
+        return ['thumb' => $thumb, 'features' => $features, 'swatch' => $swatch];
     }
 
     private function existingCatalogPaths(array $paths): array

@@ -327,8 +327,8 @@ function buildView(p, colorMap, sizeMap) {
         colors,
         gallery,
         isTankTopBundle,
-        // Swatch fabric photo. Empty = the placeholder box is shown.
-        swatch: p.catalog_swatch_image || p.swatch_fabric_image || p.swatch_image || '',
+        // Swatch fabric photo uploaded in the product module. Empty = the placeholder box is shown.
+        swatch: catalogImage(p.catalog_swatch_image),
     };
 }
 

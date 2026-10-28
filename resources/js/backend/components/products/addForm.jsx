@@ -68,6 +68,9 @@ export default function AddForm({
     onToggleCatalogFeature,
     onRemoveCatalogThumb,
     onRemoveCatalogFeatureFile,
+    catalogSwatchPreviewUrl = '',
+    onCatalogSwatchFileChange,
+    onRemoveCatalogSwatch,
     onSubmit,
     onCancel,
     submitLabel = 'Create Product',
@@ -448,6 +451,9 @@ export default function AddForm({
                                 onToggleFeature={onToggleCatalogFeature}
                                 onRemoveThumb={onRemoveCatalogThumb}
                                 onRemoveFeatureFile={onRemoveCatalogFeatureFile}
+                                swatchPreviewUrl={catalogSwatchPreviewUrl}
+                                onSwatchFileChange={onCatalogSwatchFileChange}
+                                onRemoveSwatch={onRemoveCatalogSwatch}
                                 errors={errors}
                                 disabled={isSubmitting}
                             />

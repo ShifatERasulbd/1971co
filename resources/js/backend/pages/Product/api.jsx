@@ -49,6 +49,7 @@ function buildProductPayload(data = {}) {
         clear_size_charts: Boolean(data.clear_size_charts),
         catalog_thumb_image: data.catalog_thumb_image?.trim() || '',
         catalog_feature_images: Array.isArray(data.catalog_feature_images) ? data.catalog_feature_images : [],
+        catalog_swatch_image: data.catalog_swatch_image?.trim() || '',
     };
 }
 
@@ -121,6 +122,10 @@ function buildProductFormData(data = {}) {
         });
     }
 
+    if (data.catalogSwatchFile instanceof File) {
+        formData.append('catalog_swatch_file', data.catalogSwatchFile);
+    }
+
     // always send the list, even when empty, so removing every selected image is saved
     formData.set('catalog_feature_images', JSON.stringify(payload.catalog_feature_images));
 
@@ -135,7 +140,8 @@ function hasUploadFiles(data = {}) {
     const hasVideos = Array.isArray(data.productVideoFiles) && data.productVideoFiles.some((file) => file instanceof File);
     const hasCatalogThumb = data.catalogThumbFile instanceof File;
     const hasCatalogFeatures = Array.isArray(data.catalogFeatureFiles) && data.catalogFeatureFiles.some((file) => file instanceof File);
-    return hasThumbnail || hasSizeChart || hasMultiSizeCharts || hasGallery || hasVideos || hasCatalogThumb || hasCatalogFeatures;
+    const hasCatalogSwatch = data.catalogSwatchFile instanceof File;
+    return hasThumbnail || hasSizeChart || hasMultiSizeCharts || hasGallery || hasVideos || hasCatalogThumb || hasCatalogFeatures || hasCatalogSwatch;
 }
 
 export async function fetchProducts() {

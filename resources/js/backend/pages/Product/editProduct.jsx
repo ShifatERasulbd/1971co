@@ -34,6 +34,7 @@ const initialForm = {
     cover_image: '',
     catalog_thumb_image: '',
     catalog_feature_images: [],
+    catalog_swatch_image: '',
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
@@ -126,6 +127,7 @@ export default function EditProduct() {
     const [newGalleryImageFiles, setNewGalleryImageFiles] = useState([]);
     const [catalogThumbFile, setCatalogThumbFile] = useState(null);
     const [catalogFeatureFiles, setCatalogFeatureFiles] = useState([]);
+    const [catalogSwatchFile, setCatalogSwatchFile] = useState(null);
     const [existingProductVideos, setExistingProductVideos] = useState([]);
     const [newProductVideoFiles, setNewProductVideoFiles] = useState([]);
     const [existingSizeChartImages, setExistingSizeChartImages] = useState([]);
@@ -342,6 +344,10 @@ export default function EditProduct() {
         () => (catalogThumbFile ? URL.createObjectURL(catalogThumbFile) : form.catalog_thumb_image || ''),
         [catalogThumbFile, form.catalog_thumb_image],
     );
+    const catalogSwatchPreviewUrl = useMemo(
+        () => (catalogSwatchFile ? URL.createObjectURL(catalogSwatchFile) : form.catalog_swatch_image || ''),
+        [catalogSwatchFile, form.catalog_swatch_image],
+    );
     const catalogFeaturePreviewItems = useMemo(
         () => catalogFeatureFiles.map((file) => ({
             id: `${file.name}-${file.size}-${file.lastModified}`,
@@ -431,9 +437,10 @@ export default function EditProduct() {
     useEffect(() => {
         return () => {
             if (catalogThumbFile) URL.revokeObjectURL(catalogThumbPreviewUrl);
+            if (catalogSwatchFile) URL.revokeObjectURL(catalogSwatchPreviewUrl);
             catalogFeaturePreviewItems.forEach((item) => URL.revokeObjectURL(item.url));
         };
-    }, [catalogThumbPreviewUrl, catalogFeaturePreviewItems]);
+    }, [catalogThumbPreviewUrl, catalogSwatchPreviewUrl, catalogFeaturePreviewItems]);
 
     useEffect(() => {
         let ignore = false;
@@ -482,6 +489,7 @@ export default function EditProduct() {
                         cover_image: data?.cover_image || '',
                         catalog_thumb_image: data?.catalog_thumb_image || '',
                         catalog_feature_images: Array.isArray(data?.catalog_feature_images) ? data.catalog_feature_images : [],
+                        catalog_swatch_image: data?.catalog_swatch_image || '',
                         size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
@@ -491,6 +499,7 @@ export default function EditProduct() {
                     });
                     setCatalogThumbFile(null);
                     setCatalogFeatureFiles([]);
+                    setCatalogSwatchFile(null);
 
                     setExistingGalleryUrls(Array.isArray(data?.image_gallery) ? data.image_gallery : []);
                     setExistingProductVideos(Array.isArray(data?.product_videos) ? data.product_videos : []);
@@ -1259,6 +1268,7 @@ export default function EditProduct() {
                 color_variant_size_charts: colorVariantSizeChartMap,
                 catalogThumbFile,
                 catalogFeatureFiles,
+                catalogSwatchFile,
                 galleryImageFiles: newGalleryImageFiles,
                 image_gallery_existing: existingGalleryUrls,
                 clear_gallery: existingGalleryUrls.length === 0 && newGalleryImageFiles.length === 0,
@@ -1331,6 +1341,15 @@ export default function EditProduct() {
                         setForm((previous) => ({ ...previous, catalog_thumb_image: '' }));
                     }}
                     onRemoveCatalogFeatureFile={handleRemoveCatalogFeatureFile}
+                    catalogSwatchPreviewUrl={catalogSwatchPreviewUrl}
+                    onCatalogSwatchFileChange={(event) => {
+                        setCatalogSwatchFile(event.target.files?.[0] || null);
+                        event.target.value = '';
+                    }}
+                    onRemoveCatalogSwatch={() => {
+                        setCatalogSwatchFile(null);
+                        setForm((previous) => ({ ...previous, catalog_swatch_image: '' }));
+                    }}
                     variantGroupName={location.state?.productGroup?.groupName || form.name || ''}
                     onColorSelectChange={setColorSelectValue}
                     onSizeSelectChange={setSizeSelectValue}
