@@ -409,7 +409,8 @@ function buildPages(products, colorMap, sizeMap, categories, subcategories, gran
         },
         ...orderedProducts.map((p, i) => {
             const view = buildView(p, colorMap, sizeMap);
-            return { ...view, layout: view.isTankTopBundle ? 0 : i % LAYOUTS.length };
+            // The tank top bundle uses layout C (slanted photos), like the other products
+            return { ...view, layout: view.isTankTopBundle ? 2 : i % LAYOUTS.length };
         }),
     ];
 }
