@@ -1302,7 +1302,8 @@ function roundedPolyPath(pts, r) {
 const FEATURE_SKEW_PATH = roundedPolyPath([[0, 0.245], [1, 0], [1, 0.755], [0, 1]], 0.03);
 // The small cards use the same slant as the big photo (same slope), so their top edges run parallel to its bottom edge.
 // The 2nd card is lifted by slope x (card width + gap) so both cards keep the same distance from the big photo.
-const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.345], [1, 0], [1, 0.655], [0, 1]], 0.045);
+const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.265], [1, 0], [1, 0.735], [0, 1]], 0.045); // same slant as before, on a taller card (FEATURE_SMALL_TALL)
+const FEATURE_SMALL_TALL = '130%'; // small card height vs its layout slot: taller cards without moving the big photo
 const FEATURE_SMALL_LIFT = '10.4cqw';
 const FEATURE_SMALL_RAISE = '10.3cqw'; // moves both small cards up, closer to the big photo
 
@@ -1349,7 +1350,7 @@ function FeatureShowcase({ images }) {
                             className="aspect-[3/4] min-w-0 cursor-pointer bg-transparent outline-none"
                             style={{ transform: i > 0 ? `translateY(-${FEATURE_SMALL_LIFT})` : undefined }}
                         >
-                            <div className="size-full bg-[#e6e8e8]" style={{ clipPath: 'url(#catFeatureSmallClip)' }}>
+                            <div className="w-full bg-[#e6e8e8]" style={{ height: FEATURE_SMALL_TALL, clipPath: 'url(#catFeatureSmallClip)' }}>
                                 <Photo src={src} alt="" cover />
                             </div>
                         </button>
