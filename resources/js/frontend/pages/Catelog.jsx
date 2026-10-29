@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { requestJson } from '@/lib/apiClient';
 
@@ -100,8 +100,34 @@ const FONT_CSS = `
 }
 .catalog-model-walk { transform-origin: 50% 92%; animation: catalog-model-walk 16s linear infinite; will-change: transform; }
 .catalog-model-step { transform-origin: 50% 92%; animation: catalog-model-step 1.1s ease-in-out infinite; will-change: transform; }
+
+/* Product feature icons: pop in one after another, then keep catching the eye (pulse ring + little wiggle) */
+@keyframes catalog-icon-pop {
+    0% { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+    60% { opacity: 1; transform: scale(1.22) rotate(8deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes catalog-icon-orbit {
+    to { transform: rotate(360deg); }
+}
+@keyframes catalog-icon-wiggle {
+    0%, 84%, 100% { transform: rotate(0deg) scale(1); }
+    89% { transform: rotate(-12deg) scale(1.14); }
+    94% { transform: rotate(9deg) scale(1.14); }
+}
+.catalog-icon-pop { animation: catalog-icon-pop 650ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.catalog-icon-wiggle { animation: catalog-icon-wiggle 4.2s ease-in-out infinite; }
+.catalog-icon-glow { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) drop-shadow(0 0 5px rgba(255, 255, 255, 0.9)); }
+/* a light that runs round the badge: a comet of light, bright at the head and fading behind it */
+.catalog-icon-orbit {
+    animation: catalog-icon-orbit 2.4s linear infinite;
+    background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0) 190deg, rgba(255, 255, 255, 0.7) 300deg, #ffffff 357deg, rgba(255, 255, 255, 0) 360deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+}
 @media (prefers-reduced-motion: reduce) {
     .catalog-model-walk, .catalog-model-step { animation: none; }
+    .catalog-icon-pop, .catalog-icon-wiggle, .catalog-icon-orbit { animation: none; }
 }
 `;
 
@@ -503,15 +529,55 @@ function FeatureIcon({ name, className = '' }) {
     );
 }
 
+// Animated badge: pops in (staggered per row), then a pulse ring and a small wiggle repeat.
+// The same page can be mounted twice while it flips, so every copy shares one start time per icon
+// (negative animation-delay) and the animation carries on instead of starting over.
+const ICON_STARTS = new Map();
+function AnimatedFeatureIcon({ name, syncKey, index }) {
+    const exporting = useContext(ExportCtx);
+    const inLeaf = useContext(LeafCtx);
+    const [elapsed] = useState(() => {
+        const now = performance.now();
+        const known = ICON_STARTS.get(syncKey);
+        if (known !== undefined && (inLeaf || now - known < 4000)) return now - known;
+        ICON_STARTS.set(syncKey, now);
+        return 0;
+    });
+
+    if (exporting) return <FeatureIcon name={name} className="size-[3.4cqw] shrink-0 text-zinc-700" />;
+
+    const popDelay = 250 + index * 160; // ms
+    const loopDelay = popDelay + 900 + index * 450; // ms, rows take turns
+    const at = (ms) => `${ms - elapsed}ms`;
+
+    return (
+        <span className="relative block size-[3.4cqw] shrink-0">
+            {/* grey track: the white light needs something to shine on against the pale page */}
+            <span aria-hidden="true" className="pointer-events-none absolute inset-[6%] rounded-full border-[1.5px] border-zinc-400/70" />
+            <span aria-hidden="true" className="catalog-icon-glow pointer-events-none absolute inset-[6%] rounded-full">
+                <span
+                    className="catalog-icon-orbit block size-full rounded-full"
+                    style={{ animationDelay: `${-(elapsed + index * 600)}ms` }}
+                />
+            </span>
+            <span className="catalog-icon-pop block size-full" style={{ animationDelay: at(popDelay) }}>
+                <span className="catalog-icon-wiggle block size-full" style={{ animationDelay: at(loopDelay + 1200) }}>
+                    <FeatureIcon name={name} className="size-full text-zinc-700" />
+                </span>
+            </span>
+        </span>
+    );
+}
+
 // "Product Features" heading + one icon-and-text row per feature
-function FeatureList({ features, max = 6 }) {
+function FeatureList({ features, max = 6, scope = '' }) {
     return (
         <div className="border-b border-zinc-300 pb-[2cqw]">
             <p className="text-[2.3cqw] font-medium tracking-[0.08em] text-zinc-800">Product Features</p>
             <ul className="mt-[1.6cqw] flex flex-col gap-[1.5cqw]">
                 {features.slice(0, max).map((f, i) => (
                     <li key={`${f}-${i}`} className="flex min-w-0 items-center gap-[1.6cqw] text-[1.9cqw] leading-snug tracking-[0.02em] text-zinc-700">
-                        <FeatureIcon name={featureIconKey(f, i)} className="size-[3.4cqw] shrink-0 text-zinc-700" />
+                        <AnimatedFeatureIcon name={featureIconKey(f, i)} syncKey={`${scope}|${f}|${i}`} index={i} />
                         <span className="line-clamp-2 min-w-0">{f}</span>
                     </li>
                 ))}
@@ -1409,19 +1475,33 @@ function liquidPolygon(level, phase, amp) {
     return `polygon(${pts.join(',')})`;
 }
 
+// The same page can be mounted twice (on the turning leaf, then on the still page once the flip ends).
+// A shared start time per pour keeps those copies on one timeline, so the colour drops only once.
+const LeafCtx = createContext(false);
+const POUR_STARTS = new Map();
+function pourStart(key, delay, duration, inLeaf) {
+    const now = performance.now();
+    const known = POUR_STARTS.get(key);
+    if (known !== undefined && (inLeaf || now - known < duration + 1500)) return known;
+    const t0 = now + delay;
+    POUR_STARTS.set(key, t0);
+    return t0;
+}
+
 // Starts as a black & white photo (no colour). The colour is poured in from the top like water:
 // the liquid tints the light parts (the t-shirt) while its wavy surface sinks down the box, and the
 // real colour photo is revealed right behind the liquid.
-function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false, children }) {
+function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false, syncKey = '', children }) {
+    const inLeaf = useContext(LeafCtx);
     const colRef = useRef(null);
     const imgRef = useRef(null);
     const streamRef = useRef(null);
     const hidden = useMemo(() => liquidPolygon(-amp - POUR_LAG, 0, amp), [amp]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (instant) return undefined;
         let raf;
-        const t0 = performance.now() + delay;
+        const t0 = syncKey ? pourStart(syncKey, delay, duration, inLeaf) : performance.now() + delay;
         const tick = (now) => {
             const t = Math.min(1, Math.max(0, (now - t0) / duration));
             const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in-out
@@ -1438,9 +1518,9 @@ function PourReveal({ hex, delay = 0, duration = 1000, amp = 3, instant = false,
             if (t < 1) raf = requestAnimationFrame(tick);
             else if (colRef.current) colRef.current.style.display = 'none';
         };
-        raf = requestAnimationFrame(tick);
+        tick(performance.now());
         return () => cancelAnimationFrame(raf);
-    }, [instant, delay, duration, amp]);
+    }, [instant, delay, duration, amp, syncKey, inLeaf]);
 
     if (instant) return <div className="absolute inset-0">{children}</div>;
 
@@ -1484,7 +1564,7 @@ function ColorThumb({ color, index, selected, exporting, onPick }) {
         >
             <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-200/70">
                 {color.image && (
-                    <PourReveal hex={color.hex} delay={delay} duration={THUMB_POUR_MS} amp={4} instant={exporting}>
+                    <PourReveal hex={color.hex} delay={delay} duration={THUMB_POUR_MS} amp={4} instant={exporting} syncKey={`${color.id}|${color.image}`}>
                         <img
                             src={color.image}
                             alt={color.name}
@@ -1612,7 +1692,7 @@ function DetailsPage({ view }) {
                             </Section>
                         )}
 
-                        {features.length > 0 && <FeatureList features={features} max={4} />}
+                        {features.length > 0 && <FeatureList features={features} max={4} scope={String(product.id ?? product.sku ?? product.name)} />}
 
                         {composition && (
                             <Section title="Product Composition">
@@ -1668,7 +1748,7 @@ function EditorialPage({ view }) {
                         )}
 
                         {/* 5. Features */}
-                        {features.length > 0 && <FeatureList features={features} />}
+                        {features.length > 0 && <FeatureList features={features} scope={String(product.id ?? product.sku ?? product.name)} />}
 
                         {/* 6. Composition */}
                         {composition && (
@@ -1723,7 +1803,7 @@ function InfoPage({ view }) {
                             </Section>
                         )}
 
-                        {features.length > 0 && <FeatureList features={features} />}
+                        {features.length > 0 && <FeatureList features={features} scope={String(product.id ?? product.sku ?? product.name)} />}
 
                         {composition && (
                             <Section title="Product Composition">
@@ -2404,7 +2484,9 @@ export default function Catelog() {
 
                             {flip && (
                                 <div style={mobileFlipStyle}>
-                                    <div style={faceStyle}><MobileSpread page={mobileTurning} /></div>
+                                    <LeafCtx.Provider value>
+                                        <div style={faceStyle}><MobileSpread page={mobileTurning} /></div>
+                                    </LeafCtx.Provider>
                                     <div style={{ ...faceStyle, transform: 'rotateY(180deg)', background: '#e9e9e6' }} />
                                 </div>
                             )}
@@ -2497,6 +2579,7 @@ export default function Catelog() {
                             {/* Turning page */}
                             {flip && (
                                 <div style={flipStyle}>
+                                  <LeafCtx.Provider value>
                                     {flip.dir === 'next' ? (
                                         <>
                                             <div style={faceStyle}><Half page={pages[page]} side="right" /></div>
@@ -2508,6 +2591,7 @@ export default function Catelog() {
                                             <div style={{ ...faceStyle, transform: 'rotateY(180deg)' }}><Half page={pages[page - 1]} side="right" /></div>
                                         </>
                                     )}
+                                  </LeafCtx.Provider>
                                 </div>
                             )}
                         </div>
