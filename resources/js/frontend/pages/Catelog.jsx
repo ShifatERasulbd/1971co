@@ -607,6 +607,88 @@ const WATERMARK_CENTER_Y = 0.33; // text centre as a share of the photo height
 // Returns null when the photo doesn't look like "one person on a plain backdrop".
 const EDGE_STRONG = 24; // Sobel strength that counts as a real edge
 
+// Solves A x = b (Gaussian elimination with pivoting). A and b are changed. null if singular.
+function solveLinear(A, b) {
+    const m = b.length;
+    for (let i = 0; i < m; i += 1) {
+        let p = i;
+        for (let r = i + 1; r < m; r += 1) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+        if (Math.abs(A[p][i]) < 1e-9) return null;
+        [A[i], A[p]] = [A[p], A[i]];
+        [b[i], b[p]] = [b[p], b[i]];
+        for (let r = i + 1; r < m; r += 1) {
+            const f = A[r][i] / A[i][i];
+            for (let c = i; c < m; c += 1) A[r][c] -= f * A[i][c];
+            b[r] -= f * b[i];
+        }
+    }
+    const x = new Array(m).fill(0);
+    for (let i = m - 1; i >= 0; i -= 1) {
+        let s = b[i];
+        for (let c = i + 1; c < m; c += 1) s -= A[i][c] * x[c];
+        x[i] = s / A[i][i];
+    }
+    return x;
+}
+
+// Studio backdrops are a smooth light gradient. Fits a cubic surface per colour channel to the
+// pixels marked in `use` (dropping outliers and fitting again), and returns how far every pixel
+// is from that surface (largest channel difference) plus the typical distance on the backdrop.
+// White clothes are close to the backdrop in colour, but not to this surface, so their outline shows.
+const FIT_TERMS = 10;
+
+function backdropResidual(ch, w, h, use) {
+    const n = w * h;
+    const keep = Uint8Array.from(use);
+    const t = new Float64Array(FIT_TERMS);
+    const terms = (i) => {
+        const x = (2 * (i % w)) / (w - 1) - 1;
+        const y = (2 * Math.floor(i / w)) / (h - 1) - 1;
+        t[0] = 1; t[1] = x; t[2] = y; t[3] = x * x; t[4] = x * y;
+        t[5] = y * y; t[6] = x * x * x; t[7] = x * x * y; t[8] = x * y * y; t[9] = y * y * y;
+    };
+    const res = new Float32Array(n);
+    let sd = 0;
+    for (let round = 0; round < 3; round += 1) {
+        const A = Array.from({ length: FIT_TERMS }, () => new Float64Array(FIT_TERMS));
+        const b = [0, 1, 2].map(() => new Float64Array(FIT_TERMS));
+        let samples = 0;
+        for (let i = 0; i < n; i += 2) {
+            if (!keep[i]) continue;
+            samples += 1;
+            terms(i);
+            for (let r = 0; r < FIT_TERMS; r += 1) {
+                for (let c = r; c < FIT_TERMS; c += 1) A[r][c] += t[r] * t[c];
+                for (let k = 0; k < 3; k += 1) b[k][r] += t[r] * ch[k][i];
+            }
+        }
+        if (samples < FIT_TERMS * 20) return null;
+        for (let r = 0; r < FIT_TERMS; r += 1) for (let c = 0; c < r; c += 1) A[r][c] = A[c][r];
+        const coef = b.map((bk) => solveLinear(A.map((row) => Array.from(row)), Array.from(bk)));
+        if (coef.some((c) => !c)) return null;
+
+        let ss = 0;
+        let cnt = 0;
+        for (let i = 0; i < n; i += 1) {
+            terms(i);
+            let worst = 0;
+            for (let k = 0; k < 3; k += 1) {
+                let f = 0;
+                for (let r = 0; r < FIT_TERMS; r += 1) f += coef[k][r] * t[r];
+                worst = Math.max(worst, Math.abs(ch[k][i] - f));
+            }
+            res[i] = worst;
+            if (keep[i]) {
+                ss += worst * worst;
+                cnt += 1;
+            }
+        }
+        sd = Math.sqrt(ss / cnt);
+        for (let i = 0; i < n; i += 1) if (keep[i] && res[i] > 2.5 * sd + 2) keep[i] = 0;
+    }
+    return { res, sd };
+}
+
 function computeBackdropMask(rgba, w, h) {
     const n = w * h;
 
@@ -739,13 +821,35 @@ function computeBackdropMask(rgba, w, h) {
         return out;
     };
 
-    const attempt = ({ step: STEP, hiMargin }) => {
-        const lumHi = ringHi + hiMargin;
-        const okColor = (i) => lum[i] >= lumLo && lum[i] <= lumHi && chroma[i] <= chromaMax;
-        const step = (i, j) =>
-            Math.abs(R[i] - R[j]) <= STEP && Math.abs(G[i] - G[j]) <= STEP && Math.abs(B[i] - B[j]) <= STEP;
+    const stepOk = (STEP) => (i, j) =>
+        Math.abs(R[i] - R[j]) <= STEP && Math.abs(G[i] - G[j]) <= STEP && Math.abs(B[i] - B[j]) <= STEP;
 
-        // 3) Flood fill inwards from the photo edge; edges between colours stop it
+    // 2b) Smooth model of the backdrop: fitted first on the sides and top of the photo, then again on
+    //     everything a first flood fill reaches, so the part behind the model is modelled well too
+    const band = new Uint8Array(n);
+    for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+            const i = y * w + x;
+            const outer = x < w * 0.15 || x >= w * 0.85 || y < h * 0.06;
+            if (outer && lum[i] >= lumLo && lum[i] <= ringHi + 12 && chroma[i] <= chromaMax) band[i] = 1;
+        }
+    }
+    let fit = backdropResidual(ch, w, h, band);
+    if (!fit) return null;
+    {
+        const loose = Math.max(6, 4 * fit.sd);
+        const step6 = stepOk(6);
+        const reach = floodFromRing((j, from) => fit.res[j] <= loose && (from < 0 || step6(from, j)));
+        fit = backdropResidual(ch, w, h, erode(reach, 2)) || fit;
+    }
+    const { res, sd } = fit;
+
+    const attempt = ({ step: STEP, tol: k }) => {
+        const tol = Math.max(6, k * sd);
+        const okColor = (i) => res[i] <= tol && chroma[i] <= chromaMax;
+        const step = stepOk(STEP);
+
+        // 3) Flood fill inwards from the photo edge; anything that is not the smooth backdrop stops it
         let bg = floodFromRing((j, from) => okColor(j) && (from < 0 || step(from, j)));
 
         // 4) Cut narrow "necks" (shaded white clothing that looks like backdrop) and keep only
@@ -816,7 +920,7 @@ function computeBackdropMask(rgba, w, h) {
     // Several strictness levels (loose suits uneven backdrops, strict suits pale clothes).
     // Keep the one whose outline sits best on real edges; stop early once it is clearly good.
     let best = null;
-    for (const params of [{ step: 6, hiMargin: 12 }, { step: 8, hiMargin: 18 }, { step: 3, hiMargin: 6 }, { step: 2, hiMargin: 3 }]) {
+    for (const params of [{ step: 6, tol: 4 }, { step: 8, tol: 5.5 }, { step: 4, tol: 3 }, { step: 3, tol: 2.5 }]) {
         const res = attempt(params);
         if (res && (!best || res.score > best.score + 0.02)) best = res;
         if (best && best.score >= 0.85) break;
@@ -837,61 +941,6 @@ function computeBackdropMask(rgba, w, h) {
             }
         }
         for (let x = first; first >= 0 && x <= last; x += 1) bg[y * w + x] = 0;
-    }
-
-    // 5c) A white shirt can also leak on the side where nothing of the model was found in that row
-    //     (e.g. the far shoulder). The model is roughly convex, so inside the outline around all
-    //     model pixels, anything as bright as the brightest backdrop or brighter is clothing, not backdrop.
-    {
-        const pts = [];
-        for (let y = 0; y < h; y += 1) {
-            let first = -1;
-            let last = -1;
-            for (let x = 0; x < w; x += 1) {
-                if (!bg[y * w + x]) {
-                    if (first < 0) first = x;
-                    last = x;
-                }
-            }
-            if (first >= 0) pts.push([first, y], [last, y]);
-        }
-        if (pts.length > 2) {
-            pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-            const chain = (list) => {
-                const out = [];
-                for (const pt of list) {
-                    while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], pt) <= 0) out.pop();
-                    out.push(pt);
-                }
-                out.pop();
-                return out;
-            };
-            const hull = chain(pts).concat(chain(pts.slice().reverse()));
-            const brightMin = ringHi - 4;
-            for (let y = 0; y < h; y += 1) {
-                let xl = Infinity;
-                let xr = -Infinity;
-                for (let k = 0; k < hull.length; k += 1) {
-                    const a = hull[k];
-                    const b = hull[(k + 1) % hull.length];
-                    if ((a[1] <= y && b[1] >= y) || (b[1] <= y && a[1] >= y)) {
-                        if (a[1] === b[1]) {
-                            xl = Math.min(xl, a[0], b[0]);
-                            xr = Math.max(xr, a[0], b[0]);
-                        } else {
-                            const x = a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]);
-                            xl = Math.min(xl, x);
-                            xr = Math.max(xr, x);
-                        }
-                    }
-                }
-                for (let x = Math.ceil(xl); x <= Math.floor(xr); x += 1) {
-                    const i = y * w + x;
-                    if (bg[i] && lum[i] >= brightMin) bg[i] = 0;
-                }
-            }
-        }
     }
 
     // 6) Shrink the backdrop a little so the text never touches the model's outline
