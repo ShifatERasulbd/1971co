@@ -1512,14 +1512,50 @@ function slantFitBox(W, H, ratio) {
     return { left, top: bandTop + (bandBottom - bandTop - height) / 2, width, height };
 }
 
-// Whole photo inside the slanted card, empty space filled with a blurred copy (never crops)
+// Background colour along a photo's border (median, so a product touching the edge doesn't skew it).
+// null when it can't be read (cross-origin image) or the border is transparent.
+const EDGE_SAMPLE = 64;
+const edgeColorCache = new Map();
+
+function photoEdgeColor(img) {
+    const key = img.currentSrc || img.src;
+    if (edgeColorCache.has(key)) return edgeColorCache.get(key);
+
+    let color = null;
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = EDGE_SAMPLE;
+        canvas.height = EDGE_SAMPLE;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, EDGE_SAMPLE, EDGE_SAMPLE);
+        const { data } = ctx.getImageData(0, 0, EDGE_SAMPLE, EDGE_SAMPLE);
+        const channels = [[], [], [], []];
+        const last = EDGE_SAMPLE - 1;
+        for (let i = 0; i < EDGE_SAMPLE; i += 1) {
+            [[i, 0], [i, last], [0, i], [last, i]].forEach(([x, y]) => {
+                const p = (y * EDGE_SAMPLE + x) * 4;
+                channels.forEach((list, c) => list.push(data[p + c]));
+            });
+        }
+        const [r, g, b, a] = channels.map((list) => list.sort((x, y) => x - y)[list.length >> 1]);
+        if (a >= 250) color = `rgb(${r}, ${g}, ${b})`;
+    } catch {
+        color = null;
+    }
+
+    edgeColorCache.set(key, color);
+    return color;
+}
+
+const readPhoto = (img) =>
+    img?.complete && img.naturalWidth > 0 ? { ratio: img.naturalWidth / img.naturalHeight, edge: photoEdgeColor(img) } : null;
+
+// Whole photo inside the slanted card (never crops). The rest of the card is filled with the photo's own
+// background colour so the card reads as one image; a blurred copy is used when that colour can't be read.
 function SlantFitPhoto({ src, alt = '' }) {
     const boxRef = useRef(null);
     const [size, setSize] = useState(null);
-    const [ratio, setRatio] = useState(() => {
-        const cached = catalogImageCache.get(src);
-        return cached?.naturalWidth ? cached.naturalWidth / cached.naturalHeight : null;
-    });
+    const [photo, setPhoto] = useState(() => readPhoto(catalogImageCache.get(src)));
 
     useLayoutEffect(() => {
         const el = boxRef.current;
@@ -1531,25 +1567,27 @@ function SlantFitPhoto({ src, alt = '' }) {
         return () => observer.disconnect();
     }, []);
 
-    const box = size?.w > 0 && size?.h > 0 && ratio ? slantFitBox(size.w, size.h, ratio) : null;
+    const box = size?.w > 0 && size?.h > 0 && photo ? slantFitBox(size.w, size.h, photo.ratio) : null;
 
     return (
-        <div ref={boxRef} className="relative size-full overflow-hidden bg-[#e6e8e8]">
-            <img
-                src={src}
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-                className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
-            />
+        <div ref={boxRef} className="relative size-full overflow-hidden bg-[#e6e8e8]" style={photo?.edge ? { background: photo.edge } : undefined}>
+            {photo && !photo.edge && (
+                <img
+                    src={src}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
+                />
+            )}
             <img
                 src={src}
                 alt={alt}
                 loading="eager"
                 draggable={false}
                 onLoad={(e) => {
-                    const { naturalWidth, naturalHeight } = e.currentTarget;
-                    if (naturalWidth && naturalHeight) setRatio(naturalWidth / naturalHeight);
+                    const next = readPhoto(e.currentTarget);
+                    if (next) setPhoto(next);
                 }}
                 className="absolute object-contain"
                 style={box ?? { inset: 0, width: '100%', height: '100%' }}
