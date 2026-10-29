@@ -1616,6 +1616,46 @@ function SlantFitPhoto({ src, alt = '' }) {
     );
 }
 
+const photoRatio = (img) => (img?.complete && img.naturalWidth > 0 ? img.naturalWidth / img.naturalHeight : null);
+
+// Takes the free space, but the photo's box gets the photo's own shape (no empty edges), as large as fits, top left.
+function FitPhoto({ src, alt = '', className = '' }) {
+    const boxRef = useRef(null);
+    const [size, setSize] = useState(null);
+    const [ratio, setRatio] = useState(() => photoRatio(catalogImageCache.get(src)));
+
+    useLayoutEffect(() => {
+        const el = boxRef.current;
+        if (!el) return undefined;
+        const measure = () => setSize((prev) => (prev?.w === el.clientWidth && prev?.h === el.clientHeight ? prev : { w: el.clientWidth, h: el.clientHeight }));
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    const fit = ratio && size?.w > 0 && size?.h > 0
+        ? { width: Math.min(size.w, size.h * ratio), height: Math.min(size.h, size.w / ratio) }
+        : { width: '100%', height: '100%' };
+
+    return (
+        <div ref={boxRef} className="relative min-h-0 w-full flex-1">
+            <img
+                src={src}
+                alt={alt}
+                loading="eager"
+                draggable={false}
+                onLoad={(e) => {
+                    const next = photoRatio(e.currentTarget);
+                    if (next) setRatio(next);
+                }}
+                className={`block object-contain ${className}`}
+                style={fit}
+            />
+        </div>
+    );
+}
+
 // One big slanted photo with the other photos as small cards under it (no thumbnail strip).
 // Click a small card to bring that photo up into the big slanted card.
 function FeatureShowcase({ images }) {
@@ -2000,12 +2040,8 @@ function EditorialPage({ view }) {
                             </Section>
                         )}
 
-                        {/* 4th feature image: fills the free space under the composition and is shown whole (not cropped) */}
-                        {gallery[3] && (
-                            <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]">
-                                <Photo src={gallery[3]} blur />
-                            </div>
-                        )}
+                        {/* 4th feature image: in the free space under the composition, shown whole, box sized to the image */}
+                        {gallery[3] && <FitPhoto key={gallery[3]} src={gallery[3]} className="rounded-[1.6cqw] bg-[#e6e8e8]" />}
                         <WholesaleNote className={gallery[3] ? '' : 'mt-auto'} />
                     </div>
 
