@@ -65,7 +65,7 @@ function resolvePageLabel(pathname) {
     if (path === '/contact') return 'Contact';
     if (path === '/together-we-grow') return 'Together We Grow';
     if (path === '/checkout') return 'Checkout';
-    if (path === '/catelog') return 'Product Catelog';
+    if (path === '/digital-catalog') return 'Digital Catalog';
     if(path === '/wholesale') return 'Wholesale Inquiries';
     if(path === '/wholesale-inquiries') return 'Wholesale Inquiries Request Form';
     if (path === '/order-confirmation') return 'Order Confirmation';
@@ -278,7 +278,8 @@ function AppRouter() {
                         <Route path="new-arrivals" element={withPageFallback(ShopPage)} />
                         <Route path="trending" element={withPageFallback(ShopPage)} />
                         <Route path="best-sellers" element={withPageFallback(ShopPage)} />
-                        <Route path="catelog" element={withPageFallback(ProductCatelog)} />
+                        <Route path="digital-catalog" element={withPageFallback(ProductCatelog)} />
+                        <Route path="catelog" element={<Navigate to="/digital-catalog" replace />} />
                         <Route path= "wholesale-inquiries" element={withPageFallback(Wholesale)}/>
                         <Route path= "wholesale-request" element={withPageFallback(WholesaleInquiryForm)}/>
                         <Route path=":subCategorySlug/:grandChildSlug?" element={withPageFallback(ShopPage)} />
