@@ -56,7 +56,7 @@ const REQUIRED = {
     projectedYear1: 'Please select 1st year projected bookings',
     projectedYear2: 'Please select 2nd year projected bookings',
     projectedYear3: 'Please select 3rd year projected bookings',
-    storeDescription: 'Please tell us more about your store',
+    storeDescription: 'Please tell us more about your company',
 };
 
 const PHONE_REGEX = /^[0-9+()\-.\s]{6,30}$/;
@@ -326,11 +326,11 @@ export default function WholesaleInquiryForm({ onSuccess }) {
                         <SelectField name="projectedYear3" label="3rd Year Projected Wholesale Bookings" required placeholder="Select a range" options={BOOKING_RANGES} {...shared} />
                         <TextAreaField
                             name="storeDescription"
-                            label="Please tell us more about your store"
+                            label="Please tell us more about your company"
                             required
                             rows={5}
                             maxLength={STORE_DESCRIPTION_MAX}
-                            placeholder="Tell us about your store, customers, brands you carry and how 1971Co fits in."
+                            placeholder="Tell us about your company, store, brands you carry and how 1971Co fits in."
                             className="sm:col-span-2 lg:col-span-3"
                             {...shared}
                         />
