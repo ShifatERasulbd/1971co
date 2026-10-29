@@ -481,7 +481,8 @@ const FEATURE_ICON_PATHS = {
     weight: (
         <>
             <circle cx="12" cy="12" r="9" />
-            <path d="M10 7.5v9h1.5a4.5 4.5 0 0 0 0-9z" />
+            <circle cx="12" cy="8.5" r="1.5" />
+            <path d="M9.5 10.5h5l1.5 6h-8z" />
         </>
     ),
     drop: (
@@ -1501,11 +1502,21 @@ const FEATURE_SKEW = 0.245; // how far (share of card height) the left side sits
 const FEATURE_SKEW_PATH = roundedPolyPath([[0, FEATURE_SKEW], [1, 0], [1, 1 - FEATURE_SKEW], [0, 1]], 0.03);
 const FEATURE_FIT_MARGIN = 0.94; // keeps the photo clear of the rounded slanted corners
 // The small cards use the same slant as the big photo (same slope), so their top edges run parallel to its bottom edge.
+// Sizes in cqw, for the showcase column on the info page (see InfoPage).
+const FEATURE_COL_W = 44.3; // 90cqw inside the padding, minus the 48% info column and the 2.5cqw gap
+const FEATURE_COL_H = 100 / (BOOK_ASPECT / 2) - 4.5; // page height minus top/bottom padding
+const FEATURE_ROW_GAP = 1.8; // showcase gap between the big photo's box and the small-card row
+const FEATURE_SMALL_GAP = 1.5; // between the two small cards; the big photo keeps the same gap above them
+const FEATURE_SMALL_TALL = 1.3; // small card height vs its 3:4 slot (the row grows to fit it, so the big photo gets shorter)
+const FEATURE_SMALL_W = (FEATURE_COL_W - FEATURE_SMALL_GAP) / 2;
+const FEATURE_SMALL_H = FEATURE_SMALL_W * (4 / 3) * FEATURE_SMALL_TALL;
+const FEATURE_SLOPE = (FEATURE_SKEW * (FEATURE_COL_H - FEATURE_ROW_GAP - FEATURE_SMALL_H)) / FEATURE_COL_W; // big photo's edge: rise per cqw across
+const FEATURE_SMALL_DROP = (FEATURE_SLOPE * FEATURE_SMALL_W) / FEATURE_SMALL_H; // left side lower than the right, share of card height
+const FEATURE_SMALL_PATH = roundedPolyPath([[0, FEATURE_SMALL_DROP], [1, 0], [1, 1 - FEATURE_SMALL_DROP], [0, 1]], 0.045);
 // The 2nd card is lifted by slope x (card width + gap) so both cards keep the same distance from the big photo.
-const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.265], [1, 0], [1, 0.735], [0, 1]], 0.045); // same slant as before, on a taller card (FEATURE_SMALL_TALL)
-const FEATURE_SMALL_TALL = '130%'; // small card height vs its layout slot: taller cards without moving the big photo
-const FEATURE_SMALL_LIFT = '10.4cqw';
-const FEATURE_SMALL_RAISE = '10.3cqw'; // moves both small cards up, closer to the big photo
+const FEATURE_SMALL_LIFT = `${FEATURE_SLOPE * (FEATURE_SMALL_W + FEATURE_SMALL_GAP)}cqw`;
+// Moves both small cards up until the gap to the big photo (measured square to the slanted edges) equals FEATURE_SMALL_GAP
+const FEATURE_SMALL_RAISE = `${FEATURE_ROW_GAP + FEATURE_SMALL_DROP * FEATURE_SMALL_H - FEATURE_SMALL_GAP * Math.hypot(1, FEATURE_SLOPE)}cqw`;
 
 // Largest box with the photo's ratio that fits inside the slanted card (W x H px), so no part of the photo is cut off
 function slantFitBox(W, H, ratio) {
@@ -1617,7 +1628,7 @@ function FeatureShowcase({ images }) {
     const others = slides.map((src, index) => ({ src, index })).filter((item) => item.index !== mainIndex);
 
     return (
-        <div className="flex min-h-0 size-full flex-col gap-[1.8cqw]">
+        <div className="flex min-h-0 size-full flex-col" style={{ gap: `${FEATURE_ROW_GAP}cqw` }}>
             <svg width="0" height="0" className="absolute" aria-hidden="true">
                 <defs>
                     <clipPath id="catFeatureSkewClip" clipPathUnits="objectBoundingBox"><path d={FEATURE_SKEW_PATH} /></clipPath>
@@ -1633,8 +1644,8 @@ function FeatureShowcase({ images }) {
 
             {others.length > 0 && (
                 <div
-                    className="grid shrink-0 gap-[1.5cqw]"
-                    style={{ gridTemplateColumns: `repeat(${others.length}, minmax(0, 1fr))`, filter: 'drop-shadow(0 0.6cqw 1.2cqw rgba(0,0,0,0.12))', transform: `translateY(-${FEATURE_SMALL_RAISE})` }}
+                    className="grid shrink-0"
+                    style={{ gap: `${FEATURE_SMALL_GAP}cqw`, gridTemplateColumns: `repeat(${others.length}, minmax(0, 1fr))`, filter: 'drop-shadow(0 0.6cqw 1.2cqw rgba(0,0,0,0.12))', transform: `translateY(-${FEATURE_SMALL_RAISE})` }}
                 >
                     {others.map(({ src, index }, i) => (
                         <button
@@ -1648,7 +1659,7 @@ function FeatureShowcase({ images }) {
                             className="aspect-[3/4] min-w-0 cursor-pointer bg-transparent outline-none"
                             style={{ transform: i > 0 ? `translateY(-${FEATURE_SMALL_LIFT})` : undefined }}
                         >
-                            <div className="w-full bg-[#e6e8e8]" style={{ height: FEATURE_SMALL_TALL, clipPath: 'url(#catFeatureSmallClip)' }}>
+                            <div className="w-full bg-[#e6e8e8]" style={{ height: `${FEATURE_SMALL_TALL * 100}%`, clipPath: 'url(#catFeatureSmallClip)' }}>
                                 <Photo src={src} alt="" cover />
                             </div>
                         </button>

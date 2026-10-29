@@ -11,6 +11,7 @@ import {
     Sparkles,
     Truck,
     UserRound,
+    Weight,
     Wind,
 } from 'lucide-react';
 import { createElement as h } from 'react';
@@ -42,16 +43,9 @@ function PocketIcon(props) {
     );
 }
 
-function GSMIcon(props) {
-    return h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', ...props },
-        h('circle', { cx: '12', cy: '12', r: '10' }),
-        h('path', { d: 'M12 7v10M8 12h8', strokeLinecap: 'round', strokeLinejoin: 'round' })
-    );
-}
-
 export const productFeatureIconRegistry = {
     badgeCheck: BadgeCheck,
-    csm180: GSMIcon,
+    csm180: Weight,
     droplets: Droplets,
     fullZipper: FullZipperIcon,
     halfZipper: HalfZipperIcon,
