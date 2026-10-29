@@ -1211,10 +1211,11 @@ function SizeChips({ sizes }) {
 }
 
 // Shown on every product info page, independent of sizes
-function WholesaleNote({ className = '' }) {
+// stacked = email on its own second line (for pages where a tall photo sits right next to the note)
+function WholesaleNote({ className = '', stacked = false }) {
     return (
         <p className={`whitespace-nowrap text-[1.9cqw] leading-snug text-zinc-600 ${className}`}>
-            For Wholesale Price please email us on{' '}
+            For Wholesale Price please email us on{stacked ? <br /> : ' '}
             <a
                 href={`mailto:${WHOLESALE_EMAIL}`}
                 onClick={(e) => e.stopPropagation()} // don't flip the page when clicking the email
@@ -1701,7 +1702,7 @@ function DetailsPage({ view }) {
                         )}
 
                         <SwatchSquare image={swatch} className="w-[33.87cqw]" />
-                        <WholesaleNote />
+                        <WholesaleNote stacked={/vest/i.test(`${product.name || ''} ${product.sku || ''}`)} />
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[1.5cqw]">
