@@ -336,8 +336,7 @@ function buildView(p, colorMap, sizeMap) {
 
     const features = toArray(p.product_features)
         .map((f) => (typeof f === 'string' ? f : f?.text || f?.title || f?.name || f?.label || ''))
-        .filter(Boolean)
-        .slice(0, 6);
+        .filter(Boolean);
 
     // Only images explicitly selected as catalog features belong in the feature gallery.
     const catalogFeatures = toArray(p.catalog_feature_images).map(catalogImage).filter(Boolean);
@@ -574,13 +573,21 @@ function AnimatedFeatureIcon({ name, syncKey, index }) {
     );
 }
 
-// "Product Features" heading + one icon-and-text row per feature
-function FeatureList({ features, max = 6, scope = '' }) {
+// "Product Features" heading + one icon-and-text row per feature (every feature from the admin panel).
+// The list tightens as it grows so the swatch and wholesale note below it still fit on the page:
+// up to 4 roomy rows, 5-6 closer rows, 7+ in two columns.
+function FeatureList({ features, scope = '' }) {
+    const twoCols = features.length > 6;
+    const rowGap = features.length <= 4 ? '1.5cqw' : twoCols ? '1.2cqw' : '1cqw';
+
     return (
         <div className="border-b border-zinc-300 pb-[2cqw]">
             <p className="text-[2.3cqw] font-medium tracking-[0.08em] text-zinc-800">Product Features</p>
-            <ul className="mt-[1.6cqw] flex flex-col gap-[1.5cqw]">
-                {features.slice(0, max).map((f, i) => (
+            <ul
+                className="mt-[1.6cqw] grid"
+                style={{ gridTemplateColumns: twoCols ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: `${rowGap} 2cqw` }}
+            >
+                {features.map((f, i) => (
                     <li key={`${f}-${i}`} className="flex min-w-0 items-center gap-[1.6cqw] text-[1.9cqw] leading-snug tracking-[0.02em] text-zinc-700">
                         <AnimatedFeatureIcon name={featureIconKey(f, i)} syncKey={`${scope}|${f}|${i}`} index={i} />
                         <span className="line-clamp-2 min-w-0">{f}</span>
@@ -1917,7 +1924,7 @@ function DetailsPage({ view }) {
                             </Section>
                         )}
 
-                        {features.length > 0 && <FeatureList features={features} max={4} scope={String(product.id ?? product.sku ?? product.name)} />}
+                        {features.length > 0 && <FeatureList features={features} scope={String(product.id ?? product.sku ?? product.name)} />}
 
                         {composition && (
                             <Section title="Product Composition">
