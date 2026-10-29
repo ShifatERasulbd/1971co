@@ -74,6 +74,7 @@ export default function EditForm({
     catalogSwatchPreviewUrl = '',
     onCatalogSwatchFileChange,
     onRemoveCatalogSwatch,
+    onSelectCatalogColorImage,
     onSubmit,
     onCancel,
     submitLabel = 'Update Product',
@@ -460,6 +461,11 @@ export default function EditForm({
                                 swatchPreviewUrl={catalogSwatchPreviewUrl}
                                 onSwatchFileChange={onCatalogSwatchFileChange}
                                 onRemoveSwatch={onRemoveCatalogSwatch}
+                                colors={selectedColors}
+                                getColorLabel={getColorLabel}
+                                colorVariantImageMap={colorVariantImageMap}
+                                selectedColorImages={form.catalog_color_images}
+                                onSelectColorImage={onSelectCatalogColorImage}
                                 errors={errors}
                                 disabled={isSubmitting}
                             />

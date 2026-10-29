@@ -35,6 +35,7 @@ const initialForm = {
     catalog_thumb_image: '',
     catalog_feature_images: [],
     catalog_swatch_image: '',
+    catalog_color_images: {},
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
@@ -490,6 +491,10 @@ export default function EditProduct() {
                         catalog_thumb_image: data?.catalog_thumb_image || '',
                         catalog_feature_images: Array.isArray(data?.catalog_feature_images) ? data.catalog_feature_images : [],
                         catalog_swatch_image: data?.catalog_swatch_image || '',
+                        catalog_color_images:
+                            data?.catalog_color_images && typeof data.catalog_color_images === 'object' && !Array.isArray(data.catalog_color_images)
+                                ? data.catalog_color_images
+                                : {},
                         size_chart_image: data?.size_chart_image || '',
                         category_id: data?.category_id ?? '',
                         subcategory_id: data?.subcategory_id ?? '',
@@ -1038,6 +1043,19 @@ export default function EditProduct() {
         event.target.value = '';
     };
 
+    // One "Available Colors" image per colour; clicking the selected one again clears it
+    const handleSelectCatalogColorImage = (color, value) => {
+        setForm((previous) => {
+            const next = { ...(previous.catalog_color_images || {}) };
+            if (next[color] === value) {
+                delete next[color];
+            } else {
+                next[color] = value;
+            }
+            return { ...previous, catalog_color_images: next };
+        });
+    };
+
     const handleSelectCatalogThumb = (value) => {
         setCatalogThumbFile(null);
         setForm((previous) => ({ ...previous, catalog_thumb_image: value }));
@@ -1346,6 +1364,7 @@ export default function EditProduct() {
                         setCatalogSwatchFile(event.target.files?.[0] || null);
                         event.target.value = '';
                     }}
+                    onSelectCatalogColorImage={handleSelectCatalogColorImage}
                     onRemoveCatalogSwatch={() => {
                         setCatalogSwatchFile(null);
                         setForm((previous) => ({ ...previous, catalog_swatch_image: '' }));

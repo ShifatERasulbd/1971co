@@ -17,12 +17,26 @@ export default function CatalogImagesField({
     swatchPreviewUrl = '',
     onSwatchFileChange,
     onRemoveSwatch,
+    colors = [],
+    getColorLabel = (value) => value,
+    colorVariantImageMap = {},
+    selectedColorImages = {},
+    onSelectColorImage,
     errors = {},
     disabled = false,
 }) {
     const selectedGalleryThumb = galleryImages.find((image) => image.value === selectedThumb);
     const displayedThumbUrl = thumbPreviewUrl || selectedGalleryThumb?.url || '';
     const featureImageCount = selectedFeatureImages.length + newFeatureImages.length;
+    // Each colour's own images (from the colour variant images), to pick its "Available Colors" image from
+    const colorImageGroups = colors.map((color) => ({
+        color,
+        label: getColorLabel(color),
+        images: (colorVariantImageMap[color] || []).map((value) => {
+            const image = galleryImages.find((item) => item.value === value);
+            return { value, url: image?.url || value, name: image?.name || value };
+        }),
+    }));
 
     return (
         <section className="space-y-5 rounded-lg border p-4">
@@ -155,6 +169,45 @@ export default function CatalogImagesField({
                         </Button>
                     </div>
                 ) : null}
+            </div>
+
+            <div className="space-y-3 border-t pt-4">
+                <Label>Available colors image (one image per color)</Label>
+                <p className="text-xs text-muted-foreground">
+                    Choose the image shown for each color under "Available Colors" in the catalog. Click a selected image again to clear it. Colors without a choice use their first image.
+                </p>
+
+                {colorImageGroups.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Add colors and their images in the variants section first.</p>
+                ) : (
+                    colorImageGroups.map((group) => (
+                        <div key={group.color} className="space-y-2">
+                            <p className="text-sm font-medium">{group.label}</p>
+                            {group.images.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No images assigned to this color yet.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                    {group.images.map((image) => {
+                                        const isSelected = selectedColorImages?.[group.color] === image.value;
+                                        return (
+                                            <button
+                                                key={image.value}
+                                                type="button"
+                                                aria-pressed={isSelected}
+                                                onClick={() => onSelectColorImage?.(group.color, image.value)}
+                                                disabled={disabled}
+                                                className={`overflow-hidden rounded-md border text-left ${isSelected ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary/60'}`}
+                                            >
+                                                <img src={image.url} alt={image.name} className="h-28 w-full bg-muted/30 object-contain" />
+                                                <span className="block truncate p-2 text-xs">{isSelected ? 'Selected color image' : 'Use for this color'}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
         </section>
     );

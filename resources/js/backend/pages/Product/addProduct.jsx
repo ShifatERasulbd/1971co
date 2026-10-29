@@ -31,6 +31,7 @@ const initialForm = {
     catalog_thumb_image: '',
     catalog_feature_images: [],
     catalog_swatch_image: '',
+    catalog_color_images: {},
     size_chart_image: '',
     category_id: '',
     subcategory_id: '',
@@ -417,6 +418,19 @@ export default function AddProduct() {
         event.target.value = '';
     };
 
+    // One "Available Colors" image per colour; clicking the selected one again clears it
+    const handleSelectCatalogColorImage = (color, value) => {
+        setForm((previous) => {
+            const next = { ...(previous.catalog_color_images || {}) };
+            if (next[color] === value) {
+                delete next[color];
+            } else {
+                next[color] = value;
+            }
+            return { ...previous, catalog_color_images: next };
+        });
+    };
+
     const handleSelectCatalogThumb = (value) => {
         setCatalogThumbFile(null);
         setForm((previous) => ({ ...previous, catalog_thumb_image: value }));
@@ -755,6 +769,7 @@ export default function AddProduct() {
                         event.target.value = '';
                     }}
                     onRemoveCatalogSwatch={() => setCatalogSwatchFile(null)}
+                    onSelectCatalogColorImage={handleSelectCatalogColorImage}
                     onProductVideosChange={handleProductVideosChange}
                     onRemoveProductVideo={handleRemoveProductVideo}
                     productVideoPreviewItems={productVideoPreviewItems}

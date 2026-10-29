@@ -164,8 +164,9 @@ class ProductController extends Controller
             }
         }
 
-        // Catalog images (thumb = 1 image, features = many images, swatch = 1 fabric image)
-        foreach (['catalog_thumb_image', 'catalog_feature_images', 'catalog_swatch_image'] as $column) {
+        // Catalog images (thumb = 1 image, features = many images, swatch = 1 fabric image,
+        // colors = 1 "Available Colors" image per colour)
+        foreach (['catalog_thumb_image', 'catalog_feature_images', 'catalog_swatch_image', 'catalog_color_images'] as $column) {
             if (Schema::hasColumn('products', $column)) {
                 $columns[] = $column;
             }
@@ -192,6 +193,13 @@ class ProductController extends Controller
             if (is_string($product->catalog_swatch_image ?? null) && ! $this->existingCatalogPaths([$product->catalog_swatch_image])) {
                 $product->catalog_swatch_image = null;
             }
+
+            if (is_array($product->catalog_color_images ?? null)) {
+                $product->catalog_color_images = array_filter(
+                    $product->catalog_color_images,
+                    fn ($path) => $this->existingCatalogPaths([$path]) !== [],
+                );
+            }
         });
 
         return response()->json($products);
@@ -205,7 +213,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizeBooleanFields($request, ['show_on_best_sellers']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'catalog_feature_images']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'catalog_feature_images', 'catalog_color_images']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -241,6 +249,8 @@ class ProductController extends Controller
             'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'catalog_swatch_image' => 'nullable|string|max:2048',
             'catalog_swatch_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_color_images' => 'nullable|array',
+            'catalog_color_images.*' => 'nullable|string|max:2048',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -294,6 +304,7 @@ class ProductController extends Controller
         $validated['catalog_thumb_image'] = $catalog['thumb'];
         $validated['catalog_feature_images'] = $catalog['features'];
         $validated['catalog_swatch_image'] = $catalog['swatch'];
+        $validated['catalog_color_images'] = $catalog['colors'];
         unset($validated['catalog_thumb_file'], $validated['catalog_feature_files'], $validated['catalog_swatch_file']);
 
         $uploadedVideoNameMap = [];
@@ -369,7 +380,7 @@ class ProductController extends Controller
     {
         
         $this->normalizeBooleanFields($request, ['show_on_best_sellers', 'clear_gallery', 'clear_videos', 'clear_size_charts']);
-        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing', 'catalog_feature_images']);
+        $this->normalizeJsonFields($request, ['variant_rows', 'color_variant_images', 'color_variant_videos', 'color_variant_size_charts', 'size_chart_images', 'product_features', 'image_gallery_existing', 'product_videos_existing', 'size_chart_images_existing', 'catalog_feature_images', 'catalog_color_images']);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -405,6 +416,8 @@ class ProductController extends Controller
             'catalog_feature_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
             'catalog_swatch_image' => 'nullable|string|max:2048',
             'catalog_swatch_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'catalog_color_images' => 'nullable|array',
+            'catalog_color_images.*' => 'nullable|string|max:2048',
             'size_chart_image_file' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
             'size_chart_files' => 'nullable|array',
             'size_chart_files.*' => 'image|mimes:jpeg,jpg,png,webp|max:4096',
@@ -506,6 +519,7 @@ class ProductController extends Controller
         $validated['catalog_thumb_image'] = $catalog['thumb'];
         $validated['catalog_feature_images'] = $catalog['features'];
         $validated['catalog_swatch_image'] = $catalog['swatch'];
+        $validated['catalog_color_images'] = $catalog['colors'];
         unset($validated['catalog_thumb_file'], $validated['catalog_feature_files'], $validated['catalog_swatch_file']);
         $keepCatalog = array_values(array_filter(array_merge([$catalog['thumb'], $catalog['swatch']], $catalog['features'])));
 
@@ -907,7 +921,23 @@ class ProductController extends Controller
             $swatch = $this->cleanCatalogPath((string) $request->input('catalog_swatch_image'));
         }
 
-        return ['thumb' => $thumb, 'features' => $features, 'swatch' => $swatch];
+        // One image per colour for "Available Colors" (picked from the product images)
+        $colors = is_array($product?->catalog_color_images) ? $product->catalog_color_images : [];
+
+        if ($request->has('catalog_color_images')) {
+            $colors = [];
+
+            foreach ((array) $request->input('catalog_color_images', []) as $color => $path) {
+                $color = trim((string) $color);
+                $path = is_string($path) ? $this->cleanCatalogPath($uploadedGalleryMap[$path] ?? $path) : null;
+
+                if ($color !== '' && $path !== null && $this->existingCatalogPaths([$path]) !== []) {
+                    $colors[$color] = $path;
+                }
+            }
+        }
+
+        return ['thumb' => $thumb, 'features' => $features, 'swatch' => $swatch, 'colors' => $colors ?: null];
     }
 
     private function existingCatalogPaths(array $paths): array

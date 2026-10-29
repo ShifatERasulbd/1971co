@@ -50,6 +50,8 @@ function buildProductPayload(data = {}) {
         catalog_thumb_image: data.catalog_thumb_image?.trim() || '',
         catalog_feature_images: Array.isArray(data.catalog_feature_images) ? data.catalog_feature_images : [],
         catalog_swatch_image: data.catalog_swatch_image?.trim() || '',
+        catalog_color_images:
+            data.catalog_color_images && typeof data.catalog_color_images === 'object' ? data.catalog_color_images : {},
     };
 }
 
@@ -128,6 +130,7 @@ function buildProductFormData(data = {}) {
 
     // always send the list, even when empty, so removing every selected image is saved
     formData.set('catalog_feature_images', JSON.stringify(payload.catalog_feature_images));
+    formData.set('catalog_color_images', JSON.stringify(payload.catalog_color_images));
 
     return formData;
 }

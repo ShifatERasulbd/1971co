@@ -305,6 +305,8 @@ function buildCategoryHierarchy(categories, subcategories, grandchilds) {
 // Everything a spread needs, prepared once per product
 function buildView(p, colorMap, sizeMap) {
     const variantImages = toObject(p.color_variant_images);
+    // Image picked for each colour in the product module ("Available colors image")
+    const pickedColorImages = toObject(p.catalog_color_images);
     const isBundle = [p.name, p.sku].some((value) => String(value || '').toLowerCase().includes('bundle'));
     const normalizedProductName = `${p.name || ''} ${p.sku || ''}`.toLowerCase().replace(/[^a-z0-9]/g, '');
     const isTankTopBundle = normalizedProductName.includes('tanktop') && normalizedProductName.includes('bundle');
@@ -313,14 +315,17 @@ function buildView(p, colorMap, sizeMap) {
         const c = colorMap[id];
         const name = c?.name || id;
         const images = toArray(variantImages[id] ?? variantImages[name]);
+        const picked = catalogImage(pickedColorImages[id] ?? pickedColorImages[name]);
         return {
             id,
             name,
             hex: c?.hex || '',
             images,
-            image: isTankTopBundle
-                ? images[2] || images[1] || images[0] || ''
-                : (isBundle ? images[1] : images[0]) || images[0] || '',
+            image:
+                picked ||
+                (isTankTopBundle
+                    ? images[2] || images[1] || images[0] || ''
+                    : (isBundle ? images[1] : images[0]) || images[0] || ''),
         };
     });
 

@@ -71,6 +71,7 @@ export default function AddForm({
     catalogSwatchPreviewUrl = '',
     onCatalogSwatchFileChange,
     onRemoveCatalogSwatch,
+    onSelectCatalogColorImage,
     onSubmit,
     onCancel,
     submitLabel = 'Create Product',
@@ -454,6 +455,11 @@ export default function AddForm({
                                 swatchPreviewUrl={catalogSwatchPreviewUrl}
                                 onSwatchFileChange={onCatalogSwatchFileChange}
                                 onRemoveSwatch={onRemoveCatalogSwatch}
+                                colors={selectedColors}
+                                getColorLabel={getColorLabel}
+                                colorVariantImageMap={colorVariantImageMap}
+                                selectedColorImages={form.catalog_color_images}
+                                onSelectColorImage={onSelectCatalogColorImage}
                                 errors={errors}
                                 disabled={isSubmitting}
                             />

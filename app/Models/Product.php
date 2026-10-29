@@ -53,6 +53,7 @@ class Product extends Model
         'catalog_thumb_image',
          'catalog_feature_images',
         'catalog_swatch_image',
+        'catalog_color_images',
     ];
 
     protected function casts(): array
@@ -77,6 +78,7 @@ class Product extends Model
             'position' => 'integer',
             'show_on_best_sellers' => 'boolean',
             'catalog_feature_images' => 'array',
+            'catalog_color_images' => 'array',
             'is_active' => 'boolean',
         ];
     }
