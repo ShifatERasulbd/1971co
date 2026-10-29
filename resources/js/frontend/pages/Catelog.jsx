@@ -824,6 +824,21 @@ function computeBackdropMask(rgba, w, h) {
     if (!best) return null;
     const { bg } = best;
 
+    // 5b) White clothes on a pale backdrop can look like backdrop, so the brand name shows over the
+    //     model. A person is one solid shape: in every row, everything between the leftmost and the
+    //     rightmost model pixel is model too. (The text only gives up the small gaps beside arms and legs.)
+    for (let y = 0; y < h; y += 1) {
+        let first = -1;
+        let last = -1;
+        for (let x = 0; x < w; x += 1) {
+            if (!bg[y * w + x]) {
+                if (first < 0) first = x;
+                last = x;
+            }
+        }
+        for (let x = first; first >= 0 && x <= last; x += 1) bg[y * w + x] = 0;
+    }
+
     // 6) Shrink the backdrop a little so the text never touches the model's outline
     const shrunk = erode(bg, Math.max(1, Math.round(Math.min(w, h) * 0.006)));
 
