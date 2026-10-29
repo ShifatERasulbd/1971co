@@ -26,8 +26,8 @@ const companyLinks = [
     { label: 'About', href: '/about' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms & Condition', href: '/terms' },
-    // { label: 'Digital Catalogue', href: '/digital-catalog' },
-    // { label: 'wholesale Inquiries', href: '/wholesale-inquiries'},
+    { label: 'Digital Catalog', href: '/digital-catalog' },
+    { label: 'wholesale Inquiries', href: '/wholesale-inquiries'},
 ];
 
 function resolveAssetUrl(path) {
