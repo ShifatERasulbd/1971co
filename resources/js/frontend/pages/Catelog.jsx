@@ -1679,7 +1679,7 @@ function DetailsPage({ view }) {
         <div className="size-full bg-[#f6f6f4]" style={CQ}>
             <div className="flex size-full flex-col pb-[4cqw] pl-[5cqw] pr-[3cqw] pt-[3cqw]">
                 <div className="flex min-h-0 flex-[3] gap-[3cqw]">
-                    <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw] overflow-hidden">
+                    <div className="flex w-[38%] min-w-0 flex-col gap-[2cqw]" style={{ overflowX: 'visible', overflowY: 'clip' }}>
                         {product.sku && (
                             <Section title="Style">
                                 <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
@@ -1732,7 +1732,7 @@ function EditorialPage({ view }) {
         <div className="size-full bg-[#f1ede4]" style={CQ}>
             <div className="flex size-full flex-col px-[4.5cqw] pb-[4cqw] pt-[3.5cqw]">
                 <div className="flex min-h-0 flex-[3] gap-[2.5cqw]">
-                    <div className="flex w-[42%] min-w-0 flex-col gap-[1.5cqw] overflow-hidden">
+                    <div className="flex w-[42%] min-w-0 flex-col gap-[1.5cqw]" style={{ overflowX: 'visible', overflowY: 'clip' }}>
                         {/* 3. Style number */}
                         {product.sku && (
                             <Section title="Style Number">
@@ -1757,16 +1757,13 @@ function EditorialPage({ view }) {
                             </Section>
                         )}
 
-                        {/* 4th feature image, bottom of the left column */}
+                        {/* 4th feature image: fills the free space under the composition and is shown whole (not cropped) */}
                         {gallery[3] && (
-                            <div
-                                className="relative mt-auto w-full shrink-0 overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]"
-                                style={{ aspectRatio: '263 / 212' }}
-                            >
-                                <Photo src={gallery[3]} cover />
+                            <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-[1.6cqw] bg-[#e6e8e8]">
+                                <Photo src={gallery[3]} blur />
                             </div>
                         )}
-                        <WholesaleNote className={`!text-[1.6cqw] ${gallery[3] ? '' : 'mt-auto'}`} />
+                        <WholesaleNote className={gallery[3] ? '' : 'mt-auto'} />
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col items-stretch justify-start gap-[1.5cqw]">
@@ -1790,7 +1787,7 @@ function InfoPage({ view }) {
         <div className="size-full bg-[#fafaf8]" style={CQ}>
             <div className="flex size-full flex-col px-[5cqw] pb-[3cqw] pt-[1.5cqw]">
                 <div className="flex min-h-0 flex-1 gap-[2.5cqw]">
-                    <div className="flex w-[48%] min-w-0 flex-col gap-[1.8cqw] overflow-hidden">
+                    <div className="flex w-[48%] min-w-0 flex-col gap-[1.8cqw]" style={{ overflowX: 'visible', overflowY: 'clip' }}>
                         {product.sku && (
                             <Section title="Style Number">
                                 <p className="truncate text-[1.9cqw] text-zinc-600">{product.sku}</p>
