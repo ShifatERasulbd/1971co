@@ -1490,13 +1490,73 @@ function roundedPolyPath(pts, r) {
 }
 
 // Left side lower than the right side: a slanted (parallelogram) photo card
-const FEATURE_SKEW_PATH = roundedPolyPath([[0, 0.245], [1, 0], [1, 0.755], [0, 1]], 0.03);
+const FEATURE_SKEW = 0.245; // how far (share of card height) the left side sits lower than the right
+const FEATURE_SKEW_PATH = roundedPolyPath([[0, FEATURE_SKEW], [1, 0], [1, 1 - FEATURE_SKEW], [0, 1]], 0.03);
+const FEATURE_FIT_MARGIN = 0.94; // keeps the photo clear of the rounded slanted corners
 // The small cards use the same slant as the big photo (same slope), so their top edges run parallel to its bottom edge.
 // The 2nd card is lifted by slope x (card width + gap) so both cards keep the same distance from the big photo.
 const FEATURE_SMALL_PATH = roundedPolyPath([[0, 0.265], [1, 0], [1, 0.735], [0, 1]], 0.045); // same slant as before, on a taller card (FEATURE_SMALL_TALL)
 const FEATURE_SMALL_TALL = '130%'; // small card height vs its layout slot: taller cards without moving the big photo
 const FEATURE_SMALL_LIFT = '10.4cqw';
 const FEATURE_SMALL_RAISE = '10.3cqw'; // moves both small cards up, closer to the big photo
+
+// Largest box with the photo's ratio that fits inside the slanted card (W x H px), so no part of the photo is cut off
+function slantFitBox(W, H, ratio) {
+    const s = FEATURE_SKEW;
+    const width = Math.min(W, ((1 - s) * H) / (1 / ratio + (s * H) / W)) * FEATURE_FIT_MARGIN;
+    const height = width / ratio;
+    const left = (W - width) / 2;
+    // Free space runs from the slanted top edge (at the photo's left side) to the slanted bottom edge (at its right side)
+    const bandTop = s * H * (1 - left / W);
+    const bandBottom = H - (s * H * (left + width)) / W;
+    return { left, top: bandTop + (bandBottom - bandTop - height) / 2, width, height };
+}
+
+// Whole photo inside the slanted card, empty space filled with a blurred copy (never crops)
+function SlantFitPhoto({ src, alt = '' }) {
+    const boxRef = useRef(null);
+    const [size, setSize] = useState(null);
+    const [ratio, setRatio] = useState(() => {
+        const cached = catalogImageCache.get(src);
+        return cached?.naturalWidth ? cached.naturalWidth / cached.naturalHeight : null;
+    });
+
+    useLayoutEffect(() => {
+        const el = boxRef.current;
+        if (!el) return undefined;
+        const measure = () => setSize((prev) => (prev?.w === el.clientWidth && prev?.h === el.clientHeight ? prev : { w: el.clientWidth, h: el.clientHeight }));
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    const box = size?.w > 0 && size?.h > 0 && ratio ? slantFitBox(size.w, size.h, ratio) : null;
+
+    return (
+        <div ref={boxRef} className="relative size-full overflow-hidden bg-[#e6e8e8]">
+            <img
+                src={src}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
+            />
+            <img
+                src={src}
+                alt={alt}
+                loading="eager"
+                draggable={false}
+                onLoad={(e) => {
+                    const { naturalWidth, naturalHeight } = e.currentTarget;
+                    if (naturalWidth && naturalHeight) setRatio(naturalWidth / naturalHeight);
+                }}
+                className="absolute object-contain"
+                style={box ?? { inset: 0, width: '100%', height: '100%' }}
+            />
+        </div>
+    );
+}
 
 // One big slanted photo with the other photos as small cards under it (no thumbnail strip).
 // Click a small card to bring that photo up into the big slanted card.
@@ -1520,7 +1580,7 @@ function FeatureShowcase({ images }) {
 
             <div className="relative min-h-0 flex-1" style={{ filter: 'drop-shadow(0 0.8cqw 1.6cqw rgba(0,0,0,0.14))' }}>
                 <div className="absolute inset-0 bg-[#e6e8e8]" style={{ clipPath: 'url(#catFeatureSkewClip)' }}>
-                    <Photo key={main} src={main} alt="Product feature" cover />
+                    <SlantFitPhoto key={main} src={main} alt="Product feature" />
                 </div>
             </div>
 
