@@ -1512,9 +1512,11 @@ function slantFitBox(W, H, ratio) {
     return { left, top: bandTop + (bandBottom - bandTop - height) / 2, width, height };
 }
 
-// Background colour along a photo's border (median, so a product touching the edge doesn't skew it).
-// null when it can't be read (cross-origin image) or the border is transparent.
+// Plain studio background colour along a photo's border (median, so a product touching the edge doesn't skew it).
+// null when the border isn't one plain colour (close-ups, scenes), is transparent, or can't be read (cross-origin image).
 const EDGE_SAMPLE = 64;
+const EDGE_TOLERANCE = 24; // max per-channel difference from the median that still counts as the same colour
+const EDGE_PLAIN_SHARE = 0.85; // share of border pixels that must match for the background to count as plain
 const edgeColorCache = new Map();
 
 function photoEdgeColor(img) {
@@ -1537,8 +1539,14 @@ function photoEdgeColor(img) {
                 channels.forEach((list, c) => list.push(data[p + c]));
             });
         }
-        const [r, g, b, a] = channels.map((list) => list.sort((x, y) => x - y)[list.length >> 1]);
-        if (a >= 250) color = `rgb(${r}, ${g}, ${b})`;
+        const median = channels.map((list) => [...list].sort((x, y) => x - y)[list.length >> 1]);
+        const total = channels[0].length;
+        let matching = 0;
+        for (let i = 0; i < total; i += 1) {
+            if (channels.every((list, c) => Math.abs(list[i] - median[c]) <= EDGE_TOLERANCE)) matching += 1;
+        }
+        const [r, g, b, a] = median;
+        if (a >= 250 && matching / total >= EDGE_PLAIN_SHARE) color = `rgb(${r}, ${g}, ${b})`;
     } catch {
         color = null;
     }
@@ -1550,8 +1558,10 @@ function photoEdgeColor(img) {
 const readPhoto = (img) =>
     img?.complete && img.naturalWidth > 0 ? { ratio: img.naturalWidth / img.naturalHeight, edge: photoEdgeColor(img) } : null;
 
-// Whole photo inside the slanted card (never crops). The rest of the card is filled with the photo's own
-// background colour so the card reads as one image; a blurred copy is used when that colour can't be read.
+// Photo filling the slanted card.
+// Plain studio background: the whole photo fits inside the card (never crops) and the rest of the card takes
+// that background colour, so the card reads as one image.
+// Anything else (close-ups, scenes): the photo covers the whole card shape.
 function SlantFitPhoto({ src, alt = '' }) {
     const boxRef = useRef(null);
     const [size, setSize] = useState(null);
@@ -1567,19 +1577,11 @@ function SlantFitPhoto({ src, alt = '' }) {
         return () => observer.disconnect();
     }, []);
 
-    const box = size?.w > 0 && size?.h > 0 && photo ? slantFitBox(size.w, size.h, photo.ratio) : null;
+    const plain = photo?.edge;
+    const box = plain && size?.w > 0 && size?.h > 0 ? slantFitBox(size.w, size.h, photo.ratio) : null;
 
     return (
-        <div ref={boxRef} className="relative size-full overflow-hidden bg-[#e6e8e8]" style={photo?.edge ? { background: photo.edge } : undefined}>
-            {photo && !photo.edge && (
-                <img
-                    src={src}
-                    alt=""
-                    aria-hidden="true"
-                    draggable={false}
-                    className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
-                />
-            )}
+        <div ref={boxRef} className="relative size-full overflow-hidden bg-[#e6e8e8]" style={plain ? { background: plain } : undefined}>
             <img
                 src={src}
                 alt={alt}
@@ -1589,7 +1591,7 @@ function SlantFitPhoto({ src, alt = '' }) {
                     const next = readPhoto(e.currentTarget);
                     if (next) setPhoto(next);
                 }}
-                className="absolute object-contain"
+                className={`absolute ${plain ? 'object-contain' : 'object-cover'}`}
                 style={box ?? { inset: 0, width: '100%', height: '100%' }}
             />
         </div>
