@@ -839,6 +839,61 @@ function computeBackdropMask(rgba, w, h) {
         for (let x = first; first >= 0 && x <= last; x += 1) bg[y * w + x] = 0;
     }
 
+    // 5c) A white shirt can also leak on the side where nothing of the model was found in that row
+    //     (e.g. the far shoulder). The model is roughly convex, so inside the outline around all
+    //     model pixels, anything as bright as the brightest backdrop or brighter is clothing, not backdrop.
+    {
+        const pts = [];
+        for (let y = 0; y < h; y += 1) {
+            let first = -1;
+            let last = -1;
+            for (let x = 0; x < w; x += 1) {
+                if (!bg[y * w + x]) {
+                    if (first < 0) first = x;
+                    last = x;
+                }
+            }
+            if (first >= 0) pts.push([first, y], [last, y]);
+        }
+        if (pts.length > 2) {
+            pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+            const chain = (list) => {
+                const out = [];
+                for (const pt of list) {
+                    while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], pt) <= 0) out.pop();
+                    out.push(pt);
+                }
+                out.pop();
+                return out;
+            };
+            const hull = chain(pts).concat(chain(pts.slice().reverse()));
+            const brightMin = ringHi - 4;
+            for (let y = 0; y < h; y += 1) {
+                let xl = Infinity;
+                let xr = -Infinity;
+                for (let k = 0; k < hull.length; k += 1) {
+                    const a = hull[k];
+                    const b = hull[(k + 1) % hull.length];
+                    if ((a[1] <= y && b[1] >= y) || (b[1] <= y && a[1] >= y)) {
+                        if (a[1] === b[1]) {
+                            xl = Math.min(xl, a[0], b[0]);
+                            xr = Math.max(xr, a[0], b[0]);
+                        } else {
+                            const x = a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]);
+                            xl = Math.min(xl, x);
+                            xr = Math.max(xr, x);
+                        }
+                    }
+                }
+                for (let x = Math.ceil(xl); x <= Math.floor(xr); x += 1) {
+                    const i = y * w + x;
+                    if (bg[i] && lum[i] >= brightMin) bg[i] = 0;
+                }
+            }
+        }
+    }
+
     // 6) Shrink the backdrop a little so the text never touches the model's outline
     const shrunk = erode(bg, Math.max(1, Math.round(Math.min(w, h) * 0.006)));
 
