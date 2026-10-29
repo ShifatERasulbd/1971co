@@ -330,7 +330,7 @@ export default function WholesaleInquiryForm({ onSuccess }) {
                             required
                             rows={5}
                             maxLength={STORE_DESCRIPTION_MAX}
-                            placeholder="Tell us about your company, store, brand you carry and how 1971Co fits in."
+                            placeholder="Tell us about your company, store, brand you carry and how 1971Co. fits in."
                             className="sm:col-span-2 lg:col-span-3"
                             {...shared}
                         />
