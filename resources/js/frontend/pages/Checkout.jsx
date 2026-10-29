@@ -901,7 +901,7 @@ function CheckoutForm() {
 
     if (isCartEmpty) {
         return (
-            <section className={`${featuresFontClass} font-monstrate bg-[#f5efe6] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#ffffff] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
                     <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
@@ -1120,7 +1120,7 @@ function CheckoutForm() {
     const nameError = (showCardErrors || touchedCardFields.nameOnCard) && !nameOnCard.trim();
 
     return (
-        <section className={`${featuresFontClass} font-monstrate bg-[#f5efe6] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
+        <section className={`${featuresFontClass} font-monstrate bg-[#ffffff] px-5 py-12 sm:px-8 lg:px-12 lg:py-16`}>
             <div className="mx-auto grid w-full max-w-[1500px] gap-8 lg:grid-cols-[1.35fr_0.9fr] lg:gap-10">
                 <div className="font-monstrate bg-white p-5 shadow-sm sm:p-8">
                     <div className="border-b border-zinc-200 pb-5">
@@ -1824,7 +1824,7 @@ export default function CheckoutPage() {
 
     if (isStripeLoading) {
         return (
-            <section className={`${featuresFontClass} font-monstrate bg-[#f5efe6] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#ffffff] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
                     <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
@@ -1837,7 +1837,7 @@ export default function CheckoutPage() {
 
     if (!stripePromise) {
         return (
-            <section className={`${featuresFontClass} font-monstrate bg-[#f5efe6] px-5 py-16 sm:px-8 lg:px-12`}>
+            <section className={`${featuresFontClass} font-monstrate bg-[#ffffff] px-5 py-16 sm:px-8 lg:px-12`}>
                 <div className="mx-auto w-full max-w-[900px] bg-white p-8 text-center shadow-sm">
                     <h1 className="font-monstrate text-[2rem] uppercase tracking-[0.04em] text-zinc-900 sm:text-[2.3rem]">
                         Checkout
