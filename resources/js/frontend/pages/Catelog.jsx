@@ -1213,7 +1213,7 @@ function SizeChips({ sizes }) {
 // Shown on every product info page, independent of sizes
 function WholesaleNote({ className = '' }) {
     return (
-        <p className={`text-[1.9cqw] leading-snug text-zinc-600 ${className}`}>
+        <p className={`whitespace-nowrap text-[1.9cqw] leading-snug text-zinc-600 ${className}`}>
             For Wholesale Price please email us on{' '}
             <a
                 href={`mailto:${WHOLESALE_EMAIL}`}
