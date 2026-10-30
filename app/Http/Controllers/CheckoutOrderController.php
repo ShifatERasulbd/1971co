@@ -361,7 +361,7 @@ class CheckoutOrderController extends Controller
             'items.*.selectedSize' => 'nullable|string|max:100',
             'subtotal' => 'required|numeric|min:0',
             'shipping' => 'required|numeric|min:0',
-            'tax' => 'required|numeric|min:0',
+            'tax' => 'nullable|numeric|min:0',
             'stripe_charge' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
             'payment_intent_id' => 'required|string|max:255',
@@ -376,7 +376,7 @@ class CheckoutOrderController extends Controller
         }
 
         $shipping = round((float) $validated['shipping'], 2);
-        $tax = round((float) $validated['tax'], 2);
+        $tax = round((float) ($validated['tax'] ?? 0), 2);
         $baseTotal = round((float) $validated['subtotal'] + $shipping + $tax, 2);
         $stripeCharge = isset($validated['stripe_charge'])
             ? round((float) $validated['stripe_charge'], 2)
