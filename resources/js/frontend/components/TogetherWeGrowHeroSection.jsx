@@ -23,7 +23,7 @@ export default function TogetherWeGrowHeroSection({ sectionData }) {
                             <div key={index}>
                                 {line.trim().startsWith('$0.50') ? (
                                     <>
-                                        <span className="text-[2.5rem] sm:text-[3.2rem] lg:text-[6.5rem]">$0.50</span>
+                                        <span className="text-[2.5rem] sm:text-[3.2rem] lg:text-[6.5rem]">$0.10</span>
                                         {line.replace(/^\$0\.50/i, '')}
                                     </>
                                 ) : line}
