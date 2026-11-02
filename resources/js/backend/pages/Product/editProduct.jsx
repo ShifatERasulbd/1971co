@@ -337,10 +337,25 @@ export default function EditProduct() {
         return [...existing, ...fresh];
     }, [existingProductVideos, newProductVideoFiles]);
 
-    const catalogGalleryImages = useMemo(
-        () => galleryPreviewItems,
-        [galleryPreviewItems],
-    );
+    const catalogGalleryImages = useMemo(() => {
+        const existingFeatureImages = (Array.isArray(form.catalog_feature_images) ? form.catalog_feature_images : [])
+            .filter((value) => typeof value === 'string' && value.trim() !== '')
+            .filter((value) => !galleryPreviewItems.some((image) => image.value === value))
+            .map((value, index) => {
+                const chunks = value.split('/');
+                const filename = chunks[chunks.length - 1] || `catalog-feature-${index + 1}`;
+
+                return {
+                    id: `existing-catalog-feature-${index}-${value}`,
+                    name: filename,
+                    value,
+                    url: value,
+                    source: 'existing',
+                };
+            });
+
+        return [...galleryPreviewItems, ...existingFeatureImages];
+    }, [form.catalog_feature_images, galleryPreviewItems]);
     const catalogThumbPreviewUrl = useMemo(
         () => (catalogThumbFile ? URL.createObjectURL(catalogThumbFile) : form.catalog_thumb_image || ''),
         [catalogThumbFile, form.catalog_thumb_image],
