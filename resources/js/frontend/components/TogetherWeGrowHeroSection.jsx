@@ -6,7 +6,7 @@ import { timelessFontClass } from '../utils/typography';
 export default function TogetherWeGrowHeroSection({ sectionData }) {
     const contentTitle = sectionData?.contentTitle || 'Together We Grow';
     const heading = sectionData?.heading || '$0.50 \'S WORKERS\' CHILDREN';
-    const description = sectionData?.sectionDescription || 'Every purchase makes a difference. We donate $0.50 from every order to support workers\' children in our community — helping create brighter futures through care, education, and opportunity.';
+    const description = sectionData?.sectionDescription || 'Every purchase makes a difference. We donate $0.10 from every order to support workers\' children in our community — helping create brighter futures through care, education, and opportunity.';
     const buttonText = sectionData?.buttonText || 'Let\'s Make a Purchase';
     const buttonUrl = sectionData?.buttonUrl || '/shop';
 
