@@ -77,8 +77,24 @@ class CheckoutOrderController extends Controller
             ], 422);
         }
 
+        $groundSaver = $this->veeqoShippingService->findUpsGroundSaverRate($rates);
+
+        if ($groundSaver === null || (float) $groundSaver['price'] <= 0) {
+            Log::warning('Veeqo did not return a UPS Ground Saver rate', [
+                'rates' => $rates,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'UPS Ground Saver shipping is not available for this address. Please check the address and try again.',
+                'debug' => config('app.debug') ? $this->veeqoShippingService->getDebugInfo() : null,
+            ], 422);
+        }
+
         return response()->json([
             'success' => true,
+            'shipping' => (float) $groundSaver['price'],
+            'shipping_option' => $groundSaver,
             'rates' => $rates,
             'debug' => config('app.debug') ? $this->veeqoShippingService->getDebugInfo() : null,
         ]);

@@ -71,7 +71,7 @@ export default function OrderSummary({
                     {isFetchingShipping || shippingOptions.length === 0 ? (
                         <span className="select-none blur-sm">$0.00</span>
                     ) : (
-                        <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                        <span>${shipping.toFixed(2)}</span>
                     )}
                 </div>
                 {String(form.state || '').trim().toUpperCase() === 'MA' && (

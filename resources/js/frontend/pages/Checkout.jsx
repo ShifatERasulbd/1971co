@@ -765,28 +765,16 @@ function CheckoutForm() {
                     throw new Error(payload?.error || payload?.message || 'Unable to fetch shipping rates');
                 }
 
-                const nextOptions = (Array.isArray(payload?.shipping_options) ? payload.shipping_options : [])
-                    .map((option, index) => normalizeShippingOption(option, index))
-                    .filter((option) => option.code !== '');
-
-                if (nextOptions.length > 0) {
-                    setShippingOptions(nextOptions);
-
-                    const selectedCodeFromPayload = normalizeServiceCode(payload?.selected_service_code, '02');
-                    const firstCode = normalizeServiceCode(nextOptions[0]?.code, '02');
-
-                    setSelectedShippingOptionCode((current) => {
-                        const currentCode = normalizeServiceCode(current, '02');
-                        const stillExists = currentCode !== '' && nextOptions.some((option) => option.code === currentCode);
-                        if (stillExists) {
-                            return currentCode;
-                        }
-
-                        return selectedCodeFromPayload || firstCode;
-                    });
+                // Checkout always charges the UPS Ground Saver rate picked by the backend.
+                const groundSaverPrice = parseMoney(payload?.shipping);
+                if (!payload?.shipping_option || groundSaverPrice === null || groundSaverPrice <= 0) {
+                    throw new Error('UPS Ground Saver shipping is not available for this address.');
                 }
 
-                setQuotedShipping(parseMoney(payload?.shipping) ?? 0);
+                const groundSaverOption = normalizeShippingOption(payload.shipping_option, 0);
+                setShippingOptions([groundSaverOption]);
+                setSelectedShippingOptionCode(groundSaverOption.code);
+                setQuotedShipping(groundSaverPrice);
                 setHasShippingQuote(true);
             } catch (error) {
                 if (error?.name === 'AbortError') {
@@ -1579,7 +1567,7 @@ function CheckoutForm() {
                             ) : !hasShippingQuote ? (
                                 <span className="text-zinc-400">--</span>
                             ) : (
-                                <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                                <span>${shipping.toFixed(2)}</span>
                             )}
                         </div>
                         {!isFetchingShipping && shippingError ? (

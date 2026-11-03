@@ -260,11 +260,7 @@ class VeeqoShippingService
 
         // UPS Ground Saver is our default "Standard Delivery" option; surface it first when available.
         foreach ($normalized as $index => $rate) {
-            $isUpsGroundSaver = strcasecmp($rate['carrier'], 'UPS') === 0
-                && stripos($rate['service'], 'ground') !== false
-                && stripos($rate['service'], 'saver') !== false;
-
-            if ($isUpsGroundSaver) {
+            if ($this->isUpsGroundSaver($rate)) {
                 $normalized[$index]['label'] = 'Standard Delivery';
                 $standard = $normalized[$index];
                 unset($normalized[$index]);
@@ -275,5 +271,26 @@ class VeeqoShippingService
         }
 
         return $normalized;
+    }
+
+    public function isUpsGroundSaver(array $rate): bool
+    {
+        return strcasecmp((string) ($rate['carrier'] ?? ''), 'UPS') === 0
+            && stripos((string) ($rate['service'] ?? ''), 'ground') !== false
+            && stripos((string) ($rate['service'] ?? ''), 'saver') !== false;
+    }
+
+    /**
+     * The checkout always charges UPS Ground Saver; returns null when Veeqo did not quote it.
+     */
+    public function findUpsGroundSaverRate(array $rates): ?array
+    {
+        foreach ($rates as $rate) {
+            if (is_array($rate) && $this->isUpsGroundSaver($rate)) {
+                return $rate;
+            }
+        }
+
+        return null;
     }
 }

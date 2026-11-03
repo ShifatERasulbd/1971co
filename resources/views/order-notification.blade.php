@@ -103,7 +103,7 @@
                             </tr>
                             <tr>
                                 <td style="font-size: 14px; color: #64748b;">Shipping</td>
-                                <td align="right" style="font-size: 14px; color: #334155;">{{ (float) $order->shipping > 0 ? '$' . number_format((float) $order->shipping, 2) : 'Free' }}</td>
+                                <td align="right" style="font-size: 14px; color: #334155;">{{ '$' . number_format((float) $order->shipping, 2) }}</td>
                             </tr>
                             <tr>
                                 <td style="font-size: 14px; color: #64748b;">Tax</td>
