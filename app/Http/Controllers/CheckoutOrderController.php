@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Mail\OrderCancelledEmail;
 use App\Mail\ThankYouEmail;
 use App\Services\FacebookConversionsApiService;
+use App\Services\InvalidShippingAddressException;
 use App\Services\ShippingRateService;
 use App\Services\StripeProductSyncService;
 use App\Services\VeeqoShippingService;
@@ -70,9 +71,16 @@ class CheckoutOrderController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
+            // Never surface raw carrier/Veeqo errors to the customer.
+            $isInvalidAddress = $exception instanceof InvalidShippingAddressException;
+            $message = $isInvalidAddress
+                ? $exception->getMessage()
+                : 'Unable to calculate shipping rates at the moment.';
+
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage() ?: 'Unable to calculate shipping rates at the moment.',
+                'message' => $message,
+                'invalid_address' => $isInvalidAddress,
                 'debug' => config('app.debug') ? $this->veeqoShippingService->getDebugInfo() : null,
             ], 422);
         }
