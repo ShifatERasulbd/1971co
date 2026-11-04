@@ -140,13 +140,12 @@ class VeeqoShippingService
                 'body' => $response->body(),
             ]);
 
-            // Auth / rate-limit problems are ours, not the customer's. Anything else from Veeqo
-            // (e.g. "KnightBus GetQuotes request failed") means the carriers rejected the address.
-            if (in_array($response->status(), [401, 403, 429], true)) {
-                throw new \RuntimeException('Unable to retrieve shipping rates from Veeqo.');
-            }
+            $errorMessages = $response->json('error_messages');
+            $message = is_array($errorMessages) && $errorMessages !== []
+                ? implode(' ', $errorMessages)
+                : 'Unable to retrieve shipping rates from Veeqo.';
 
-            throw new InvalidShippingAddressException();
+            throw new \RuntimeException($message);
         }
 
         return $this->normalizeRates($response->json());
