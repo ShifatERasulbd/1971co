@@ -94,7 +94,7 @@ class CheckoutOrderController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter a valid address.',
+                'message' => 'Please Enter a Valid Address.',
                 'invalid_address' => true,
                 'debug' => config('app.debug') ? $this->veeqoShippingService->getDebugInfo() : null,
             ], 422);

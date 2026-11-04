@@ -733,7 +733,7 @@ function CheckoutForm() {
         if (!/^\d{5}(?:-\d{4})?$/.test(String(form.postal_code || '').trim())) {
             setQuotedShipping(0);
             setHasShippingQuote(false);
-            setShippingError('Please enter a valid address.');
+            setShippingError('Please Enter a Valid Address.');
             return undefined;
         }
 
@@ -775,7 +775,7 @@ function CheckoutForm() {
 
                 if (!response.ok) {
                     if (payload?.invalid_address) {
-                        throw new Error('Please enter a valid address.');
+                        throw new Error('Please Enter a Valid Address.');
                     }
 
                     throw new Error(payload?.message || 'Unable to fetch shipping rates');
