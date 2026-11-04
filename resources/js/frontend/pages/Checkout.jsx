@@ -606,6 +606,11 @@ function CheckoutForm() {
             }
         }
 
+        const postalCodeValue = String(values.postal_code || '').trim();
+        if (postalCodeValue && !/^\d{5}(?:-\d{4})?$/.test(postalCodeValue)) {
+            errors.postal_code = 'Please enter a valid postal code';
+        }
+
         return errors;
     }
 
@@ -725,6 +730,13 @@ function CheckoutForm() {
             return undefined;
         }
 
+        if (!/^\d{5}(?:-\d{4})?$/.test(String(form.postal_code || '').trim())) {
+            setQuotedShipping(0);
+            setHasShippingQuote(false);
+            setShippingError('Please enter a valid address.');
+            return undefined;
+        }
+
         const controller = new AbortController();
         setIsFetchingShipping(true);
         setShippingError('');
@@ -762,7 +774,11 @@ function CheckoutForm() {
                 const payload = await response.json().catch(() => ({}));
 
                 if (!response.ok) {
-                    throw new Error(payload?.error || payload?.message || 'Unable to fetch shipping rates');
+                    if (payload?.invalid_address) {
+                        throw new Error('Please enter a valid address.');
+                    }
+
+                    throw new Error(payload?.message || 'Unable to fetch shipping rates');
                 }
 
                 // Checkout always charges the UPS Ground Saver rate picked by the backend.
@@ -1564,15 +1580,14 @@ function CheckoutForm() {
                                         ))}
                                     </span>
                                 </span>
+                            ) : shippingError ? (
+                                <span className="text-right text-[0.8rem] text-red-600">{shippingError}</span>
                             ) : !hasShippingQuote ? (
                                 <span className="text-zinc-400">--</span>
                             ) : (
                                 <span>${shipping.toFixed(2)}</span>
                             )}
                         </div>
-                        {!isFetchingShipping && shippingError ? (
-                            <p className="text-xs text-red-600">{shippingError}</p>
-                        ) : null}
                         <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-[1rem] font-semibold text-zinc-900">
                             <span>Total</span>
                             <span>${total.toFixed(2)}</span>
