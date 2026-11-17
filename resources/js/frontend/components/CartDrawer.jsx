@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
 const fallbackImage = '';
@@ -27,6 +27,12 @@ export default function CartDrawer() {
         itemCount,
         subtotal,
     } = useCart();
+
+    // On /user/* and /admin/* the drawer is rendered inside the backend router,
+    // which has no /checkout route, so a client-side <Link> would fall through
+    // to its catch-all redirect to /admin. Use a full page load there instead.
+    const location = useLocation();
+    const isBackendRoute = location.pathname.startsWith('/user/') || location.pathname.startsWith('/admin/');
 
     useEffect(() => {
         document.body.style.overflow = isDrawerOpen ? 'hidden' : '';
@@ -159,13 +165,23 @@ export default function CartDrawer() {
                         </span>
                     </div>
 
-                    <Link
-                        to="/checkout"
-                        onClick={closeCartDrawer}
-                        className="block w-full bg-zinc-900 text-white text-center py-3 uppercase text-sm"
-                    >
-                        Checkout
-                    </Link>
+                    {isBackendRoute ? (
+                        <a
+                            href="/checkout"
+                            onClick={closeCartDrawer}
+                            className="block w-full bg-zinc-900 text-white text-center py-3 uppercase text-sm"
+                        >
+                            Checkout
+                        </a>
+                    ) : (
+                        <Link
+                            to="/checkout"
+                            onClick={closeCartDrawer}
+                            className="block w-full bg-zinc-900 text-white text-center py-3 uppercase text-sm"
+                        >
+                            Checkout
+                        </Link>
+                    )}
                 </div>
             </aside>
         </>
