@@ -11,3 +11,9 @@ Artisan::command('inspire', function () {
 Schedule::command('products:sync-inventory')
     ->everyTenMinutes()
     ->withoutOverlapping();
+
+// Makes copies of newly uploaded catalogue photos before anyone opens the catalogue
+// (only checks file dates when nothing has changed)
+Schedule::command('catalog:cache-images')
+    ->everyTenMinutes()
+    ->withoutOverlapping();

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CatalogImageCache;
+use App\Services\WebpImageWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 
@@ -55,21 +57,12 @@ class MediaController extends Controller
             ]);
         }
 
-        if (! function_exists('imagecreatetruecolor') || ! function_exists('imagewebp')) {
-            return response()->file($publicAbsolute, [
-                'Cache-Control' => 'public, max-age=2592000',
-            ]);
-        }
-
         $targetWidth = (int) ($validated['w'] ?? 1400);
         $targetHeight = isset($validated['h']) ? (int) $validated['h'] : null;
         $quality = (int) ($validated['q'] ?? 76);
         $fit = (string) ($validated['fit'] ?? 'contain');
         $backgroundHex = strtolower((string) ($validated['bg'] ?? 'ffffff'));
         $lastModified = File::lastModified($publicAbsolute);
-
-        $cacheDirectory = public_path('uploads/cache/media');
-        File::ensureDirectoryExists($cacheDirectory);
 
         $cacheKey = md5(
             $relativePath
@@ -79,101 +72,16 @@ class MediaController extends Controller
             . '|' . $fit
             . '|' . $backgroundHex
             . '|' . $lastModified
+            // Copies made before transparency was kept may have black backgrounds; rebuild those
+            . (in_array($mime, ['image/jpeg', 'image/jpg'], true) ? '' : '|alpha')
         );
-        $cachedPath = $cacheDirectory . DIRECTORY_SEPARATOR . $cacheKey . '.webp';
+        $cachedPath = public_path('uploads/cache/media') . DIRECTORY_SEPARATOR . $cacheKey . '.webp';
 
-        if (! File::exists($cachedPath)) {
-            $source = $this->createImageResource($publicAbsolute, strtolower($mime));
-            if (! $source) {
-                return response()->file($publicAbsolute, [
-                    'Cache-Control' => 'public, max-age=2592000',
-                ]);
-            }
-
-            $sourceWidth = imagesx($source);
-            $sourceHeight = imagesy($source);
-            if ($sourceWidth <= 0 || $sourceHeight <= 0) {
-                imagedestroy($source);
-                return response()->file($publicAbsolute, [
-                    'Cache-Control' => 'public, max-age=2592000',
-                ]);
-            }
-
-            if ($targetHeight === null) {
-                $scale = min($targetWidth / $sourceWidth, 1);
-                $resizedWidth = max(1, (int) floor($sourceWidth * $scale));
-                $resizedHeight = max(1, (int) floor($sourceHeight * $scale));
-
-                $target = imagecreatetruecolor($resizedWidth, $resizedHeight);
-            } else {
-                $resizedWidth = $targetWidth;
-                $resizedHeight = $targetHeight;
-                $target = imagecreatetruecolor($targetWidth, $targetHeight);
-            }
-
-            if (! $target) {
-                imagedestroy($source);
-                return response()->file($publicAbsolute, [
-                    'Cache-Control' => 'public, max-age=2592000',
-                ]);
-            }
-
-            imagealphablending($target, true);
-            imagesavealpha($target, true);
-
-            if ($targetHeight === null) {
-                imagecopyresampled(
-                    $target,
-                    $source,
-                    0,
-                    0,
-                    0,
-                    0,
-                    $resizedWidth,
-                    $resizedHeight,
-                    $sourceWidth,
-                    $sourceHeight
-                );
-            } else {
-                [$bgRed, $bgGreen, $bgBlue] = $this->hexToRgb($backgroundHex);
-                $bgColor = imagecolorallocate($target, $bgRed, $bgGreen, $bgBlue);
-                imagefilledrectangle($target, 0, 0, $targetWidth, $targetHeight, $bgColor);
-
-                if ($fit === 'cover') {
-                    $scale = max($targetWidth / $sourceWidth, $targetHeight / $sourceHeight);
-                } else {
-                    $scale = min($targetWidth / $sourceWidth, $targetHeight / $sourceHeight);
-                }
-
-                $drawWidth = max(1, (int) floor($sourceWidth * $scale));
-                $drawHeight = max(1, (int) floor($sourceHeight * $scale));
-                $drawX = (int) floor(($targetWidth - $drawWidth) / 2);
-                $drawY = (int) floor(($targetHeight - $drawHeight) / 2);
-
-                imagecopyresampled(
-                    $target,
-                    $source,
-                    $drawX,
-                    $drawY,
-                    0,
-                    0,
-                    $drawWidth,
-                    $drawHeight,
-                    $sourceWidth,
-                    $sourceHeight
-                );
-            }
-
-            $saved = @imagewebp($target, $cachedPath, $quality);
-
-            imagedestroy($target);
-            imagedestroy($source);
-
-            if (! $saved || ! File::exists($cachedPath)) {
-                return response()->file($publicAbsolute, [
-                    'Cache-Control' => 'public, max-age=2592000',
-                ]);
-            }
+        if (! File::exists($cachedPath)
+            && ! WebpImageWriter::write($publicAbsolute, $cachedPath, $targetWidth, $targetHeight, $quality, $fit, $backgroundHex)) {
+            return response()->file($publicAbsolute, [
+                'Cache-Control' => 'public, max-age=2592000',
+            ]);
         }
 
         return response()->file($cachedPath, [
@@ -182,28 +90,25 @@ class MediaController extends Controller
         ]);
     }
 
-    private function createImageResource(string $path, string $mime)
+    /**
+     * A digital catalogue photo copy that isn't on disk yet ($path = "<path inside uploads>.webp").
+     * Once it is saved, the web server sends the file itself and this never runs for it again.
+     */
+    public function catalogImage(string $path)
     {
-        return match ($mime) {
-            'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($path),
-            'image/png' => @imagecreatefrompng($path),
-            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
-            'image/gif' => @imagecreatefromgif($path),
-            default => null,
-        };
-    }
+        $original = CatalogImageCache::original(substr($path, 0, -strlen('.webp')));
+        abort_if($original === null, 404);
 
-    private function hexToRgb(string $hex): array
-    {
-        $normalized = ltrim(trim($hex), '#');
-        if (! preg_match('/^[0-9a-fA-F]{6}$/', $normalized)) {
-            return [255, 255, 255];
+        if (CatalogImageCache::isFresh($original) || CatalogImageCache::build($original)) {
+            return response()->file(CatalogImageCache::copyPath($original), [
+                'Content-Type' => 'image/webp',
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
         }
 
-        return [
-            hexdec(substr($normalized, 0, 2)),
-            hexdec(substr($normalized, 2, 2)),
-            hexdec(substr($normalized, 4, 2)),
-        ];
+        // The server can't make WebP images: send the original photo instead
+        return response()->file($original, [
+            'Cache-Control' => 'public, max-age=2592000',
+        ]);
     }
 }

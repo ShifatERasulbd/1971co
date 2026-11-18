@@ -2,7 +2,28 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef,
 
 import { requestJson } from '@/lib/apiClient';
 
-const COVER = '/uploads/catelog/coverPhoto.jpeg';
+// Uploaded photos are 1–3 MB originals (~40 MB for the whole book). The book never shows one wider
+// than ~1400px, so it loads small WebP copies instead (this also keeps the PDF export fast, since every
+// photo gets embedded into the pages). The copies are plain files in the server's cache folder, sent
+// without running PHP; the scheduler makes them ahead of time, and a missing one is made on first request.
+// Keep in sync with CatalogImageCache::DIRECTORY (app/Services/CatalogImageCache.php).
+const CATALOG_CACHE_DIR = '/uploads/cache/catalog-1400';
+
+const optimizedUpload = (src) => {
+    let url;
+    try {
+        url = new URL(src, window.location.origin);
+    } catch {
+        return src;
+    }
+    const { pathname } = url;
+    if (url.origin !== window.location.origin || !pathname.startsWith('/uploads/') || pathname.startsWith('/uploads/cache/')) {
+        return src;
+    }
+    return `${CATALOG_CACHE_DIR}/${pathname.slice('/uploads/'.length)}.webp`;
+};
+
+const COVER = optimizedUpload('/uploads/catelog/coverPhoto.jpeg');
 
 const PRODUCTS_ENDPOINT = '/api/public/shop-products';
 const COLORS_ENDPOINT = '/api/public/colors';
@@ -14,7 +35,7 @@ const GRANDCHILDS_ENDPOINT = '/api/public/grand-childs';
 const BRAND_TEXT = '1971CO.';
 
 // Image for the intro page. Point this at your own photo/banner.
-const INTRO_IMAGE = '/uploads/catelog/home_image.png';
+const INTRO_IMAGE = optimizedUpload('/uploads/catelog/home_image.png');
 
 const BRAND_STATEMENT =
     "At 1971Co. we believe Casualwear is more than just a wardrobe staple it’s an extension of your persona. It's a statement of identity and confidence. Our designs combine bold aesthetics, urban culture influences, and high-quality craftsmanship to help individuals express themselves fearlessly.";
@@ -235,16 +256,16 @@ const toMap = (rows) =>
 const categoryImage = (category) => {
     const image = category?.image_url || category?.image;
     if (!image || typeof image !== 'string') return '';
-    if (/^(https?:|data:|\/)/i.test(image)) return image;
-    return `/${image}`;
+    if (/^(https?:|data:|\/)/i.test(image)) return optimizedUpload(image);
+    return optimizedUpload(`/${image}`);
 };
 
 const catalogImage = (image) => {
     if (typeof image !== 'string') return '';
     const value = image.trim();
     if (!value) return '';
-    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
-    return `/${value}`;
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return optimizedUpload(value);
+    return optimizedUpload(`/${value}`);
 };
 
 // Returns the first non-empty value among the given keys, as a string
@@ -323,9 +344,11 @@ function buildView(p, colorMap, sizeMap) {
             images,
             image:
                 picked ||
-                (isTankTopBundle
-                    ? images[2] || images[1] || images[0] || ''
-                    : (isBundle ? images[1] : images[0]) || images[0] || ''),
+                catalogImage(
+                    isTankTopBundle
+                        ? images[2] || images[1] || images[0] || ''
+                        : (isBundle ? images[1] : images[0]) || images[0] || '',
+                ),
         };
     });
 

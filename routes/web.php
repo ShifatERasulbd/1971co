@@ -5,6 +5,7 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\SitemapController;
 use App\Models\Product;
 use App\Models\Settings;
+use App\Services\CatalogImageCache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -153,6 +154,11 @@ $renderHome = static function (?Product $product = null) use ($buildHomeMeta) {
 };
 
 Route::get('/media/optimize', [MediaController::class, 'optimize']);
+
+// Digital catalogue photo copies. Saved ones are plain files the web server sends itself;
+// a request only reaches Laravel when the copy is missing, and then it is made and saved.
+Route::get('/' . CatalogImageCache::DIRECTORY . '/{path}', [MediaController::class, 'catalogImage'])
+    ->where('path', '.+\.webp');
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
 Route::get('/', function () use ($renderHome) {
