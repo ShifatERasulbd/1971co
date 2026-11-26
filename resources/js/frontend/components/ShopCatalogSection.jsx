@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { useCart } from '../context/CartContext';
 import { featuresFontClass } from '../utils/typography';
+import { isVariantOutOfStock } from '../utils/variantStock';
 import ProductVariantModal from './ProductVariantModal.jsx';
 import ShopSidebar from './ShopSidebar.jsx';
 import { sectionTypography } from '../utils/sectionTypography';
@@ -146,11 +147,17 @@ function extractSizeIds(product, sizeNameLookup = {}, sizeIdByNameLookup = {}) {
 }
 
 function getProductStock(product) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+
+    // Every colour and size marked out of stock in the admin panel
+    if (variants.length > 0 && variants.every(isVariantOutOfStock)) {
+        return 0;
+    }
+
     if (Number.isFinite(Number(product?.stock))) {
         return Number(product.stock);
     }
 
-    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
     const variantStock = variants.reduce((total, row) => {
         const next = Number(row?.stock);
         return Number.isFinite(next) ? total + next : total;

@@ -90,6 +90,9 @@ export default function SingleProductDetailsPanel({
     onSelectColor,
     selectedSize,
     onSelectSize,
+    outOfStockColors = [],
+    outOfStockSizes = [],
+    isOutOfStock = false,
     quantity,
     onDecreaseQuantity,
     onIncreaseQuantity,
@@ -209,47 +212,72 @@ export default function SingleProductDetailsPanel({
                 <div>
                     <h2 className="font-monstrate text-[0.75rem] tracking-[0.08em] text-zinc-800">Color Variations</h2>
                     <div className="mt-2.5 flex items-center gap-2.5">
-                        {displayColors.map((color) => (
-                            <button
-                                key={color.label}
-                                type="button"
-                                onClick={() => onSelectColor(color.label)}
-                                aria-label={`Select ${color.label} color`}
-                                className={`inline-flex size-10 items-center justify-center rounded-full border-2 ${
-                                    selectedColor === color.label
-                                        ? 'border-zinc-950'
-                                        : 'border-zinc-200 hover:border-zinc-500'
-                                }`}
-                            >
-                                <span
-                                    className="size-7 rounded-full border border-zinc-300"
-                                    style={{ backgroundColor: resolveSwatchColor(color.value, colorLookup) }}
-                                />
-                            </button>
-                        ))}
+                        {displayColors.map((color) => {
+                            // Sold-out colours can still be picked to see their photos; they get a strike line
+                            const soldOut = outOfStockColors.includes(color.label);
+
+                            return (
+                                <button
+                                    key={color.label}
+                                    type="button"
+                                    onClick={() => onSelectColor(color.label)}
+                                    aria-label={`Select ${color.label} color${soldOut ? ' (out of stock)' : ''}`}
+                                    title={soldOut ? 'Out of stock' : undefined}
+                                    className={`relative inline-flex size-10 items-center justify-center overflow-hidden rounded-full border-2 ${
+                                        selectedColor === color.label
+                                            ? 'border-zinc-950'
+                                            : 'border-zinc-200 hover:border-zinc-500'
+                                    }`}
+                                >
+                                    <span
+                                        className={`size-7 rounded-full border border-zinc-300 ${soldOut ? 'opacity-50' : ''}`}
+                                        style={{ backgroundColor: resolveSwatchColor(color.value, colorLookup) }}
+                                    />
+                                    {soldOut && (
+                                        <span
+                                            aria-hidden="true"
+                                            className="pointer-events-none absolute left-1/2 top-1/2 h-[2px] w-[130%] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-zinc-600"
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                     <p className="font-monstrate mt-2 text-[0.8rem] uppercase tracking-[0.08em] text-zinc-700">
                         Selected: <span className="font-semibold text-zinc-950">{selectedColorLabel}</span>
+                        {outOfStockColors.includes(selectedColor) && (
+                            <span className="ml-2 font-semibold text-red-700">Out of stock</span>
+                        )}
                     </p>
                 </div>
 
                 <div>
                     <h2 className="font-monstrate text-[0.75rem] tracking-[0.08em] text-zinc-800">Size Variations</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                        {displaySizes.map((size) => (
-                            <button
-                                key={size}
-                                type="button"
-                                onClick={() => onSelectSize(size)}
-                                className={`inline-flex min-w-[60px] items-center justify-center border px-3 py-2.5 text-[0.95rem] font-medium uppercase ${
-                                    selectedSize === size
-                                        ? 'border-zinc-950 bg-zinc-950 text-white'
-                                        : 'border-zinc-300 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
-                                }`}
-                            >
-                                {size}
-                            </button>
-                        ))}
+                        {displaySizes.map((size) => {
+                            // Out of stock in the selected colour
+                            const soldOut = outOfStockSizes.includes(size);
+
+                            return (
+                                <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => onSelectSize(size)}
+                                    disabled={soldOut}
+                                    aria-label={soldOut ? `${size} (out of stock)` : undefined}
+                                    title={soldOut ? 'Out of stock' : undefined}
+                                    className={`inline-flex min-w-[60px] items-center justify-center border px-3 py-2.5 text-[0.95rem] font-medium uppercase ${
+                                        soldOut
+                                            ? 'cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-400 line-through'
+                                            : selectedSize === size
+                                              ? 'border-zinc-950 bg-zinc-950 text-white'
+                                              : 'border-zinc-300 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
+                                    }`}
+                                >
+                                    {size}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     <button
@@ -294,9 +322,10 @@ export default function SingleProductDetailsPanel({
                     <button
                         type="button"
                         onClick={onAddToCart}
-                        className="inline-flex h-[52px] min-w-0 flex-1 cursor-pointer items-center justify-center bg-zinc-900 px-4 text-[0.95rem] font-semibold uppercase tracking-[0.05em] text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 sm:px-6 sm:text-[1.05rem]"
+                        disabled={isOutOfStock}
+                        className="inline-flex h-[52px] min-w-0 flex-1 cursor-pointer items-center justify-center bg-zinc-900 px-4 text-[0.95rem] font-semibold uppercase tracking-[0.05em] text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:shadow-none disabled:active:translate-y-0 sm:px-6 sm:text-[1.05rem]"
                     >
-                        Add to cart
+                        {isOutOfStock ? 'Out of stock' : 'Add to cart'}
                     </button>
 
                   

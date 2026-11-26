@@ -1,5 +1,6 @@
 import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { isVariantOutOfStock } from '../utils/variantStock';
 
 const fallbackImage = '';
 
@@ -173,6 +174,23 @@ function resolveSelectedVariantRow(product, selectedColor, selectedSize) {
     });
 
     return matched || null;
+}
+
+// True when exactly this colour + size is marked out of stock in the admin panel
+function isComboOutOfStock(product, color, size) {
+    const colorToken = String(color || '').trim().toLowerCase();
+    const sizeToken = String(size || '').trim().toLowerCase();
+    if (!colorToken || !sizeToken) {
+        return false;
+    }
+
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    const row = variants.find((item) =>
+        parseList(item?.color).some((value) => String(value).trim().toLowerCase() === colorToken)
+        && parseList(item?.size).some((value) => String(value).trim().toLowerCase() === sizeToken),
+    );
+
+    return isVariantOutOfStock(row);
 }
 
 function resolveOptionValue(preferredValue, options = [], labelLookup = {}) {
@@ -357,7 +375,11 @@ export default function ProductVariantModal({
         const initialColor = String(defaults?.selectedColor || '').trim();
         const nextColor = resolveOptionValue(initialColor, colors, colorLabelLookup) || colors[0] || '';
         const initialSize = String(defaults?.selectedSize || '').trim();
-        const nextSize = resolveOptionValue(initialSize, sizes, effectiveSizeLookup) || sizes[0] || '';
+        const preferredSize = resolveOptionValue(initialSize, sizes, effectiveSizeLookup) || sizes[0] || '';
+        // Start on a size this colour still has in stock
+        const nextSize = isComboOutOfStock(product, nextColor, preferredSize)
+            ? (sizes.find((size) => !isComboOutOfStock(product, nextColor, size)) || preferredSize)
+            : preferredSize;
 
         setSelectedColor(nextColor);
         setSelectedSize(nextSize);
@@ -392,6 +414,28 @@ export default function ProductVariantModal({
         [product, selectedColor, selectedSize],
     );
 
+    // Sizes sold out in the selected colour, and colours sold out in every size
+    const outOfStockSizes = useMemo(
+        () => sizes.filter((size) => isComboOutOfStock(product, selectedColor, size)),
+        [product, selectedColor, sizes],
+    );
+    const outOfStockColors = useMemo(
+        () => colors.filter((color) => sizes.length > 0 && sizes.every((size) => isComboOutOfStock(product, color, size))),
+        [product, colors, sizes],
+    );
+
+    // A sold-out size can't stay picked: move to the first size this colour still has
+    useEffect(() => {
+        if (!isOpen || !outOfStockSizes.includes(selectedSize)) {
+            return;
+        }
+
+        const firstAvailable = sizes.find((size) => !outOfStockSizes.includes(size));
+        if (firstAvailable) {
+            setSelectedSize(firstAvailable);
+        }
+    }, [isOpen, outOfStockSizes, selectedSize, sizes]);
+
     if (!isOpen || !product) {
         return null;
     }
@@ -401,7 +445,8 @@ export default function ProductVariantModal({
     const mainImage = galleryImages[activeImageIndex] || fallbackImage;
     const needsColor = colors.length > 0;
     const needsSize = sizes.length > 0;
-    const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize);
+    const isSelectionOutOfStock = isComboOutOfStock(product, selectedColor, selectedSize);
+    const canSubmit = (!needsColor || selectedColor) && (!needsSize || selectedSize) && !isSelectionOutOfStock;
 
     return (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/55 p-2 sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label={`Select options for ${name}`}>
@@ -464,24 +509,35 @@ export default function ProductVariantModal({
                             <p className="mb-2 text-[0.86rem] uppercase tracking-[0.12em] text-zinc-600">Color</p>
                             {colors.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {colors.map((color) => (
-                                        <button
-                                            key={color}
-                                            type="button"
-                                            onClick={() => setSelectedColor(color)}
-                                            className={`inline-flex items-center gap-2 border px-2.5 py-1.5 text-[0.78rem] uppercase tracking-[0.08em] ${
-                                                selectedColor === color
-                                                    ? 'border-zinc-900 bg-zinc-900 text-white'
-                                                    : 'border-zinc-300 text-zinc-700 hover:border-zinc-700'
-                                            }`}
-                                        >
-                                            <span
-                                                className="inline-block size-3.5 rounded-full border border-black/15"
-                                                style={{ backgroundColor: getSwatchColor(color, effectiveColorLookup) }}
-                                            />
-                                            {resolveColorDisplayName(color, colorLabelLookup)}
-                                        </button>
-                                    ))}
+                                    {colors.map((color) => {
+                                        // Sold-out colours stay pickable (to see their photos) but are struck through
+                                        const soldOut = outOfStockColors.includes(color);
+
+                                        return (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() => setSelectedColor(color)}
+                                                title={soldOut ? 'Out of stock' : undefined}
+                                                className={`inline-flex items-center gap-2 border px-2.5 py-1.5 text-[0.78rem] uppercase tracking-[0.08em] ${
+                                                    selectedColor === color
+                                                        ? 'border-zinc-900 bg-zinc-900 text-white'
+                                                        : soldOut
+                                                          ? 'border-zinc-200 text-zinc-400 hover:border-zinc-400'
+                                                          : 'border-zinc-300 text-zinc-700 hover:border-zinc-700'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`inline-block size-3.5 rounded-full border border-black/15 ${soldOut ? 'opacity-50' : ''}`}
+                                                    style={{ backgroundColor: getSwatchColor(color, effectiveColorLookup) }}
+                                                />
+                                                <span className={soldOut ? 'line-through' : ''}>
+                                                    {resolveColorDisplayName(color, colorLabelLookup)}
+                                                </span>
+                                                {soldOut && <span className="sr-only">(out of stock)</span>}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-sm text-zinc-400">No color options</p>
@@ -492,20 +548,31 @@ export default function ProductVariantModal({
                             <p className="mb-2 text-[0.86rem] uppercase tracking-[0.12em] text-zinc-600">Size</p>
                             {sizes.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {sizes.map((size) => (
-                                        <button
-                                            key={size}
-                                            type="button"
-                                            onClick={() => setSelectedSize(size)}
-                                            className={`min-w-12 border px-3 py-2 text-[0.82rem] uppercase tracking-[0.1em] ${
-                                                selectedSize === size
-                                                    ? 'border-zinc-900 bg-zinc-900 text-white'
-                                                    : 'border-zinc-300 text-zinc-700 hover:border-zinc-700'
-                                            }`}
-                                        >
-                                            {resolveSizeDisplayName(size, effectiveSizeLookup)}
-                                        </button>
-                                    ))}
+                                    {sizes.map((size) => {
+                                        // Out of stock in the selected colour
+                                        const soldOut = outOfStockSizes.includes(size);
+                                        const label = resolveSizeDisplayName(size, effectiveSizeLookup);
+
+                                        return (
+                                            <button
+                                                key={size}
+                                                type="button"
+                                                onClick={() => setSelectedSize(size)}
+                                                disabled={soldOut}
+                                                aria-label={soldOut ? `${label} (out of stock)` : undefined}
+                                                title={soldOut ? 'Out of stock' : undefined}
+                                                className={`min-w-12 border px-3 py-2 text-[0.82rem] uppercase tracking-[0.1em] ${
+                                                    soldOut
+                                                        ? 'cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-400 line-through'
+                                                        : selectedSize === size
+                                                          ? 'border-zinc-900 bg-zinc-900 text-white'
+                                                          : 'border-zinc-300 text-zinc-700 hover:border-zinc-700'
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-sm text-zinc-400">No size options</p>
@@ -555,7 +622,7 @@ export default function ProductVariantModal({
                                 }}
                                 className="inline-flex h-12 w-full flex-1 items-center justify-center bg-zinc-900 px-6 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-400 sm:text-[0.8rem] sm:tracking-[0.14em]"
                             >
-                                Add to cart
+                                {isSelectionOutOfStock ? 'Out of stock' : 'Add to cart'}
                             </button>
                         </div>
                     </div>

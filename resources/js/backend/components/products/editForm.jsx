@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import RichTextEditor from './richTextEditor';
 import ProductFeaturesRepeater from './ProductFeaturesRepeater';
 import CatalogImagesField from './catalogImagesField';
+import { VariantStockBulkControls, VariantStockToggle, isVariantOutOfStock } from './VariantStockControls';
 
 export default function EditForm({
     form = {},
@@ -46,6 +47,7 @@ export default function EditForm({
     onRemoveSize,
     onReorderSizes,
     onVariantRowChange,
+    onVariantOutOfStockChange,
     onColorTrendingChange,
     onColorVariantImagesChange,
     onColorVariantVideosChange,
@@ -961,14 +963,22 @@ export default function EditForm({
                                         Variants
                                         {variantGroupName ? ` - ${variantGroupName}` : ''}
                                     </p>
+                                    <VariantStockBulkControls
+                                        variantRows={variantRows}
+                                        getColorLabel={(value) => getColorLabel(value).replace(/\s*\(#[0-9a-f]{3,8}\)$/i, '')}
+                                        getSizeLabel={getSizeLabel}
+                                        onChange={onVariantOutOfStockChange}
+                                        disabled={isSubmitting}
+                                    />
                                     <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[780px] text-sm">
+                                        <table className="w-full min-w-[900px] text-sm">
                                             <thead>
                                                 <tr className="border-b text-left">
                                                     <th className="py-2 pr-2">Color</th>
                                                     <th className="py-2 pr-2">Size</th>
                                                     <th className="py-2 pr-2">SKU</th>
                                                     <th className="py-2 pr-2">Stock</th>
+                                                    <th className="py-2 pr-2">Availability</th>
                                                     <th className="py-2 pr-2">Weight<br /><span>(in Lbs)</span></th>
                                                     <th className="py-2">Trending</th>
                                                     <th className="py-2">Color Images</th>
@@ -978,7 +988,7 @@ export default function EditForm({
                                             </thead>
                                             <tbody>
                                                 {variantRows.map((row) => (
-                                                    <tr key={row.key} className="border-b last:border-0">
+                                                    <tr key={row.key} className={`border-b last:border-0 ${isVariantOutOfStock(row) ? 'bg-destructive/5' : ''}`}>
                                                         <td className="py-2 pr-2">{getColorLabel(row.color)}</td>
                                                         <td className="py-2 pr-2">{getSizeLabel(row.size)}</td>
                                                         <td className="py-2 pr-2">
@@ -996,6 +1006,9 @@ export default function EditForm({
                                                                 onChange={(event) => onVariantRowChange?.(row.key, 'stock', event.target.value)}
                                                                 disabled={isSubmitting}
                                                             />
+                                                        </td>
+                                                        <td className="py-2 pr-2">
+                                                            <VariantStockToggle row={row} onChange={onVariantOutOfStockChange} disabled={isSubmitting} />
                                                         </td>
                                                         <td className="py-2 pr-2">
                                                             <Input

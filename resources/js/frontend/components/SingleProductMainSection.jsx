@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { trackAddToCart } from '../../utils/dataLayer';
 import { featuresFontClass } from '../utils/typography';
+import { isVariantOutOfStock } from '../utils/variantStock';
 import { useCart } from '../context/CartContext';
 import SingleProductDetailsPanel from './SingleProductDetailsPanel.jsx';
 import SingleProductMediaGallery from './SingleProductMediaGallery.jsx';
@@ -156,6 +157,21 @@ function normalizeVariantSizeToken(value, sizeNameLookup = {}) {
         .trim()
         .replace(/\s+/g, ' ')
         .toLowerCase();
+}
+
+// The variant row for exactly this colour + size (names or ids), or null
+function findVariantRow(product, color, size, colorRecords = [], sizeNameLookup = {}) {
+    const variants = Array.isArray(product?.variant_rows) ? product.variant_rows : [];
+    const colorToken = normalizeVariantColorToken(color, colorRecords);
+    const sizeToken = normalizeVariantSizeToken(size, sizeNameLookup);
+    if (!colorToken || !sizeToken) {
+        return null;
+    }
+
+    return variants.find((row) =>
+        parseOptionTokens(row?.color).some((item) => normalizeVariantColorToken(item, colorRecords) === colorToken)
+        && parseOptionTokens(row?.size).some((item) => normalizeVariantSizeToken(item, sizeNameLookup) === sizeToken),
+    ) || null;
 }
 
 function resolveSelectedVariantSku(product, selectedColor, selectedSize, colorRecords = [], sizeNameLookup = {}) {
@@ -596,6 +612,10 @@ export default function SingleProductMainSection({ product, initialColor = '' })
     }
 
     function handleAddToCart() {
+        if (isSelectionOutOfStock) {
+            return;
+        }
+
         addToCart(product, {
             selectedColor,
             selectedSize,
@@ -679,6 +699,33 @@ export default function SingleProductMainSection({ product, initialColor = '' })
         [product, selectedColor, selectedSize, colorRecords, sizeNameLookup],
     );
 
+    // Colour + size combinations marked out of stock in the admin panel
+    const isComboOutOfStock = useCallback(
+        (color, size) => isVariantOutOfStock(findVariantRow(product, color, size, colorRecords, sizeNameLookup)),
+        [product, colorRecords, sizeNameLookup],
+    );
+    const outOfStockSizes = useMemo(
+        () => sizes.filter((size) => isComboOutOfStock(selectedColor, size)),
+        [sizes, selectedColor, isComboOutOfStock],
+    );
+    const outOfStockColors = useMemo(
+        () => colors.filter((color) => sizes.length > 0 && sizes.every((size) => isComboOutOfStock(color, size))),
+        [colors, sizes, isComboOutOfStock],
+    );
+    const isSelectionOutOfStock = isComboOutOfStock(selectedColor, selectedSize);
+
+    // A sold-out size can't stay picked: move to the first size this colour still has
+    useEffect(() => {
+        if (!outOfStockSizes.includes(selectedSize)) {
+            return;
+        }
+
+        const firstAvailable = sizes.find((size) => !outOfStockSizes.includes(size));
+        if (firstAvailable) {
+            setSelectedSize(firstAvailable);
+        }
+    }, [outOfStockSizes, selectedSize, sizes]);
+
     return (
         <section className={`${featuresFontClass} bg-[#f7f7f6] px-5 py-6 sm:px-8 lg:px-12 lg:py-8`}>
             <div className="mx-auto w-full max-w-[1800px]">
@@ -733,6 +780,9 @@ export default function SingleProductMainSection({ product, initialColor = '' })
                             onSelectColor={handleSelectColor}
                             selectedSize={selectedSize}
                             onSelectSize={setSelectedSize}
+                            outOfStockColors={outOfStockColors}
+                            outOfStockSizes={outOfStockSizes}
+                            isOutOfStock={isSelectionOutOfStock}
                             quantity={quantity}
                             onDecreaseQuantity={decreaseQuantity}
                             onIncreaseQuantity={increaseQuantity}

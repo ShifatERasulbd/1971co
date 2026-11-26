@@ -7,6 +7,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ColorController;
+use App\Http\Controllers\CartAvailabilityController;
 use App\Http\Controllers\CheckoutOrderController;
 use App\Http\Controllers\AboutHeroController;
 use App\Http\Controllers\AboutGivingBackController;
@@ -82,6 +83,7 @@ Route::post('/public/shipping/quote', [CheckoutOrderController::class, 'quoteShi
 Route::post('/public/tax/quote', [CheckoutOrderController::class, 'quoteTax']);
 Route::post('/public/checkout-sessions', [CheckoutSessionController::class, 'store'])->middleware('throttle:60,1');
 Route::post('/public/checkout-sessions/complete', [CheckoutSessionController::class, 'complete'])->middleware('throttle:30,1');
+Route::post('/public/cart/availability', CartAvailabilityController::class)->middleware('throttle:60,1');
 
 Route::get('/public/locations/states', [UsLocationController::class, 'states']);
 Route::get('/public/locations/cities', [UsLocationController::class, 'citiesByState']);

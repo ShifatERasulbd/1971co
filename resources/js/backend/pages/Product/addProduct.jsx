@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import AddForm from '@/components/products/addForm';
+import { isVariantOutOfStock, matchesVariantTarget } from '@/components/products/VariantStockControls';
 import { useAppContext } from '@/context/AppContext';
 import { fetchCategories } from '@/pages/Category/api';
 import { fetchColors } from '@/pages/Color/api';
@@ -337,6 +338,7 @@ export default function AddProduct() {
                         weight: pickVariantNumberValue(existing?.weight, form.weight),
                         price: pickVariantNumberValue(existing?.price, form.price),
                         show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
+                        out_of_stock: isVariantOutOfStock(existing),
                     });
                 });
             });
@@ -614,6 +616,13 @@ export default function AddProduct() {
         );
     };
 
+    // Marks variants out of stock (or back in stock): one row by key, or every row of a colour or size
+    const handleVariantOutOfStockChange = (target, outOfStock) => {
+        setVariantRows((previous) => previous.map((row) => (
+            matchesVariantTarget(row, target) ? { ...row, out_of_stock: Boolean(outOfStock) } : row
+        )));
+    };
+
     const handleColorTrendingChange = (color, checked) => {
         const normalizedColor = String(color || '').trim();
         if (!normalizedColor) {
@@ -743,6 +752,7 @@ export default function AddProduct() {
                     onRemoveSize={handleRemoveSize}
                     onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
+                    onVariantOutOfStockChange={handleVariantOutOfStockChange}
                     onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}

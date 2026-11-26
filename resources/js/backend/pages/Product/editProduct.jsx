@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import EditForm from '@/components/products/editForm';
+import { isVariantOutOfStock, matchesVariantTarget } from '@/components/products/VariantStockControls';
 import CatalogImagesField from '@/components/products/catalogImagesField';
 import { useAppContext } from '@/context/AppContext';
 import { fetchCategories } from '@/pages/Category/api';
@@ -555,6 +556,7 @@ export default function EditProduct() {
                             weight: row?.weight ?? '',
                             price: row?.price ?? '',
                             show_on_best_sellers: Boolean(row?.show_on_best_sellers),
+                            out_of_stock: isVariantOutOfStock(row),
                         }));
 
                         const nextTrendingMap = {};
@@ -810,6 +812,7 @@ export default function EditProduct() {
                         width: pickVariantNumberValue(existing?.width, form.width),
                         height: pickVariantNumberValue(existing?.height, form.height),
                         show_on_best_sellers: Boolean(existing?.show_on_best_sellers ?? colorTrendingMap[color]),
+                        out_of_stock: isVariantOutOfStock(existing),
                     });
                 });
             });
@@ -936,6 +939,13 @@ export default function EditProduct() {
         setVariantRows((previous) =>
             previous.map((row) => (row.key === rowKey ? { ...row, [field]: value } : row)),
         );
+    };
+
+    // Marks variants out of stock (or back in stock): one row by key, or every row of a colour or size
+    const handleVariantOutOfStockChange = (target, outOfStock) => {
+        setVariantRows((previous) => previous.map((row) => (
+            matchesVariantTarget(row, target) ? { ...row, out_of_stock: Boolean(outOfStock) } : row
+        )));
     };
 
     const handleAddColor = () => {
@@ -1394,6 +1404,7 @@ export default function EditProduct() {
                     onRemoveSize={handleRemoveSize}
                     onReorderSizes={handleReorderSizes}
                     onVariantRowChange={handleVariantRowChange}
+                    onVariantOutOfStockChange={handleVariantOutOfStockChange}
                     onColorTrendingChange={handleColorTrendingChange}
                     onColorVariantImagesChange={handleColorVariantImagesChange}
                     onColorVariantVideosChange={handleColorVariantVideosChange}

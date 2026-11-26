@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Color;
 use App\Models\Product;
 use App\Models\Size;
+use App\Services\VariantAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
@@ -273,6 +274,7 @@ class ProductController extends Controller
             'variant_rows.*.price' => 'nullable',
             'variant_rows.*.weight' => 'nullable|string|max:255',
             'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
+            'variant_rows.*.out_of_stock' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -449,6 +451,7 @@ class ProductController extends Controller
             'variant_rows.*.price' => 'nullable',
             'variant_rows.*.weight' => 'nullable|string|max:255',
             'variant_rows.*.show_on_best_sellers' => 'nullable|boolean',
+            'variant_rows.*.out_of_stock' => 'nullable|boolean',
             'color_variant_images' => 'nullable|array',
             'color_variant_images.*' => 'nullable|array',
             'color_variant_images.*.*' => 'nullable|string|max:2048',
@@ -1031,6 +1034,8 @@ class ProductController extends Controller
                     FILTER_VALIDATE_BOOLEAN,
                     FILTER_NULL_ON_FAILURE,
                 ) === true,
+                // Marked out of stock in the admin panel: shoppers can't add this colour/size
+                'out_of_stock' => VariantAvailability::isOutOfStock($row),
             ];
         }, $variantRows));
     }

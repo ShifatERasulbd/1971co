@@ -15,6 +15,44 @@ import { useCart } from '../context/CartContext';
 import { normalizeCountryCode } from '../utils/shipping';
 import { featuresFontClass } from '../utils/typography';
 
+// Cart lines whose colour/size was marked out of stock after they were added to the cart.
+// If the check itself fails, nothing is reported, so it never blocks a sale on its own.
+async function findOutOfStockItems(cartItems) {
+    try {
+        const response = await fetch('/api/public/cart/availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                items: cartItems.map((item) => ({
+                    lineId: String(item.lineId ?? ''),
+                    productId: String(item.productId ?? ''),
+                    name: String(item.name ?? ''),
+                    sku: String(item.sku ?? ''),
+                    selectedColor: String(item.selectedColor ?? ''),
+                    selectedSize: String(item.selectedSize ?? ''),
+                })),
+            }),
+        });
+
+        if (!response.ok) {
+            return [];
+        }
+
+        const payload = await response.json();
+        return Array.isArray(payload?.unavailable) ? payload.unavailable : [];
+    } catch {
+        return [];
+    }
+}
+
+function describeCartLine(item) {
+    const variant = [item.selectedColor, item.selectedSize].filter(Boolean).join(' / ');
+    return variant ? `${item.name} (${variant})` : item.name;
+}
+
 const fallbackImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='300' viewBox='0 0 240 300'%3E%3Crect width='100%25' height='100%25' fill='%23eef0f3'/%3E%3C/svg%3E";
 const STRIPE_PERCENT_RATE = 0.029;
 const STRIPE_FIXED_FEE = 0.3;
@@ -985,6 +1023,18 @@ function CheckoutForm() {
 
         setIsSubmitting(true);
         try {
+            // Stop before taking payment if anything in the cart has been marked out of stock
+            const outOfStockItems = await findOutOfStockItems(items);
+            if (outOfStockItems.length > 0) {
+                const one = outOfStockItems.length === 1;
+                toast.error(
+                    `Sorry, ${outOfStockItems.map(describeCartLine).join(', ')} ${one ? 'is' : 'are'} out of stock. `
+                        + `Please remove ${one ? 'it' : 'them'} from your cart to continue.`,
+                    { duration: 8000 },
+                );
+                return;
+            }
+
             const paymentIntentResponse = await fetch('/api/create-payment-intent', {
                 method: 'POST',
                 headers: {
